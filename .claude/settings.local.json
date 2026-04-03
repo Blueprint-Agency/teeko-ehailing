@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone:*)",
+      "Bash(mv /tmp/teeko-clone/.git \"C:/Users/chris/Desktop/blueprint/teeko/teeko-ehailing/.git\")",
+      "Bash(mv /tmp/teeko-clone/* \"C:/Users/chris/Desktop/blueprint/teeko/teeko-ehailing/\")"
+    ]
+  }
+}

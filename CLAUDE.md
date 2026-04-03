@@ -6,9 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo contains the Product Requirements Document (PRD) for **Teeko**, a Malaysian e-hailing app. It is a documentation-only repo — there is no application code here.
 
-## Key File
+## Folder Structure
 
-- `teeko-prd.md` — The single source of truth for product requirements, features, tech stack, compliance, and scope.
+```
+docs/
+  prd/          — Product requirements documents
+    teeko-prd.md          — Core product requirements (single source of truth)
+    teeko-ux-prd.md       — UX/UI requirements
+    teeko-driver-prd.md   — Driver-side requirements
+  tech/         — Technical documentation
+```
 
 ## GitHub
 
