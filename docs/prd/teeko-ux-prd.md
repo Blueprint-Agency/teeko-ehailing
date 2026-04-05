@@ -58,13 +58,13 @@ Bottom navigation bar with 3 tabs:
 
 **Flow:**
 ```
-App opens → Location permission prompt (immediately) → Google Sign-Up screen
-→ Account created → Home screen
+App opens → Location permission prompt (immediately) → Enter phone number
+→ Enter OTP → Account created → Home screen
 ```
 
 | Element | Details |
 |---------|---------|
-| **Auth method** | Google Sign-Up (single option) |
+| **Auth method** | Phone number + OTP |
 | **Location permission** | Requested immediately on first open, before sign-up |
 | **Language** | Auto-detected from phone system settings; changeable in Account |
 | **Post sign-up** | User lands on the default Rides tab (Home screen) |
@@ -72,7 +72,8 @@ App opens → Location permission prompt (immediately) → Google Sign-Up screen
 **Screen layout:**
 - Teeko logo/wordmark (centered, top)
 - "Travel Easily with Teeko." tagline
-- "Continue with Google" button (prominent, full-width)
+- Phone number input field + "Continue" button (prominent, full-width)
+- OTP verification screen follows
 - Terms & Privacy links at the bottom
 
 ---
@@ -149,9 +150,11 @@ Review pin on map → Adjust if needed → Tap "Confirm destination"
 
 | Ride Type | Description | Info Shown |
 |-----------|-------------|------------|
-| **Teeko M** | Standard economy car | Car illustration, ETA, seat count (4), price in RM |
-| **Teeko L** | Larger vehicle / MPV | Car illustration, ETA, seat count (6), price in RM |
-| **Teeko Premium** | Premium sedan | Car illustration, ETA, seat count (4), price in RM |
+| **Teeko Go** | Standard economy car | Car illustration, ETA, seat count (4), price in RM |
+| **Teeko Comfort** | Newer or higher-comfort vehicle | Car illustration, ETA, seat count (4), price in RM |
+| **Teeko XL** | Larger vehicle (MPV/SUV) for groups | Car illustration, ETA, seat count (6), price in RM |
+| **Teeko Premium** | Premium/luxury sedan | Car illustration, ETA, seat count (4), price in RM |
+| **Teeko Bike** | Motorbike taxi (short, fast trips) | Bike illustration, ETA, seat count (1), price in RM |
 
 - Selected ride type highlighted with a border (red outline)
 - Price shown as a single fixed amount (e.g., "RM 25") — no range
@@ -160,7 +163,7 @@ Review pin on map → Adjust if needed → Tap "Confirm destination"
    - Options: Credit/Debit Card, Touch 'n Go eWallet, GrabPay, Google Pay
    - Tapping opens payment method picker
 
-5. **CTA button** — Full-width, red: "Select Teeko M" (dynamically updates with selected type)
+5. **CTA button** — Full-width, red: "Select Teeko Go" (dynamically updates with selected type)
 
 ---
 
@@ -418,19 +421,15 @@ The following are explicitly excluded from this UX PRD:
 
 | Feature | Reason |
 |---------|--------|
-| Advance booking / scheduling | Deferred |
-| SOS button | Deferred |
-| Trip sharing | Deferred |
 | Rebook from ride history | Not needed |
 | Dark mode | Not planned |
 | Account extras (calendar connect, promos) | Not needed |
 | Driver app UX | Separate PRD |
 | Admin dashboard UX | Separate PRD |
-| Teeko Bike ride type | Removed from MVP |
 | Toll/surcharge banner | Deferred |
 | Fare breakdown in receipt | Deferred — total only |
 | Custom saved places (beyond Home/Work) | Not planned |
-| Tipping | Deferred |
+| Tipping | Deferred — see teeko-deferred.md |
 
 ---
 

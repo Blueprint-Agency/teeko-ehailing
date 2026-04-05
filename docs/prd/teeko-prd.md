@@ -67,7 +67,9 @@ Existing e-hailing platforms in Malaysia (Grab, inDriver, Bolt) charge riders hi
 - View estimated fare before confirming booking
 - Select ride type:
   - **Teeko Go** — Standard economy car
-  - **Teeko XL** — Premium / larger vehicle
+  - **Teeko Comfort** — Newer or higher-comfort vehicle
+  - **Teeko XL** — Larger vehicle (MPV/SUV) for groups
+  - **Teeko Premium** — Premium/luxury vehicle
   - **Teeko Bike** — Motorbike taxi (for short, fast trips)
 - Real-time driver matching with ETA display
 - Live trip tracking on map
@@ -147,7 +149,7 @@ Existing e-hailing platforms in Malaysia (Grab, inDriver, Bolt) charge riders hi
 
 | Revenue Stream | Description |
 |----------------|-------------|
-| **Commission per trip** | Platform takes a % of each completed fare (rate to be confirmed by business team; targeting below 20% to compete on driver value) |
+| **Commission per trip** | 15% standard rate per completed fare; 10% promotional rate for new drivers / launch period. No commission on tolls, airport fees, or tips. |
 | **Surge pricing** | Dynamic fare multiplier during peak hours or high-demand zones; revenue proportional |
 
 ---
@@ -295,11 +297,10 @@ These features are deferred to Phase 2 and should not be built in the initial 1-
 
 ## 18. Open Questions
 
-1. What is the confirmed commission rate? This affects driver messaging and revenue projections.
-2. Who is the insurance partner for trip PA coverage?
-3. Will APAD licence be applied under a company entity already incorporated?
-4. What is the minimum viable driver count per city before going live?
-5. Is there a customer support channel at launch (in-app chat, email, WhatsApp)?
+1. Who is the insurance partner for trip PA coverage?
+2. Will APAD licence be applied under a company entity already incorporated?
+3. What is the minimum viable driver count per city before going live?
+4. Is there a customer support channel at launch (in-app chat, email, WhatsApp)?
 
 ---
 

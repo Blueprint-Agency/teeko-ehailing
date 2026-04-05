@@ -10,7 +10,7 @@
 
 This document defines the product requirements for the **Teeko Driver-Partner App** — the iOS and Android application used by driver-partners to register, manage their vehicle, receive trips, and track earnings on the Teeko e-hailing platform.
 
-This PRD covers the driver perspective exclusively. For rider-side and admin requirements, refer to `teeko-prd.md`.
+This PRD covers the driver perspective exclusively. For rider-side requirements, refer to `teeko-ux-prd.md`.
 
 ---
 
@@ -189,8 +189,8 @@ Drivers are matched to ride categories based on their registered vehicle type.
 ### 9.1 Commission
 | Parameter | Value |
 |-----------|-------|
-| Standard commission rate | 18.5% per completed trip |
-| Promotional rate (new drivers / launch period) | 15% |
+| Standard commission rate | 15% per completed trip | the commission rate can be adjusted from admin panel
+| Promotional rate (new drivers / launch period) | 10% | the commission rate can be adjusted from admin panel
 | Commission on tolls | Not applied |
 | Commission on KLIA2 airport fees | Not applied |
 | Commission on rider tips | Not applied |
@@ -213,7 +213,7 @@ The driver earnings dashboard displays:
 
 ### 9.4 Surge Pricing
 - Surge zones and multipliers are visible on the driver's map and on the request card.
-- Commission (18.5%) is applied to the **full surged fare** before crediting the driver's balance.
+- Commission (15%) is applied to the **full surged fare** before crediting the driver's balance.
 
 ### 9.5 Tips
 - Riders can tip drivers in-app after a completed trip.
