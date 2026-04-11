@@ -1,14 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-white text-slate-900 antialiased;
+    font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
   }
 }
 
-/* Highlight.js theme overrides for code blocks */
+/* Sidebar thin scrollbar */
+aside::-webkit-scrollbar {
+  width: 3px;
+}
+aside::-webkit-scrollbar-track {
+  background: transparent;
+}
+aside::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 9999px;
+}
+
+/* Strip highlight.js own background so the <pre> wrapper is the sole container */
 pre code.hljs {
-  @apply rounded-lg text-sm;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-size: 0.875rem;
+  line-height: 1.75;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+code:not(pre code) {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Responsive tables */
+.prose table {
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.prose thead th {
+  @apply bg-slate-50 font-semibold;
 }

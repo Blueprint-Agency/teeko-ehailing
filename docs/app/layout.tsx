@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDocsByCategory } from "@/lib/docs";
+import { buildFolderMap, getAllSlugs, isDirectory } from "@/lib/docs";
+import SmartSidebar from "@/app/components/SmartSidebar";
+import SidebarShell from "@/app/components/SidebarShell";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,53 +10,48 @@ export const metadata: Metadata = {
   description: "Project documentation for Teeko E-Hailing",
 };
 
-function Sidebar() {
-  const categories = getDocsByCategory();
-
-  return (
-    <aside className="fixed left-0 top-0 h-full w-64 overflow-y-auto border-r border-gray-200 bg-white px-4 py-6">
-      <Link href="/" className="mb-8 block">
-        <h1 className="text-lg font-bold text-gray-900">Teeko E-Hailing</h1>
-        <span className="text-xs font-medium uppercase tracking-wider text-gray-400">
-          Documentation
-        </span>
-      </Link>
-
-      <nav className="space-y-6">
-        {Object.entries(categories).map(([category, docs]) => (
-          <div key={category}>
-            <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-400">
-              {category}
-            </h2>
-            <ul className="space-y-1">
-              {docs.map((doc) => (
-                <li key={doc.slug}>
-                  <Link
-                    href={`/${doc.slug}`}
-                    className="block rounded-md px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
-                  >
-                    {doc.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </nav>
-    </aside>
-  );
-}
-
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const folderMap = buildFolderMap();
+  const dirSlugs = getAllSlugs()
+    .filter((parts) => isDirectory(parts))
+    .map((parts) => parts.join("/"));
+
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
-        <Sidebar />
-        <main className="ml-64 min-h-screen px-8 py-8 lg:px-16">
+        <SidebarShell>
+          {/* Logo */}
+          <Link href="/" className="mb-6 flex items-center gap-3 px-1">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-200">
+              <span className="text-sm font-black text-white">T</span>
+            </div>
+            <div>
+              <p className="text-sm font-bold leading-tight text-slate-900">Teeko E-Hailing</p>
+              <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400">
+                Documentation
+              </p>
+            </div>
+          </Link>
+
+          <div className="mb-4 border-t border-slate-100" />
+
+          <SmartSidebar folderMap={folderMap} dirSlugs={dirSlugs} />
+        </SidebarShell>
+
+        {/* pt-14 on mobile to clear the fixed top bar */}
+        <main className="min-h-screen bg-white px-6 pb-20 pt-20 lg:ml-64 lg:px-10 lg:pt-10 xl:px-14">
           {children}
         </main>
       </body>

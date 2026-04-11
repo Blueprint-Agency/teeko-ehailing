@@ -6,7 +6,21 @@
       "Bash(mv /tmp/teeko-clone/* \"C:/Users/chris/Desktop/blueprint/teeko/teeko-ehailing/\")",
       "Bash(git status:*)",
       "Bash(git add:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
+      "mcp__plugin_context-mode_context-mode__ctx_execute",
+      "WebSearch",
+      "mcp__plugin_context-mode_context-mode__ctx_execute_file",
+      "mcp__plugin_context-mode_context-mode__ctx_search",
+      "mcp__plugin_context7_context7__resolve-library-id",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(vercel --version)",
+      "Bash(vercel whoami:*)",
+      "Bash(make --version)",
+      "Bash(vercel project:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(vercel inspect:*)",
+      "Bash(vercel ls:*)"
     ]
   }
 }
