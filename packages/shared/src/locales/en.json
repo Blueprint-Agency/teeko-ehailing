@@ -1,0 +1,159 @@
+{
+  "common": {
+    "appName": "Teeko",
+    "tagline": "Drive with Teeko",
+    "next": "Next",
+    "back": "Back",
+    "submit": "Submit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "logout": "Log out",
+    "loading": "Loading…",
+    "or": "or",
+    "required": "Required",
+    "optional": "Optional"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "notifications": "Notifications"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back",
+      "subtitle": "Enter your phone number to continue",
+      "phonePlaceholder": "e.g. 011-23456789",
+      "phoneLabel": "Malaysian mobile number",
+      "sendOtp": "Send OTP",
+      "noAccount": "New driver?",
+      "registerLink": "Register here"
+    },
+    "verify": {
+      "title": "Verify your number",
+      "subtitle": "Enter the 6-digit code sent to",
+      "otpLabel": "One-time password",
+      "resend": "Resend code",
+      "resendIn": "Resend in {{seconds}}s",
+      "verify": "Verify"
+    },
+    "register": {
+      "title": "Create your account",
+      "subtitle": "Start your journey as a Teeko driver-partner",
+      "fullNameLabel": "Full name (as per MyKad)",
+      "emailLabel": "Email address",
+      "passwordLabel": "Password",
+      "pdpaConsent": "I consent to the collection and use of my personal data in accordance with Malaysia's PDPA 2010 for the purpose of driver onboarding and regulatory compliance.",
+      "haveAccount": "Already registered?",
+      "loginLink": "Log in",
+      "createAccount": "Create Account"
+    }
+  },
+  "onboarding": {
+    "stepOf": "Step {{current}} of {{total}}",
+    "agreement": {
+      "title": "Driver Agreement",
+      "subtitle": "Please read the full agreement before proceeding",
+      "scrollPrompt": "Scroll to the bottom to enable acceptance",
+      "acceptLabel": "I have read and agree to the Teeko Driver-Partner Agreement and Terms of Service",
+      "accept": "Accept & Continue"
+    },
+    "personalDocs": {
+      "title": "Personal Documents",
+      "subtitle": "Upload clear photos or scans of the following documents",
+      "nricFront": "NRIC / MyKad (Front)",
+      "nricBack": "NRIC / MyKad (Back)",
+      "cdl": "Competent Driving Licence (CDL)",
+      "psvD": "PSV-D Licence (E-hailing Licence)",
+      "insurance": "E-hailing Insurance Cover Note",
+      "selfie": "Profile Photo / Liveness Selfie"
+    },
+    "vehicleDetails": {
+      "title": "Vehicle Details",
+      "subtitle": "Enter the details of the vehicle you will use for e-hailing",
+      "make": "Vehicle make",
+      "model": "Vehicle model",
+      "year": "Year of manufacture",
+      "plateNumber": "Plate number",
+      "colour": "Vehicle colour",
+      "ageNote": "Only vehicles manufactured within the last 15 years are accepted"
+    },
+    "vehicleDocs": {
+      "title": "Vehicle Documents",
+      "subtitle": "Upload valid documents for your registered vehicle",
+      "carGrant": "Car Grant / VOC",
+      "roadTax": "Road Tax",
+      "vehicleInsurance": "E-hailing Insurance Cover Note",
+      "puspakom": "PUSPAKOM Inspection Certificate"
+    },
+    "confirmation": {
+      "title": "Application Submitted!",
+      "subtitle": "Thank you for registering as a Teeko driver-partner",
+      "nextSteps": "What happens next",
+      "step1Title": "Document Review",
+      "step1Desc": "Our team will review your documents within 1–3 working days",
+      "step2Title": "EVP Application",
+      "step2Desc": "We submit your EVP application to APAD/LPKP — approval takes 5–7 working days",
+      "step3Title": "Account Activated",
+      "step3Desc": "You'll be notified to download the Teeko Driver app and start earning",
+      "downloadTitle": "Get ready to drive",
+      "downloadSubtitle": "Download the app now — you'll be able to go online once your account is activated",
+      "appStore": "App Store",
+      "googlePlay": "Google Play",
+      "checkStatus": "Check application status"
+    }
+  },
+  "dashboard": {
+    "title": "Application Status",
+    "subtitle": "Track your onboarding progress",
+    "docReview": "Document Review",
+    "evpApplication": "EVP Application",
+    "accountStatus": "Account Status",
+    "downloadBanner": "Your account is activated — download the Teeko Driver app to start earning",
+    "resubmit": "Resubmit",
+    "rejectionReason": "Rejection reason",
+    "stages": {
+      "pending": "Pending",
+      "in_progress": "Under Review",
+      "approved": "Approved",
+      "rejected": "Action Required",
+      "not_started": "Not Started",
+      "submitted": "Submitted",
+      "pending_activation": "Pending Activation",
+      "active": "Active",
+      "suspended": "Suspended"
+    }
+  },
+  "profile": {
+    "title": "My Profile",
+    "personalInfo": "Personal Information",
+    "fullName": "Full name",
+    "email": "Email address",
+    "phone": "Phone number",
+    "phoneReadOnly": "Phone number cannot be changed",
+    "language": "Language preference",
+    "security": "Security",
+    "changePassword": "Change password",
+    "pdpaErasure": "Request data erasure (PDPA)",
+    "languages": {
+      "en": "English",
+      "ms": "Bahasa Malaysia",
+      "zh": "中文 (简体)",
+      "ta": "தமிழ்"
+    }
+  },
+  "documents": {
+    "upload": "Upload document",
+    "takePhoto": "Take photo",
+    "chooseFile": "Choose file",
+    "replace": "Replace",
+    "uploaded": "Uploaded",
+    "underReview": "Under review",
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "dragDrop": "Drag & drop or click to upload",
+    "fileTypes": "JPG, PNG or PDF · Max 10 MB",
+    "blurWarning": "Image appears blurry — please retake",
+    "sizeError": "File exceeds 10 MB limit",
+    "typeError": "Only JPG, PNG, or PDF files are accepted"
+  }
+}

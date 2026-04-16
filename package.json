@@ -1,0 +1,15 @@
+{
+  "name": "teeko-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @teeko/web dev",
+    "build": "pnpm --filter @teeko/web build",
+    "typecheck": "pnpm --filter @teeko/web typecheck",
+    "lint": "pnpm --filter @teeko/web lint"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "personal": [
+    {
+      "id": "nric_front",
+      "label": "NRIC / MyKad (Front)",
+      "status": "approved",
+      "fileName": "nric_front.jpg",
+      "uploadedAt": "2026-04-10T09:30:00Z",
+      "reviewedAt": "2026-04-11T14:00:00Z"
+    },
+    {
+      "id": "nric_back",
+      "label": "NRIC / MyKad (Back)",
+      "status": "approved",
+      "fileName": "nric_back.jpg",
+      "uploadedAt": "2026-04-10T09:31:00Z",
+      "reviewedAt": "2026-04-11T14:00:00Z"
+    },
+    {
+      "id": "cdl",
+      "label": "Competent Driving Licence (CDL)",
+      "status": "under_review",
+      "fileName": "cdl.jpg",
+      "uploadedAt": "2026-04-10T09:35:00Z"
+    },
+    {
+      "id": "psv_d",
+      "label": "PSV-D Licence",
+      "status": "rejected",
+      "fileName": "psv_d.jpg",
+      "uploadedAt": "2026-04-10T09:38:00Z",
+      "reviewedAt": "2026-04-11T15:00:00Z",
+      "rejectionReason": "Document appears expired. Please upload a valid, current PSV-D Licence."
+    },
+    {
+      "id": "insurance",
+      "label": "E-hailing Insurance Cover Note",
+      "status": "uploaded",
+      "fileName": "insurance.pdf",
+      "uploadedAt": "2026-04-10T09:42:00Z"
+    },
+    {
+      "id": "selfie",
+      "label": "Profile Photo / Liveness Selfie",
+      "status": "under_review",
+      "fileName": "selfie.jpg",
+      "uploadedAt": "2026-04-10T09:45:00Z"
+    }
+  ],
+  "vehicle": [
+    {
+      "id": "car_grant",
+      "label": "Car Grant / VOC",
+      "status": "approved",
+      "fileName": "car_grant.pdf",
+      "uploadedAt": "2026-04-10T10:00:00Z",
+      "reviewedAt": "2026-04-11T14:30:00Z"
+    },
+    {
+      "id": "road_tax",
+      "label": "Road Tax",
+      "status": "under_review",
+      "fileName": "road_tax.jpg",
+      "uploadedAt": "2026-04-10T10:05:00Z"
+    },
+    {
+      "id": "vehicle_insurance",
+      "label": "E-hailing Insurance Cover Note",
+      "status": "uploaded",
+      "fileName": "vehicle_insurance.pdf",
+      "uploadedAt": "2026-04-10T10:08:00Z"
+    },
+    {
+      "id": "puspakom",
+      "label": "PUSPAKOM Inspection Certificate",
+      "status": "uploaded",
+      "fileName": "puspakom.pdf",
+      "uploadedAt": "2026-04-10T10:12:00Z"
+    }
+  ]
+}

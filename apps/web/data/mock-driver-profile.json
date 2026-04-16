@@ -1,0 +1,9 @@
+{
+  "id": "drv_mock_001",
+  "fullName": "Ahmad Faizal bin Razak",
+  "phone": "0112345678",
+  "email": "faizal@example.com",
+  "onboardingStep": 3,
+  "agreementAccepted": true,
+  "agreementTimestamp": "2026-04-10T09:22:00Z"
+}

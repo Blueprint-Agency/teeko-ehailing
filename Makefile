@@ -1,11 +1,23 @@
-.PHONY: dev install vercel-link vercel-deploy vercel-deploy-prod vercel-env vercel-logs
+.PHONY: dev dev-docs dev-web install install-docs install-web vercel-link vercel-deploy vercel-deploy-prod vercel-env vercel-logs
 
-# --- Docs Dev Server ---
-install:
+# --- Install ---
+install: install-docs install-web
+
+install-docs:
 	cd docs && npm install
 
-dev:
+install-web:
+	cd apps/web && npm install
+
+# --- Dev Servers ---
+dev-docs:
 	cd docs && npm run dev
+
+dev-web:
+	cd apps/web && npm run dev
+
+dev:
+	make dev-docs & make dev-web
 
 # --- Vercel (project linked in docs/; Root Directory = docs on Vercel) ---
 vercel-link:

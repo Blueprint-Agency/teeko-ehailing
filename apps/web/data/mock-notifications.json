@@ -1,0 +1,26 @@
+[
+  {
+    "id": "notif_001",
+    "type": "doc_approved",
+    "title": "NRIC Approved",
+    "body": "Your NRIC / MyKad documents have been approved.",
+    "read": false,
+    "createdAt": "2026-04-11T14:00:00Z"
+  },
+  {
+    "id": "notif_002",
+    "type": "doc_rejected",
+    "title": "PSV-D Requires Attention",
+    "body": "Your PSV-D Licence was rejected. Please resubmit a valid document.",
+    "read": false,
+    "createdAt": "2026-04-11T15:00:00Z"
+  },
+  {
+    "id": "notif_003",
+    "type": "doc_approved",
+    "title": "Car Grant Approved",
+    "body": "Your Car Grant / VOC has been approved.",
+    "read": true,
+    "createdAt": "2026-04-11T14:30:00Z"
+  }
+]
