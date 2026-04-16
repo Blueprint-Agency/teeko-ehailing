@@ -25,7 +25,7 @@ export default function LoginPage() {
     setLoading(true)
     // Simulate network delay
     await new Promise((r) => setTimeout(r, 800))
-    router.push(`/auth/verify?phone=${encodeURIComponent(data.phone)}`)
+    router.push(`/auth/verify?phone=${encodeURIComponent(data.phone as string)}`)
   }
 
   return (

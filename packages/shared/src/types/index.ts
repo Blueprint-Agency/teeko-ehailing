@@ -7,7 +7,7 @@ export interface DriverProfile {
   email: string
   onboardingStep: number
   agreementAccepted: boolean
-  agreementTimestamp?: string
+  agreementTimestamp?: string | null
 }
 
 // ─── Documents ───────────────────────────────────────────────────────────────
@@ -21,8 +21,8 @@ export interface DocumentState {
   fileUrl?: string
   fileName?: string
   rejectionReason?: string
-  uploadedAt?: string
-  reviewedAt?: string
+  uploadedAt?: string | null
+  reviewedAt?: string | null
 }
 
 export type PersonalDocId =
@@ -59,9 +59,9 @@ export interface ApplicationStatus {
   docReview: ReviewStageStatus
   evpApplication: EVPStatus
   evpBody?: 'APAD' | 'LPKP'
-  evpSubmittedDate?: string
+  evpSubmittedDate?: string | null
   accountStatus: AccountStatus
-  activatedDate?: string
+  activatedDate?: string | null
 }
 
 // ─── Notification ─────────────────────────────────────────────────────────────
