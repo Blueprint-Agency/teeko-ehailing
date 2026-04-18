@@ -51,3 +51,6 @@ Desktop.ini
 # --- Coverage ---
 coverage/
 *.lcov
+
+# --- Stitch MCP scratch ---
+.stitch-cache/

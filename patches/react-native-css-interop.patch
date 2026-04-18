@@ -1,0 +1,14 @@
+diff --git a/babel.js b/babel.js
+index d84e52b5ccf59123bb7aee019a853724b20ef99f..2462b0b340ea5afe29286f1260a5b9ca06c3def8 100644
+--- a/babel.js
++++ b/babel.js
+@@ -9,8 +9,7 @@ module.exports = function () {
+           importSource: "react-native-css-interop",
+         },
+       ],
+-      // Use this plugin in reanimated 4 and later
+-      "react-native-worklets/plugin",
++      // Use this plugin in reanimated 4 and later — omitted for reanimated 3.x (Expo SDK 52).
+     ],
+   };
+ };

@@ -1,20 +1,14 @@
-import { SafeAreaView } from "react-native-safe-area-context";
-import { StyleSheet, Text, View } from "react-native";
+import { useAuthStore } from '@teeko/api';
+import { Redirect } from 'expo-router';
+import { View } from 'react-native';
 
-export default function Home() {
+export default function SplashGate() {
+  const status = useAuthStore((s) => s.status);
+
+  if (status === 'unknown') {
+    return <View className="flex-1 bg-surface" />;
+  }
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Teeko</Text>
-        <Text style={styles.subtitle}>Rider app — v0.1 mockup</Text>
-      </View>
-    </SafeAreaView>
+    <Redirect href={status === 'authed' ? '/(main)/(tabs)/rides' : '/(auth)/phone'} />
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  content: { flex: 1, alignItems: "center", justifyContent: "center" },
-  title: { fontSize: 48, fontWeight: "700", color: "#DC2626" },
-  subtitle: { fontSize: 16, color: "#6B7280", marginTop: 8 },
-});

@@ -7,14 +7,52 @@
     "scheme": "teeko",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.teeko.rider"
+      "bundleIdentifier": "com.teeko.rider",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Teeko uses your location to set your pickup point and show nearby drivers.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Teeko uses your location to show trip progress while riding.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "googleMapsApiKey": "REPLACE_WITH_IOS_MAPS_KEY"
+      }
     },
     "android": {
-      "package": "com.teeko.rider"
+      "package": "com.teeko.rider",
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "REPLACE_WITH_ANDROID_MAPS_KEY"
+        }
+      }
     },
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Teeko uses your location to set your pickup point and show nearby drivers."
+        }
+      ],
+      "expo-notifications",
+      "expo-localization",
+      "expo-font"
+    ],
     "experiments": {
       "typedRoutes": true
     }

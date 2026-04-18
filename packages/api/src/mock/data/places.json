@@ -1,0 +1,13 @@
+[
+  { "id": "p_home", "name": "Home", "address": "Jalan Bangsar 8, 59000 Kuala Lumpur", "lat": 3.1281, "lng": 101.6789, "category": "home" },
+  { "id": "p_work", "name": "Work", "address": "KL Sentral, 50470 Kuala Lumpur", "lat": 3.1339, "lng": 101.6869, "category": "work" },
+  { "id": "p_midvalley", "name": "Mid Valley Megamall", "address": "Lingkaran Syed Putra, Mid Valley City, 59200 Kuala Lumpur", "lat": 3.1177, "lng": 101.6771 },
+  { "id": "p_klsentral", "name": "KL Sentral Station", "address": "50470 Kuala Lumpur", "lat": 3.1339, "lng": 101.6869 },
+  { "id": "p_klcc", "name": "Suria KLCC", "address": "Kuala Lumpur City Centre, 50088 Kuala Lumpur", "lat": 3.1579, "lng": 101.7122 },
+  { "id": "p_oneutama", "name": "1 Utama Shopping Centre", "address": "1, Lebuh Bandar Utama, 47800 Petaling Jaya", "lat": 3.1499, "lng": 101.6158 },
+  { "id": "p_sunway", "name": "Sunway Pyramid", "address": "3, Jalan PJS 11/15, 47500 Petaling Jaya", "lat": 3.0725, "lng": 101.6067 },
+  { "id": "p_klia", "name": "KLIA Terminal 1", "address": "64000 Sepang, Selangor", "lat": 2.7456, "lng": 101.7099 },
+  { "id": "p_klia2", "name": "KLIA2", "address": "Jalan KLIA 2/1, 64000 Sepang", "lat": 2.7389, "lng": 101.6991 },
+  { "id": "p_bangsarvillage", "name": "Bangsar Village", "address": "1, Jalan Telawi 1, Bangsar, 59100 Kuala Lumpur", "lat": 3.1313, "lng": 101.6715 },
+  { "id": "p_pavilion", "name": "Pavilion KL", "address": "168, Jln Bukit Bintang, 55100 Kuala Lumpur", "lat": 3.1491, "lng": 101.7131 }
+]

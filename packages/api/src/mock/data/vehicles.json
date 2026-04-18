@@ -1,0 +1,7 @@
+[
+  { "id": "v_001", "model": "Perodua Bezza", "colour": "Silver", "seats": 4, "category": "go" },
+  { "id": "v_002", "model": "Honda City", "colour": "White", "seats": 4, "category": "comfort" },
+  { "id": "v_003", "model": "Toyota Innova", "colour": "Grey", "seats": 6, "category": "xl" },
+  { "id": "v_004", "model": "Mercedes-Benz E-Class", "colour": "Black", "seats": 4, "category": "premium" },
+  { "id": "v_005", "model": "Yamaha NVX 155", "colour": "Red", "seats": 1, "category": "bike" }
+]

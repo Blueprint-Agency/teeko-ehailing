@@ -13,17 +13,25 @@
     "pnpm": ">=9"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["sharp"],
+    "onlyBuiltDependencies": [
+      "sharp"
+    ],
     "overrides": {
-      "@types/react": "19.0.14",
-      "@types/react-dom": "19.0.4"
+      "@types/react": "19.1.10",
+      "@types/react-dom": "19.1.7"
     },
     "peerDependencyRules": {
       "allowedVersions": {
         "react": "18 || 19",
-        "react-dom": "18 || 19"
+        "react-dom": "18 || 19",
+        "react-native": ">=0.76"
       },
-      "ignoreMissing": ["react-dom"]
+      "ignoreMissing": [
+        "react-dom"
+      ]
+    },
+    "patchedDependencies": {
+      "react-native-css-interop": "patches/react-native-css-interop.patch"
     }
   }
 }
