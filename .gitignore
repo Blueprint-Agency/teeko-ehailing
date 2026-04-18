@@ -1,2 +1,53 @@
+# --- Dependencies ---
+node_modules/
+.pnpm-store/
+
+# --- Environment ---
 .env
-node_modules
+.env.local
+.env.*.local
+!.env.example
+
+# --- Build outputs ---
+.next/
+out/
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+
+# --- Expo / React Native ---
+.expo/
+.expo-shared/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# --- Vercel ---
+.vercel
+
+# --- Coverage ---
+coverage/
+*.lcov

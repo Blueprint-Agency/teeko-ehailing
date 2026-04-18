@@ -8,9 +8,11 @@
     "dev:web": "expo start --web",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "build": "expo export --platform android --platform ios",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@expo/metro-runtime": "~4.0.0",
     "@teeko/shared": "workspace:*",
     "expo": "~52.0.0",
     "expo-constants": "~17.0.0",

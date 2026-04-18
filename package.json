@@ -3,16 +3,27 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter @teeko/web dev",
-    "dev:web": "pnpm --filter @teeko/web dev",
-    "dev:rider": "pnpm --filter @teeko/rider dev",
-    "dev:driver": "pnpm --filter @teeko/driver dev",
-    "build": "pnpm --filter @teeko/web build",
+    "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm --filter @teeko/web lint"
+    "lint": "pnpm -r lint",
+    "clean": "pnpm -r exec rm -rf node_modules .next .expo dist build && rm -rf node_modules"
   },
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["sharp"],
+    "overrides": {
+      "@types/react": "19.0.14",
+      "@types/react-dom": "19.0.4"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "react": "18 || 19",
+        "react-dom": "18 || 19"
+      },
+      "ignoreMissing": ["react-dom"]
+    }
   }
 }

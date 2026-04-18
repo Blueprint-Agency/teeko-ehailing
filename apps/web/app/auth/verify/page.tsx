@@ -12,7 +12,7 @@ import type { DriverProfile } from '@teeko/shared/types'
 function VerifyForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const phone = searchParams.get('phone') ?? ''
+  const phone = searchParams?.get('phone') ?? ''
   const { login } = useWebAuthStore()
 
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
