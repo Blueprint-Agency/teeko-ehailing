@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Teeko Driver",
+    "slug": "teeko-driver",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "scheme": "teekodriver",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.teeko.driver"
+    },
+    "android": {
+      "package": "com.teeko.driver"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

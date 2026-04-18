@@ -1,0 +1,10 @@
+{
+  "name": "@teeko/config",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "files": [
+    "tsconfig",
+    "prettier.config.js"
+  ]
+}

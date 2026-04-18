@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Teeko",
+    "slug": "teeko-rider",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "scheme": "teeko",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.teeko.rider"
+    },
+    "android": {
+      "package": "com.teeko.rider"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
