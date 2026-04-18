@@ -9,6 +9,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "build": "expo export --platform android --platform ios",
+    "build:android:apk": "eas build -p android --profile preview",
+    "build:android:dev": "eas build -p android --profile development",
+    "build:ios:sim": "eas build -p ios --profile simulator",
+    "build:ios:device": "eas build -p ios --profile preview",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

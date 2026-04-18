@@ -1,0 +1,18 @@
+# .easignore — EAS upload filter. Starts from .gitignore, then overrides below.
+# The monorepo workspace packages MUST be uploaded so pnpm can resolve workspace:* deps.
+
+# Local/dev noise
+.expo/
+.expo-shared/
+web-build/
+dist/
+ios/build/
+android/build/
+android/app/build/
+*.log
+.DS_Store
+
+# Keep these (explicitly un-ignored even if .gitignore excludes them)
+!packages/**
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
