@@ -4,13 +4,18 @@ import { FlatList, View } from 'react-native';
 import { usePlacesStore, useTripStore } from '@teeko/api';
 import type { Place } from '@teeko/shared';
 import { Icon, Input, Pressable, ScreenContainer, Spinner, Text } from '@teeko/ui';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { RecentPlaceRow } from '../../components/RecentPlaceRow';
 import { SavedPlaceRow } from '../../components/SavedPlaceRow';
 
+type SearchIntent = 'saveHome' | 'saveWork' | undefined;
+
 export default function SearchScreen() {
   const router = useRouter();
+  const { intent: intentParam } = useLocalSearchParams<{ intent?: string }>();
+  const intent: SearchIntent =
+    intentParam === 'saveHome' || intentParam === 'saveWork' ? intentParam : undefined;
   const pickup = useTripStore((s) => s.pickup);
   const setDestination = useTripStore((s) => s.setDestination);
   const recent = usePlacesStore((s) => s.recent);
@@ -20,6 +25,7 @@ export default function SearchScreen() {
   const search = usePlacesStore((s) => s.search);
   const clearResults = usePlacesStore((s) => s.clearResults);
   const pushRecent = usePlacesStore((s) => s.pushRecent);
+  const saveHomeOrWork = usePlacesStore((s) => s.saveHomeOrWork);
 
   const [pickupText, setPickupText] = useState(pickup?.name ?? 'Current location');
   const [query, setQuery] = useState('');
@@ -43,10 +49,27 @@ export default function SearchScreen() {
   const workPlace = useMemo(() => saved.find((p) => p.category === 'work'), [saved]);
 
   const onSelectPlace = (place: Place) => {
+    if (intent === 'saveHome') {
+      saveHomeOrWork('home', place);
+      router.back();
+      return;
+    }
+    if (intent === 'saveWork') {
+      saveHomeOrWork('work', place);
+      router.back();
+      return;
+    }
     pushRecent(place);
     setDestination(place);
     router.push('/(main)/confirm-destination');
   };
+
+  const headerTitle =
+    intent === 'saveHome'
+      ? 'Set home'
+      : intent === 'saveWork'
+        ? 'Set work'
+        : 'Set destination';
 
   const showingResults = query.trim().length > 0;
 
@@ -57,7 +80,7 @@ export default function SearchScreen() {
           <Icon name="arrow-back" size={24} color="#111111" />
         </Pressable>
         <Text weight="bold" className="ml-2 text-lg">
-          Set destination
+          {headerTitle}
         </Text>
       </View>
 
@@ -106,10 +129,12 @@ export default function SearchScreen() {
         </View>
       ) : (
         <View className="mt-4 flex-1">
-          <View className="-mx-gutter">
-            <SavedPlaceRow kind="home" place={homePlace} onPress={(_, p) => p && onSelectPlace(p)} />
-            <SavedPlaceRow kind="work" place={workPlace} onPress={(_, p) => p && onSelectPlace(p)} />
-          </View>
+          {!intent ? (
+            <View className="-mx-gutter">
+              <SavedPlaceRow kind="home" place={homePlace} onPress={(_, p) => p && onSelectPlace(p)} />
+              <SavedPlaceRow kind="work" place={workPlace} onPress={(_, p) => p && onSelectPlace(p)} />
+            </View>
+          ) : null}
 
           {recent.length > 0 ? (
             <>

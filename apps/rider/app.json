@@ -25,7 +25,7 @@
         "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
-        "googleMapsApiKey": "REPLACE_WITH_IOS_MAPS_KEY"
+        "googleMapsApiKey": ""
       }
     },
     "android": {
@@ -39,7 +39,7 @@
       ],
       "config": {
         "googleMaps": {
-          "apiKey": "REPLACE_WITH_ANDROID_MAPS_KEY"
+          "apiKey": ""
         }
       }
     },

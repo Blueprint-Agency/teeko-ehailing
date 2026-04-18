@@ -1,5 +1,9 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { BottomTabBar } from '@react-navigation/bottom-tabs';
 import { Tabs } from 'expo-router';
+import { View } from 'react-native';
+
+import { TripProgressStrip } from '../../../components/TripProgressStrip';
 
 type TabIcon = React.ComponentProps<typeof MaterialIcons>['name'];
 
@@ -9,7 +13,7 @@ const INACTIVE = '#9CA3AF';
 export default function TabsLayout() {
   return (
     <Tabs
-      initialRouteName="rides"
+      initialRouteName="index"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: ACTIVE,
@@ -20,6 +24,12 @@ export default function TabsLayout() {
           backgroundColor: '#FFFFFF',
         },
       }}
+      tabBar={(props) => (
+        <View>
+          <TripProgressStrip />
+          <BottomTabBar {...props} />
+        </View>
+      )}
     >
       <Tabs.Screen
         name="index"

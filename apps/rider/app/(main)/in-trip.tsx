@@ -52,8 +52,11 @@ export default function InTripScreen() {
 
   const confirmCancel = async () => {
     cancelRef.current?.dismiss();
-    await cancel('user');
-    router.replace('/(main)/(tabs)');
+    try {
+      await cancel('user');
+    } catch {
+      // mock handler throws intentionally — status watcher handles navigation
+    }
   };
 
   if (!driver || !pickup || !destination || !trip) {
@@ -93,11 +96,7 @@ export default function InTripScreen() {
       </View>
 
       <MockChatSheet ref={chatRef} driver={driver} />
-      <CancelTripSheet
-        ref={cancelRef}
-        onConfirm={confirmCancel}
-        onDismiss={() => cancelRef.current?.dismiss()}
-      />
+      <CancelTripSheet ref={cancelRef} onConfirm={confirmCancel} />
     </View>
   );
 }

@@ -12,6 +12,8 @@ export default function MainLayout() {
       <Stack.Screen name="in-trip" options={{ gestureEnabled: false }} />
       <Stack.Screen name="trip-complete" options={{ gestureEnabled: false }} />
       <Stack.Screen name="receipt/[id]" />
+      <Stack.Screen name="account/personal" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="account/security" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

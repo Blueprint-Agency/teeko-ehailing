@@ -16,6 +16,7 @@ export type AuthState = {
   resetChallenge: () => void;
   hydrate: () => Promise<void>;
   setLanguage: (locale: Locale) => void;
+  updateRider: (patch: Partial<Pick<Rider, 'name' | 'email'>>) => void;
   logout: () => void;
 };
 
@@ -50,6 +51,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setLanguage(languagePref) {
     set({ languagePref });
+  },
+
+  updateRider(patch) {
+    const current = get().rider;
+    if (!current) return;
+    set({ rider: { ...current, ...patch } });
   },
 
   logout() {

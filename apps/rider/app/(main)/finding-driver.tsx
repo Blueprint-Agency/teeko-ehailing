@@ -25,10 +25,12 @@ export default function FindingDriverScreen() {
   const [timedOut, setTimedOut] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Navigate on match — dismiss this screen in favor of driver-matched.
+  // Navigate on match or cancellation.
   useEffect(() => {
     if (status === 'matched' || status === 'arrived') {
       router.replace('/(main)/driver-matched');
+    } else if (status === 'idle' || status === 'cancelled') {
+      router.replace('/(main)/(tabs)');
     }
   }, [router, status]);
 
@@ -53,8 +55,11 @@ export default function FindingDriverScreen() {
   };
 
   const cancelBooking = async () => {
-    await cancel('user');
-    router.replace('/(main)/(tabs)');
+    try {
+      await cancel('user');
+    } catch {
+      // mock handler throws intentionally — status watcher handles navigation
+    }
   };
 
   const centerRegion = {

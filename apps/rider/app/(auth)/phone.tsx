@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, View } from 'react-native';
+import { Keyboard, Linking, TouchableWithoutFeedback, View } from 'react-native';
 
 import { useAuthStore, useUIStore } from '@teeko/api';
 import { Button, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
@@ -36,6 +36,7 @@ export default function PhoneScreen() {
 
   return (
     <ScreenContainer>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View className="flex-1 justify-between pb-6 pt-8">
         <View>
           <View className="mb-10 items-center">
@@ -108,6 +109,7 @@ export default function PhoneScreen() {
           </View>
         </View>
       </View>
+      </TouchableWithoutFeedback>
     </ScreenContainer>
   );
 }

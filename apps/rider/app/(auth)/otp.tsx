@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Keyboard, TouchableWithoutFeedback, View } from 'react-native';
 
 import { useAuthStore, useUIStore } from '@teeko/api';
 import { Button, OTPInput, Pressable, ScreenContainer, Text } from '@teeko/ui';
@@ -34,7 +34,7 @@ export default function OtpScreen() {
     setSubmitting(true);
     try {
       await confirmOtp(value);
-      router.replace('/(main)/(tabs)/rides');
+      router.replace('/(main)/(tabs)');
     } catch {
       setError(true);
       setCode('');
@@ -62,6 +62,7 @@ export default function OtpScreen() {
 
   return (
     <ScreenContainer>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <View className="flex-1 justify-between pb-6 pt-8">
         <View>
           <Text weight="bold" className="text-3xl leading-tight">
@@ -115,6 +116,7 @@ export default function OtpScreen() {
           </View>
         </View>
       </View>
+      </TouchableWithoutFeedback>
     </ScreenContainer>
   );
 }

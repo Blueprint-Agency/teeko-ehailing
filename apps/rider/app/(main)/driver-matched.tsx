@@ -57,8 +57,11 @@ export default function DriverMatchedScreen() {
 
   const confirmCancel = async () => {
     cancelRef.current?.dismiss();
-    await cancel('user');
-    router.replace('/(main)/(tabs)');
+    try {
+      await cancel('user');
+    } catch {
+      // mock handler throws intentionally — status watcher handles navigation
+    }
   };
 
   if (!driver || !pickup || !destination || !trip) {
@@ -88,24 +91,25 @@ export default function DriverMatchedScreen() {
       <View className="rounded-t-3xl border-t border-border bg-surface px-gutter pb-8 pt-4 shadow-sm">
         <TripStatusHeader title={headerTitle} subtitle={headerSubtitle} />
 
-        <View className="flex-row items-center gap-3">
-          <View className="flex-1">
+        <View className="mt-3 flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
             <DriverCard driver={driver} />
           </View>
           <CallChatButtons phone={driver.phone} onChat={() => chatRef.current?.present()} />
         </View>
 
-        <View className="mt-4">
-          <Button label="Cancel trip" variant="ghost" onPress={() => cancelRef.current?.present()} />
+        <View className="mt-4 flex-row gap-3">
+          <View className="flex-1">
+            <Button label="Minimise" variant="ghost" onPress={() => router.push('/(main)/(tabs)' as never)} />
+          </View>
+          <View className="flex-1">
+            <Button label="Cancel trip" variant="ghost" onPress={() => cancelRef.current?.present()} />
+          </View>
         </View>
       </View>
 
       <MockChatSheet ref={chatRef} driver={driver} />
-      <CancelTripSheet
-        ref={cancelRef}
-        onConfirm={confirmCancel}
-        onDismiss={() => cancelRef.current?.dismiss()}
-      />
+      <CancelTripSheet ref={cancelRef} onConfirm={confirmCancel} />
     </View>
   );
 }

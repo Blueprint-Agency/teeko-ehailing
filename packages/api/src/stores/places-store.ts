@@ -12,6 +12,7 @@ export type PlacesState = {
   loadSaved: () => Promise<void>;
   search: (q: string) => Promise<void>;
   pushRecent: (p: Place) => void;
+  saveHomeOrWork: (category: 'home' | 'work', place: Place) => void;
   clearResults: () => void;
 };
 
@@ -34,6 +35,11 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
   pushRecent(p) {
     const next = [p, ...get().recent.filter((r) => r.id !== p.id)].slice(0, 10);
     set({ recent: next });
+  },
+  saveHomeOrWork(category, place) {
+    const marked: Place = { ...place, category };
+    const others = get().saved.filter((p) => p.category !== category);
+    set({ saved: [...others, marked] });
   },
   clearResults() {
     set({ results: [] });

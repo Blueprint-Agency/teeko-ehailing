@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Image, ScrollView, View } from 'react-native';
 
 import { useAuthStore, useLocationStore, usePlacesStore, useTripStore } from '@teeko/api';
 import type { Place } from '@teeko/shared';
@@ -50,23 +50,26 @@ export default function HomeTab() {
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
-      <View className="flex-row items-center justify-between pb-2 pt-2">
-        <View />
-        <Text weight="bold" tone="brand" className="text-2xl">
+      <View className="flex-row items-center pb-3 pt-2">
+        <Image
+          source={require('../../../assets/teeko-icon.png')}
+          style={{ width: 32, height: 32, borderRadius: 8 }}
+          resizeMode="contain"
+        />
+        <Text weight="bold" tone="brand" className="ml-2 text-2xl">
           Teeko
         </Text>
-        <View />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 96 }}
       >
-        <Text weight="bold" className="mt-6 text-3xl leading-tight">
+        <Text weight="bold" className="mt-4 text-3xl leading-tight">
           Travel Easily{'\n'}with Teeko.
         </Text>
         {rider?.name ? (
-          <Text tone="secondary" className="mt-2 text-sm">
+          <Text tone="secondary" className="mt-1 text-sm">
             Good to see you, {rider.name.split(' ')[0]}.
           </Text>
         ) : null}
