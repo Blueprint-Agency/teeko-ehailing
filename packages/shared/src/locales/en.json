@@ -89,6 +89,8 @@
       "createAccount": "Create your account",
       "subtitle": "Start your journey as a Teeko driver-partner",
       "fullNameLabel": "Full name (as per MyKad)",
+      "phoneLabel": "Malaysian mobile number",
+      "phonePlaceholder": "e.g. 011-23456789",
       "emailLabel": "Email address",
       "password": "Password",
       "passwordHint": "Min. 8 characters",

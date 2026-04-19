@@ -89,6 +89,8 @@
       "createAccount": "Cipta akaun anda",
       "subtitle": "Mulakan perjalanan anda sebagai rakan-pemandu Teeko",
       "fullNameLabel": "Nama penuh (seperti dalam MyKad)",
+      "phoneLabel": "Nombor telefon bimbit Malaysia",
+      "phonePlaceholder": "cth. 011-23456789",
       "emailLabel": "Alamat emel",
       "password": "Kata laluan",
       "passwordHint": "Min. 8 aksara",

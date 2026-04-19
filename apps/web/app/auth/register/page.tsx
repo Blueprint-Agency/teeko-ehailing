@@ -30,7 +30,7 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     setLoading(true)
     await new Promise((r) => setTimeout(r, 800))
-    login({ ...mockProfile, fullName: data.fullName, email: data.email } as DriverProfile)
+    login({ ...mockProfile, fullName: data.fullName, phone: data.phone } as DriverProfile)
     router.push('/onboarding/agreement')
   }
 
@@ -83,19 +83,19 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="animate-fade-up animate-delay-100 space-y-5">
             <Input
-              label={t('profile.fullName')}
+              label={t('auth.register.fullNameLabel')}
               placeholder="e.g. Ahmad Faizal"
               required
               error={errors.fullName?.message}
               {...register('fullName')}
             />
             <Input
-              label={t('profile.email')}
-              type="email"
-              placeholder="you@example.com"
+              label={t('auth.register.phoneLabel')}
+              type="tel"
+              placeholder={t('auth.register.phonePlaceholder')}
               required
-              error={errors.email?.message}
-              {...register('email')}
+              error={errors.phone?.message}
+              {...register('phone')}
             />
 
             <div className="relative">

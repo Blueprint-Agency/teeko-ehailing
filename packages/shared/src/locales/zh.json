@@ -89,6 +89,8 @@
       "createAccount": "创建您的账户",
       "subtitle": "开始您的 Teeko 司机伙伴之旅",
       "fullNameLabel": "全名（需与 MyKad 一致）",
+      "phoneLabel": "马来西亚手机号码",
+      "phonePlaceholder": "例如 011-23456789",
       "emailLabel": "电子邮件地址",
       "password": "密码",
       "passwordHint": "最少 8 个字符",
