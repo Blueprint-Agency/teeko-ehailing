@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { UserPlus, Eye, EyeOff } from 'lucide-react'
@@ -14,6 +15,7 @@ import mockProfile from '@/data/mock-driver-profile.json'
 import type { DriverProfile } from '@teeko/shared/types'
 
 export default function RegisterPage() {
+  const { t } = useTranslation()
   const router = useRouter()
   const { login } = useWebAuthStore()
   const [showPass, setShowPass] = useState(false)
@@ -32,6 +34,13 @@ export default function RegisterPage() {
     router.push('/onboarding/agreement')
   }
 
+  const BENEFITS = [
+    t('landing.stats.commissionSub'),
+    t('landing.stats.compliant'),
+    t('landing.stats.payoutSub'),
+    t('landing.hero.subtitle')
+  ]
+
   return (
     <div className="flex min-h-screen">
       {/* Left panel */}
@@ -42,14 +51,14 @@ export default function RegisterPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-teal)]">
               <span className="font-display text-lg font-bold text-[var(--color-navy)]">T</span>
             </div>
-            <span className="font-display text-2xl text-white">Teeko</span>
+            <span className="font-display text-2xl text-white">{t('common.appName')}</span>
           </Link>
           <div>
             <h2 className="mb-4 font-display text-4xl text-white">
-              Start your journey as a Teeko driver-partner.
+              {t('auth.register.title')}
             </h2>
             <ul className="space-y-3 text-white/60">
-              {['Lowest commission in Malaysia', 'APAD-licensed operations', 'Earn daily payouts', 'Drive on your schedule'].map((item) => (
+              {BENEFITS.map((item) => (
                 <li key={item} className="flex items-center gap-2 text-sm">
                   <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-teal)]" />
                   {item}
@@ -57,7 +66,7 @@ export default function RegisterPage() {
               ))}
             </ul>
           </div>
-          <p className="text-xs text-white/30">APAD-licensed · PDPA 2010 compliant</p>
+          <p className="text-xs text-white/30">{t('landing.stats.compliant')}</p>
         </div>
       </div>
 
@@ -68,20 +77,20 @@ export default function RegisterPage() {
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-teal-light)]">
               <UserPlus className="h-5 w-5 text-[var(--color-teal-dark)]" />
             </div>
-            <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">Create your account</h1>
-            <p className="text-[var(--color-muted)]">Start your journey as a Teeko driver-partner</p>
+            <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">{t('auth.register.createAccount')}</h1>
+            <p className="text-[var(--color-muted)]">{t('auth.register.subtitle')}</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="animate-fade-up animate-delay-100 space-y-5">
             <Input
-              label="Full name (as per MyKad)"
-              placeholder="Ahmad Faizal bin Razak"
+              label={t('profile.fullName')}
+              placeholder="e.g. Ahmad Faizal"
               required
               error={errors.fullName?.message}
               {...register('fullName')}
             />
             <Input
-              label="Email address"
+              label={t('profile.email')}
               type="email"
               placeholder="you@example.com"
               required
@@ -91,11 +100,10 @@ export default function RegisterPage() {
 
             <div className="relative">
               <Input
-                label="Password"
+                label={t('auth.register.password')}
                 type={showPass ? 'text' : 'password'}
-                placeholder="Min. 8 characters"
+                placeholder={t('auth.register.passwordHint')}
                 required
-                hint="Must contain uppercase letter and number"
                 error={errors.password?.message}
                 {...register('password')}
               />
@@ -116,8 +124,7 @@ export default function RegisterPage() {
                 {...register('pdpaConsent')}
               />
               <span className="text-xs leading-relaxed text-[var(--color-muted)]">
-                I consent to the collection and use of my personal data in accordance with Malaysia's{' '}
-                <strong className="text-[var(--color-text)]">PDPA 2010</strong> for driver onboarding and regulatory compliance.
+                {t('auth.register.pdpaConsent')}
               </span>
             </label>
             {errors.pdpaConsent && (
@@ -131,14 +138,14 @@ export default function RegisterPage() {
               loading={loading}
               disabled={!pdpaConsent}
             >
-              Create Account
+              {t('auth.register.createAccount')}
             </Button>
           </form>
 
           <p className="animate-fade-up animate-delay-200 mt-6 text-center text-sm text-[var(--color-muted)]">
-            Already registered?{' '}
+            {t('auth.register.hasAccount')}{' '}
             <Link href="/auth/login" className="font-medium text-[var(--color-teal-dark)] hover:underline">
-              Log in
+              {t('common.login')}
             </Link>
           </p>
         </div>

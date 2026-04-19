@@ -1,34 +1,37 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Clock, Download, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-const NEXT_STEPS = [
-  {
-    icon: <Clock className="h-5 w-5 text-[var(--color-teal-dark)]" />,
-    step: '01',
-    title: 'Document Review',
-    desc: 'Our team will review all your documents within 1–3 working days. You will be notified by email if any documents need attention.',
-    timeline: '1–3 working days',
-  },
-  {
-    icon: <CheckCircle2 className="h-5 w-5 text-[var(--color-teal-dark)]" />,
-    step: '02',
-    title: 'EVP Application',
-    desc: 'Once your documents are approved, Teeko submits your E-hailing Vehicle Permit (EVP) application to APAD or LPKP on your behalf.',
-    timeline: '5–7 working days',
-  },
-  {
-    icon: <Smartphone className="h-5 w-5 text-[var(--color-teal-dark)]" />,
-    step: '03',
-    title: 'Account Activated',
-    desc: 'When your EVP is approved, your account goes live. You will receive an SMS with a link to download the Teeko Driver app.',
-    timeline: 'After EVP approval',
-  },
-]
-
 export default function ConfirmationPage() {
+  const { t } = useTranslation()
+
+  const NEXT_STEPS = [
+    {
+      icon: <Clock className="h-5 w-5 text-[var(--color-teal-dark)]" />,
+      step: '01',
+      title: t('onboarding.confirmation.step1Title'),
+      desc: t('onboarding.confirmation.step1Desc'),
+      timeline: t('onboarding.confirmation.step1Timeline'),
+    },
+    {
+      icon: <CheckCircle2 className="h-5 w-5 text-[var(--color-teal-dark)]" />,
+      step: '02',
+      title: t('onboarding.confirmation.step2Title'),
+      desc: t('onboarding.confirmation.step2Desc'),
+      timeline: t('onboarding.confirmation.step2Timeline'),
+    },
+    {
+      icon: <Smartphone className="h-5 w-5 text-[var(--color-teal-dark)]" />,
+      step: '03',
+      title: t('onboarding.confirmation.step3Title'),
+      desc: t('onboarding.confirmation.step3Desc'),
+      timeline: t('onboarding.confirmation.step3Timeline'),
+    },
+  ]
+
   return (
     <div className="animate-fade-up">
       {/* Success hero */}
@@ -37,17 +40,16 @@ export default function ConfirmationPage() {
           <CheckCircle2 className="h-10 w-10 text-[var(--color-navy)]" />
         </div>
         <h1 className="mb-3 font-display text-4xl text-[var(--color-navy)]">
-          Application Submitted!
+          {t('onboarding.confirmation.title')}
         </h1>
         <p className="mx-auto max-w-md text-[var(--color-muted)]">
-          Thank you for registering as a Teeko driver-partner. Your application is now under review.
-          We'll keep you updated every step of the way.
+          {t('onboarding.confirmation.subtitle')}
         </p>
       </div>
 
       {/* Next steps */}
       <div className="mb-10">
-        <h2 className="mb-6 font-display text-2xl text-[var(--color-navy)]">What happens next</h2>
+        <h2 className="mb-6 font-display text-2xl text-[var(--color-navy)]">{t('onboarding.confirmation.nextSteps')}</h2>
         <div className="space-y-4">
           {NEXT_STEPS.map((s, i) => (
             <div
@@ -82,9 +84,9 @@ export default function ConfirmationPage() {
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-teal)]">
           <Download className="h-5 w-5 text-[var(--color-navy)]" />
         </div>
-        <h3 className="mb-2 font-display text-2xl text-white">Get ready to drive</h3>
+        <h3 className="mb-2 font-display text-2xl text-white">{t('onboarding.confirmation.getAppTitle')}</h3>
         <p className="mb-6 text-white/60">
-          Download the Teeko Driver app now. You'll be able to go online once your account is activated.
+          {t('onboarding.confirmation.getAppDesc')}
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <a
@@ -107,7 +109,7 @@ export default function ConfirmationPage() {
       <div className="text-center">
         <Link href="/dashboard">
           <Button variant="outline" size="lg">
-            Check Application Status
+            {t('dashboard.actionButton')}
           </Button>
         </Link>
       </div>

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 import { Bell, User, LogOut, ChevronDown } from 'lucide-react'
 import { useWebAuthStore } from '@/stores/authStore'
 import { useApplicationStatusStore } from '@/stores/applicationStatusStore'
@@ -21,6 +22,7 @@ interface HeaderProps {
 }
 
 export function Header({ variant = 'light', showNav = true }: HeaderProps) {
+  const { t } = useTranslation()
   const { isAuthenticated, logout } = useWebAuthStore()
   const { unreadCount } = useApplicationStatusStore()
   const { locale, setLocale } = useLanguageStore()
@@ -48,7 +50,7 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
               isNavy ? 'text-white' : 'text-[var(--color-navy)]'
             )}
           >
-            Teeko
+            {t('common.appName')}
           </span>
           <span
             className={cn(
@@ -103,6 +105,7 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
                     ? 'text-white/70 hover:bg-white/10 hover:text-white'
                     : 'text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]'
                 )}
+                title={t('nav.notifications')}
               >
                 <Bell className="h-4.5 w-4.5" />
                 {unreadCount > 0 && (
@@ -121,6 +124,7 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
                     ? 'text-white/70 hover:bg-white/10 hover:text-white'
                     : 'text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-text)]'
                 )}
+                title={t('nav.profile')}
               >
                 <User className="h-4.5 w-4.5" />
               </Link>
@@ -134,7 +138,7 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
                     ? 'text-white/60 hover:bg-white/10 hover:text-white'
                     : 'text-[var(--color-muted)] hover:bg-[var(--color-surface)] hover:text-[var(--color-error)]'
                 )}
-                title="Log out"
+                title={t('common.logout')}
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -151,7 +155,7 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
                   : 'border border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-navy)]'
               )}
             >
-              Log in
+              {t('common.login')}
             </Link>
           )}
         </div>

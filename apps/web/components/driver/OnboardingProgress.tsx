@@ -1,21 +1,24 @@
 'use client'
 
 import { Check } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
-
-const STEPS = [
-  { label: 'Agreement' },
-  { label: 'Personal Docs' },
-  { label: 'Vehicle Details' },
-  { label: 'Vehicle Docs' },
-  { label: 'Done' },
-]
 
 interface OnboardingProgressProps {
   currentStep: number
 }
 
 export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
+  const { t } = useTranslation()
+
+  const STEPS = [
+    { label: t('onboarding.agreement.title') },
+    { label: t('onboarding.personalDocs.title') },
+    { label: t('onboarding.vehicleDetails.title') },
+    { label: t('onboarding.vehicleDocs.title') },
+    { label: t('common.submit') },
+  ]
+
   return (
     <div className="w-full">
       {/* Step bar */}

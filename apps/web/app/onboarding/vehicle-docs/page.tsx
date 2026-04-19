@@ -1,11 +1,13 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DocumentSlot } from '@/components/driver/DocumentSlot'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 
 export default function VehicleDocsPage() {
+  const { t } = useTranslation()
   const router = useRouter()
   const { vehicleDocs, updateVehicleDoc, setStep } = useOnboardingStore()
 
@@ -28,9 +30,9 @@ export default function VehicleDocsPage() {
   return (
     <div className="animate-fade-up">
       <div className="mb-8">
-        <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">Vehicle Documents</h1>
+        <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">{t('onboarding.vehicleDocs.title')}</h1>
         <p className="text-[var(--color-muted)]">
-          Upload valid documents for your registered vehicle.
+          {t('onboarding.vehicleDocs.subtitle')}
         </p>
       </div>
 
@@ -46,14 +48,14 @@ export default function VehicleDocsPage() {
 
       <div className="mt-8 flex items-center justify-between">
         <Button variant="outline" onClick={() => router.push('/onboarding/vehicle-details')}>
-          Back
+          {t('common.back')}
         </Button>
         <Button
           size="lg"
           disabled={!allUploaded}
           onClick={handleSubmit}
         >
-          Submit Application
+          {t('common.submit')}
         </Button>
       </div>
     </div>

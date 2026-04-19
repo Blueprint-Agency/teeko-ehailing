@@ -1,0 +1,215 @@
+{
+  "common": {
+    "appName": "Teeko",
+    "tagline": "Pandu dengan Teeko",
+    "next": "Seterusnya",
+    "back": "Kembali",
+    "submit": "Hantar",
+    "save": "Simpan",
+    "cancel": "Batal",
+    "logout": "Log keluar",
+    "login": "Log masuk",
+    "loading": "Memuatkan…",
+    "or": "atau",
+    "required": "Wajib",
+    "optional": "Pilihan",
+    "privacyPolicy": "Dasar Privasi",
+    "termsOfService": "Syarat Perkhidmatan",
+    "allRightsReserved": "© 2026 Teeko Sdn. Bhd. · Pengendali E-Hailing Berlesen APAD",
+    "actionRequired": "Tindakan diperlukan",
+    "step": "Langkah",
+    "of": "daripada",
+    "other": "Lain-lain",
+    "continue": "Teruskan"
+  },
+  "landing": {
+    "hiring": "Kini mencari rakan-pemandu",
+    "hero": {
+      "title": "Pandu dengan Teeko.",
+      "subtitle": "Jana lebih, bayar kurang.",
+      "description": "Platform e-hailing terbaharu Malaysia menawarkan kadar komisyen terendah dan pematuhan penuh APAD/JPJ. Daftar dalam talian — pandu dalam beberapa hari.",
+      "ctaRegister": "Daftar sebagai Pemandu",
+      "ctaLogin": "Log masuk"
+    },
+    "stats": {
+      "commission": "Kadar komisyen",
+      "commissionSub": "berbanding 25–30% di tempat lain",
+      "trips": "Purata perjalanan harian",
+      "tripsSub": "Pemandu Lembah Klang",
+      "payout": "Kitaran pembayaran",
+      "payoutSub": "Pindahan bank T+1",
+      "onboarding": "Masa pendaftaran",
+      "onboardingSub": "Semakan dokumen + EVP",
+      "compliant": "Berlesen APAD · Patuh PDPA 2010"
+    },
+    "howItWorks": {
+      "title": "Dari pendaftaran ke jalan raya dalam 4 langkah",
+      "subtitle": "Lengkapkan pendaftaran anda di Portal Pemandu ini, kemudian muat turun aplikasi untuk mula menjana pendapatan."
+    },
+    "benefits": {
+      "title": "Kenapa pilih Teeko?"
+    },
+    "cta": {
+      "title": "Sedia untuk mula memandu?",
+      "subtitle": "Sertai beribu rakan-pemandu yang sudah menjana pendapatan dengan Teeko di seluruh Malaysia.",
+      "button": "Daftar Sekarang — Percuma"
+    }
+  },
+  "nav": {
+    "dashboard": "Papan Pemuka",
+    "profile": "Profil",
+    "notifications": "Notifikasi"
+  },
+  "auth": {
+    "login": {
+      "title": "Selamat kembali",
+      "subtitle": "Masukkan nombor telefon bimbit Malaysia anda untuk teruskan",
+      "phonePlaceholder": "cth. 011-23456789",
+      "phoneLabel": "Nombor telefon bimbit Malaysia",
+      "sendOtp": "Hantar OTP",
+      "noAccount": "Pemandu baharu?",
+      "registerLink": "Daftar di sini"
+    },
+    "verify": {
+      "title": "Sahkan nombor anda",
+      "subtitle": "Masukkan kod 6-digit yang dihantar ke",
+      "enterDigits": "Masukkan semua 6 digit",
+      "mockHint": "(Dalam v0.1, sebarang kod 6-digit diterima)",
+      "button": "Sahkan",
+      "resendTimer": "Hantar semula kod dalam",
+      "resendButton": "Hantar semula kod",
+      "wrongNumber": "Nombor salah?",
+      "otpLabel": "Kata laluan sekali sahaja",
+      "resend": "Hantar semula kod",
+      "resendIn": "Hantar semula dalam {{seconds}}s",
+      "verify": "Sahkan"
+    },
+    "register": {
+      "title": "Mulakan perjalanan anda sebagai rakan-pemandu Teeko.",
+      "createAccount": "Cipta akaun anda",
+      "subtitle": "Mulakan perjalanan anda sebagai rakan-pemandu Teeko",
+      "fullNameLabel": "Nama penuh (seperti dalam MyKad)",
+      "emailLabel": "Alamat emel",
+      "password": "Kata laluan",
+      "passwordHint": "Min. 8 aksara",
+      "pdpaConsent": "Saya bersetuju dengan pengumpulan dan penggunaan data peribadi saya mengikut PDPA 2010 Malaysia untuk tujuan pendaftaran pemandu dan pematuhan kawal selia.",
+      "hasAccount": "Sudah mendaftar?",
+      "loginLink": "Log masuk"
+    }
+  },
+  "onboarding": {
+    "stepOf": "Langkah {{current}} daripada {{total}}",
+    "agreement": {
+      "title": "Perjanjian Pemandu",
+      "subtitle": "Sila baca perjanjian penuh dengan teliti sebelum meneruskan.",
+      "scrollPrompt": "Skrol ke bawah untuk membolehkan penerimaan",
+      "checkbox": "Saya telah membaca dan bersetuju dengan Perjanjian Rakan-Pemandu Teeko dan Syarat Perkhidmatan",
+      "content": "PERJANJIAN RAKAN-PEMANDU TEEKO\n\nTerakhir dikemas kini: 1 Januari 2026\n\n1. SIFAT HUBUNGAN\nAnda adalah kontraktor bebas dan bukan pekerja, ejen, atau rakan kongsi Teeko.\n\n2. KELAYAKAN DAN PELESENAN\nAnda mesti memegang NRIC / MyKad yang sah, Lesen Memandu Kompeten (CDL), Lesen PSV-D (Lesen E-hailing) yang dikeluarkan oleh APAD atau LPKP.\n\n[Teks selebihnya dalam Bahasa Inggeris untuk ketepatan undang-undang]\n\n3. E-HAILING VEHICLE PERMIT (EVP)\nTeeko will submit your EVP application to the relevant authority (APAD for West Malaysia / LPKP for East Malaysia) on your behalf after your documents are verified.\n\n4. COMMISSION AND PAYMENTS\nTeeko charges a platform commission on completed trips as disclosed in the current fee schedule.\n\n5. PDPA 2010 — DATA COLLECTION\nBy accepting this Agreement, you consent to the collection, use, and disclosure of your personal data for purposes including onboarding, EVP application, regulatory compliance, and communication.\n\n6. CODE OF CONDUCT\nYou agree to treat all riders with respect, comply with all applicable traffic laws, maintain your vehicle in a safe and clean condition.\n\n7. INSURANCE\nYou are responsible for maintaining valid e-hailing insurance for your vehicle.\n\n8. TERMINATION\nEither party may terminate this Agreement at any time.\n\n9. LIMITATION OF LIABILITY\nTo the maximum extent permitted by Malaysian law, Teeko's total liability to you shall not exceed the total commissions earned in the 30 days preceding the event giving rise to the claim.\n\n10. GOVERNING LAW\nThis Agreement is governed by the laws of Malaysia."
+    },
+    "personalDocs": {
+      "title": "Dokumen Peribadi",
+      "subtitle": "Muat naik foto atau imbasan jelas semua dokumen yang diperlukan.",
+      "instruction": "Pastikan semua dokumen jelas, belum tamat tempoh, dan sepadan dengan nama pada NRIC anda. Dokumen berkualiti rendah atau tamat tempoh akan ditolak.",
+      "uploadPending": "Muat naik semua dokumen yang diperlukan untuk teruskan"
+    },
+    "vehicleDetails": {
+      "title": "Butiran Kenderaan",
+      "subtitle": "Masukkan butiran kenderaan yang akan anda gunakan untuk e-hailing.",
+      "yearRestriction": "Hanya kenderaan yang dikilangkan dalam tempoh 15 tahun yang lalu ({{start}}–{{end}}) diterima.",
+      "infoHeading": "Maklumat Kenderaan",
+      "make": "Jenama kenderaan",
+      "selectMake": "Pilih jenama…",
+      "model": "Model kenderaan",
+      "year": "Tahun buatan",
+      "plate": "Nombor plat",
+      "colour": "Warna kenderaan",
+      "selectColour": "Pilih warna…",
+      "colours": {
+        "white": "Putih",
+        "silver": "Perak",
+        "black": "Hitam",
+        "grey": "Kelabu",
+        "blue": "Biru",
+        "red": "Merah",
+        "brown": "Coklat",
+        "green": "Hijau",
+        "gold": "Emas"
+      }
+    },
+    "vehicleDocs": {
+      "title": "Dokumen Kenderaan",
+      "subtitle": "Muat naik dokumen sah untuk kenderaan berdaftar anda."
+    },
+    "confirmation": {
+      "title": "Permohonan Dihantar!",
+      "subtitle": "Terima kasih kerana mendaftar sebagai rakan-pemandu Teeko. Permohonan anda kini sedang disemak. Kami akan sentiasa memaklumkan anda tentang perkembangan permohonan.",
+      "nextSteps": "Apa yang berlaku selepas ini",
+      "step1Title": "Semakan Dokumen",
+      "step1Desc": "Pasukan kami akan menyemak semua dokumen anda dalam tempoh 1–3 hari bekerja. Anda akan dimaklumkan melalui emel jika ada dokumen yang memerlukan perhatian.",
+      "step1Timeline": "1–3 hari bekerja",
+      "step2Title": "Permohonan EVP",
+      "step2Desc": "Setelah dokumen anda diluluskan, Teeko akan menghantar permohonan Permit Kenderaan E-hailing (EVP) anda kepada APAD atau LPKP bagi pihak anda.",
+      "step2Timeline": "5–7 hari bekerja",
+      "step3Title": "Akaun Diaktifkan",
+      "step3Desc": "Apabila EVP anda diluluskan, akaun anda akan diaktifkan. Anda akan menerima SMS dengan pautan untuk memuat turun aplikasi Teeko Driver.",
+      "step3Timeline": "Selepas kelulusan EVP",
+      "getAppTitle": "Sedia untuk memandu",
+      "getAppDesc": "Muat turun aplikasi Teeko Driver sekarang. Anda boleh mula mengambil pesanan sebaik sahaja akaun anda diaktifkan."
+    }
+  },
+  "dashboard": {
+    "title": "Status Permohonan",
+    "subtitle": "Jejaki kemajuan pendaftaran anda",
+    "docReview": "Semakan Dokumen",
+    "evpApplication": "Permohonan EVP",
+    "accountStatus": "Status Akaun",
+    "downloadBanner": "Akaun anda telah diaktifkan — muat turun aplikasi Teeko Driver untuk mula menjana pendapatan",
+    "resubmit": "Hantar Semula",
+    "rejectionReason": "Sebab penolakan",
+    "actionButton": "Semak Status Permohonan",
+    "stages": {
+      "pending": "Menunggu",
+      "in_progress": "Dalam Semakan",
+      "approved": "Diluluskan",
+      "rejected": "Tindakan Diperlukan",
+      "not_started": "Belum Bermula",
+      "submitted": "Dihantar",
+      "pending_activation": "Menunggu Pengaktifan",
+      "active": "Diaktifkan pada",
+      "suspended": "Digantung"
+    }
+  },
+  "profile": {
+    "title": "Profil Saya",
+    "personalInfo": "Maklumat Peribadi",
+    "fullName": "Nama penuh",
+    "email": "Alamat emel",
+    "phone": "Nombor telefon",
+    "phoneReadOnly": "Nombor telefon tidak boleh diubah. Hubungi sokongan jika perlu.",
+    "language": "Pilihan Bahasa",
+    "security": "Keselamatan & Undang-undang",
+    "changePassword": "Tukar kata laluan",
+    "pdpaErasure": "Permohonan pemadaman data (PDPA)",
+    "languages": {
+      "en": "English",
+      "ms": "Bahasa Malaysia",
+      "zh": "Mandarin (Simplified)",
+      "ta": "Tamil"
+    }
+  },
+  "documents": {
+    "upload": "Muat naik dokumen",
+    "takePhoto": "Ambil Foto",
+    "chooseFile": "Pilih Fail",
+    "replace": "Ganti",
+    "uploaded": "Telah dimuat naik",
+    "underReview": "Dalam semakan",
+    "approved": "Diluluskan",
+    "rejected": "Ditolak",
+    "dragDrop": "Seret & lepas atau klik untuk muat naik",
+    "fileTypes": "JPG, PNG atau PDF · Maks 10 MB",
+    "blurWarning": "Imej kelihatan kabur — sila ambil semula",
+    "sizeError": "Fail melebihi had 10 MB",
+    "typeError": "Hanya fail JPG, PNG, atau PDF diterima"
+  }
+}

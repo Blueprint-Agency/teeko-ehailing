@@ -8,10 +8,52 @@
     "save": "Save",
     "cancel": "Cancel",
     "logout": "Log out",
+    "login": "Log in",
     "loading": "Loading…",
     "or": "or",
     "required": "Required",
-    "optional": "Optional"
+    "optional": "Optional",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "allRightsReserved": "© 2026 Teeko Sdn. Bhd. · APAD Licensed E-Hailing Operator",
+    "actionRequired": "Action required",
+    "step": "Step",
+    "of": "of",
+    "other": "Other",
+    "continue": "Continue"
+  },
+  "landing": {
+    "hiring": "Now hiring driver-partners",
+    "hero": {
+      "title": "Drive with Teeko.",
+      "subtitle": "Earn more, pay less.",
+      "description": "Malaysia's newest e-hailing platform offers the lowest commission rates and full APAD/JPJ compliance. Register online — drive within days.",
+      "ctaRegister": "Register as a Driver",
+      "ctaLogin": "Log in"
+    },
+    "stats": {
+      "commission": "Commission rate",
+      "commissionSub": "vs. 25–30% elsewhere",
+      "trips": "Avg. daily trips",
+      "tripsSub": "Klang Valley drivers",
+      "payout": "Payout cycle",
+      "payoutSub": "T+1 bank transfer",
+      "onboarding": "Onboarding time",
+      "onboardingSub": "Doc review + EVP",
+      "compliant": "APAD-licensed · PDPA 2010 compliant"
+    },
+    "howItWorks": {
+      "title": "From registration to road in 4 steps",
+      "subtitle": "Complete your onboarding here in the Driver Portal, then download the app to start earning."
+    },
+    "benefits": {
+      "title": "Why choose Teeko?"
+    },
+    "cta": {
+      "title": "Ready to start driving?",
+      "subtitle": "Join thousands of driver-partners already earning with Teeko across Malaysia.",
+      "button": "Register Now — It's Free"
+    }
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -21,7 +63,7 @@
   "auth": {
     "login": {
       "title": "Welcome back",
-      "subtitle": "Enter your phone number to continue",
+      "subtitle": "Enter your Malaysian mobile number to continue",
       "phonePlaceholder": "e.g. 011-23456789",
       "phoneLabel": "Malaysian mobile number",
       "sendOtp": "Send OTP",
@@ -31,75 +73,88 @@
     "verify": {
       "title": "Verify your number",
       "subtitle": "Enter the 6-digit code sent to",
+      "enterDigits": "Enter all 6 digits",
+      "mockHint": "(In v0.1, any 6-digit code works)",
+      "button": "Verify",
+      "resendTimer": "Resend code in",
+      "resendButton": "Resend code",
+      "wrongNumber": "Wrong number?",
       "otpLabel": "One-time password",
       "resend": "Resend code",
       "resendIn": "Resend in {{seconds}}s",
       "verify": "Verify"
     },
     "register": {
-      "title": "Create your account",
+      "title": "Start your journey as a Teeko driver-partner.",
+      "createAccount": "Create your account",
       "subtitle": "Start your journey as a Teeko driver-partner",
       "fullNameLabel": "Full name (as per MyKad)",
       "emailLabel": "Email address",
-      "passwordLabel": "Password",
-      "pdpaConsent": "I consent to the collection and use of my personal data in accordance with Malaysia's PDPA 2010 for the purpose of driver onboarding and regulatory compliance.",
-      "haveAccount": "Already registered?",
-      "loginLink": "Log in",
-      "createAccount": "Create Account"
+      "password": "Password",
+      "passwordHint": "Min. 8 characters",
+      "pdpaConsent": "I consent to the collection and use of my personal data in accordance with Malaysia's PDPA 2010 for driver onboarding and regulatory compliance.",
+      "hasAccount": "Already registered?",
+      "loginLink": "Log in"
     }
   },
   "onboarding": {
     "stepOf": "Step {{current}} of {{total}}",
     "agreement": {
       "title": "Driver Agreement",
-      "subtitle": "Please read the full agreement before proceeding",
+      "subtitle": "Please read the full agreement carefully before proceeding.",
       "scrollPrompt": "Scroll to the bottom to enable acceptance",
-      "acceptLabel": "I have read and agree to the Teeko Driver-Partner Agreement and Terms of Service",
-      "accept": "Accept & Continue"
+      "checkbox": "I have read and agree to the Teeko Driver-Partner Agreement and Terms of Service",
+      "content": "TEEKO DRIVER-PARTNER AGREEMENT\n\nLast updated: 1 January 2026\n\nThis Driver-Partner Agreement (\"Agreement\") is entered into between Teeko Sdn. Bhd. (\"Teeko\", \"we\", \"us\") and you, the driver-partner (\"Driver\", \"you\").\n\n1. NATURE OF RELATIONSHIP\nYou are an independent contractor and not an employee, agent, or partner of Teeko. Teeko provides a technology platform connecting riders with drivers. Teeko does not direct or control how you provide transportation services.\n\n2. ELIGIBILITY AND LICENSING\nYou must hold a valid NRIC / MyKad, a Competent Driving Licence (CDL), a PSV-D Licence (E-hailing Licence) issued by APAD or LPKP, and a valid e-hailing insurance cover note at all times while using the Teeko platform. Your vehicle must comply with the age and condition requirements specified in the Vehicle Policy.\n\n3. E-HAILING VEHICLE PERMIT (EVP)\nTeeko will submit your EVP application to the relevant authority (APAD for West Malaysia / LPKP for East Malaysia) on your behalf after your documents are verified. You may not commence e-hailing operations until your EVP is approved and your Teeko account is activated.\n\n4. COMMISSION AND PAYMENTS\nTeeko charges a platform commission on completed trips as disclosed in the current fee schedule. Payments are made via bank transfer (DuitNow) on a T+1 cycle unless otherwise stated. Teeko reserves the right to adjust commission rates with 14 days' notice.\n\n5. PDPA 2010 — DATA COLLECTION\nBy accepting this Agreement, you consent to the collection, use, and disclosure of your personal data for purposes including onboarding, EVP application, regulatory compliance, and communication. You have the right to access and correct your personal data. Data erasure requests may be submitted via the profile page.\n\n6. CODE OF CONDUCT\nYou agree to treat all riders with respect, comply with all applicable traffic laws, maintain your vehicle in a safe and clean condition, and not engage in any discriminatory or abusive behaviour. Teeko may suspend or terminate your account for violations.\n\n7. INSURANCE\nYou are responsible for maintaining valid e-hailing insurance for your vehicle. Teeko does not provide insurance coverage for your vehicle or personal liability.\n\n8. TERMINATION\nEither party may terminate this Agreement at any time. Teeko may immediately suspend or terminate your access to the platform if you breach this Agreement or applicable law.\n\n9. LIMITATION OF LIABILITY\nTo the maximum extent permitted by Malaysian law, Teeko's total liability to you shall not exceed the total commissions earned in the 30 days preceding the event giving rise to the claim.\n\n10. GOVERNING LAW\nThis Agreement is governed by the laws of Malaysia. Any disputes shall be subject to the exclusive jurisdiction of the courts of Malaysia.\n\nBy accepting this Agreement, you confirm that you have read, understood, and agree to be bound by these terms."
     },
     "personalDocs": {
       "title": "Personal Documents",
-      "subtitle": "Upload clear photos or scans of the following documents",
-      "nricFront": "NRIC / MyKad (Front)",
-      "nricBack": "NRIC / MyKad (Back)",
-      "cdl": "Competent Driving Licence (CDL)",
-      "psvD": "PSV-D Licence (E-hailing Licence)",
-      "insurance": "E-hailing Insurance Cover Note",
-      "selfie": "Profile Photo / Liveness Selfie"
+      "subtitle": "Upload clear photos or scans of all required documents.",
+      "instruction": "Ensure all documents are clear, unexpired, and match the name on your NRIC. Low-quality or expired documents will be rejected.",
+      "uploadPending": "Upload all required documents to continue"
     },
     "vehicleDetails": {
       "title": "Vehicle Details",
-      "subtitle": "Enter the details of the vehicle you will use for e-hailing",
+      "subtitle": "Enter the details of the vehicle you will use for e-hailing.",
+      "yearRestriction": "Only vehicles manufactured within the last 15 years ({{start}}–{{end}}) are accepted.",
+      "infoHeading": "Vehicle Information",
       "make": "Vehicle make",
+      "selectMake": "Select make…",
       "model": "Vehicle model",
       "year": "Year of manufacture",
-      "plateNumber": "Plate number",
+      "plate": "Plate number",
       "colour": "Vehicle colour",
-      "ageNote": "Only vehicles manufactured within the last 15 years are accepted"
+      "selectColour": "Select colour…",
+      "colours": {
+        "white": "White",
+        "silver": "Silver",
+        "black": "Black",
+        "grey": "Grey",
+        "blue": "Blue",
+        "red": "Red",
+        "brown": "Brown",
+        "green": "Green",
+        "gold": "Gold"
+      }
     },
     "vehicleDocs": {
       "title": "Vehicle Documents",
-      "subtitle": "Upload valid documents for your registered vehicle",
-      "carGrant": "Car Grant / VOC",
-      "roadTax": "Road Tax",
-      "vehicleInsurance": "E-hailing Insurance Cover Note",
-      "puspakom": "PUSPAKOM Inspection Certificate"
+      "subtitle": "Upload valid documents for your registered vehicle."
     },
     "confirmation": {
       "title": "Application Submitted!",
-      "subtitle": "Thank you for registering as a Teeko driver-partner",
+      "subtitle": "Thank you for registering as a Teeko driver-partner. Your application is now under review. We'll keep you updated every step of the way.",
       "nextSteps": "What happens next",
       "step1Title": "Document Review",
-      "step1Desc": "Our team will review your documents within 1–3 working days",
+      "step1Desc": "Our team will review all your documents within 1–3 working days. You will be notified by email if any documents need attention.",
+      "step1Timeline": "1–3 working days",
       "step2Title": "EVP Application",
-      "step2Desc": "We submit your EVP application to APAD/LPKP — approval takes 5–7 working days",
+      "step2Desc": "Once your documents are approved, Teeko submits your E-hailing Vehicle Permit (EVP) application to APAD or LPKP on your behalf.",
+      "step2Timeline": "5–7 working days",
       "step3Title": "Account Activated",
-      "step3Desc": "You'll be notified to download the Teeko Driver app and start earning",
-      "downloadTitle": "Get ready to drive",
-      "downloadSubtitle": "Download the app now — you'll be able to go online once your account is activated",
-      "appStore": "App Store",
-      "googlePlay": "Google Play",
-      "checkStatus": "Check application status"
+      "step3Desc": "When your EVP is approved, your account goes live. You will receive an SMS with a link to download the Teeko Driver app.",
+      "step3Timeline": "After EVP approval",
+      "getAppTitle": "Get ready to drive",
+      "getAppDesc": "Download the Teeko Driver app now. You'll be able to go online once your account is activated."
     }
   },
   "dashboard": {
@@ -111,6 +166,7 @@
     "downloadBanner": "Your account is activated — download the Teeko Driver app to start earning",
     "resubmit": "Resubmit",
     "rejectionReason": "Rejection reason",
+    "actionButton": "Check Application Status",
     "stages": {
       "pending": "Pending",
       "in_progress": "Under Review",
@@ -119,7 +175,7 @@
       "not_started": "Not Started",
       "submitted": "Submitted",
       "pending_activation": "Pending Activation",
-      "active": "Active",
+      "active": "Activated on",
       "suspended": "Suspended"
     }
   },
@@ -129,22 +185,22 @@
     "fullName": "Full name",
     "email": "Email address",
     "phone": "Phone number",
-    "phoneReadOnly": "Phone number cannot be changed",
-    "language": "Language preference",
-    "security": "Security",
+    "phoneReadOnly": "Phone number cannot be changed. Contact support if needed.",
+    "language": "Language Preference",
+    "security": "Security & Legal",
     "changePassword": "Change password",
     "pdpaErasure": "Request data erasure (PDPA)",
     "languages": {
       "en": "English",
       "ms": "Bahasa Malaysia",
-      "zh": "中文 (简体)",
-      "ta": "தமிழ்"
+      "zh": "Mandarin (Simplified)",
+      "ta": "Tamil"
     }
   },
   "documents": {
     "upload": "Upload document",
-    "takePhoto": "Take photo",
-    "chooseFile": "Choose file",
+    "takePhoto": "Take Photo",
+    "chooseFile": "Choose File",
     "replace": "Replace",
     "uploaded": "Uploaded",
     "underReview": "Under review",

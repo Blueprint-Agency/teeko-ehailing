@@ -2,6 +2,7 @@
 
 import { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
+import { useTranslation } from 'react-i18next'
 import { Upload, CheckCircle2, XCircle, Clock, Eye, RefreshCcw, Camera } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Badge, statusVariant, statusLabel } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ const ACCEPTED = {
 }
 
 export function DocumentSlot({ doc, onUpload, editable = true }: DocumentSlotProps) {
+  const { t, i18n } = useTranslation()
   const onDrop = useCallback(
     (accepted: File[]) => {
       if (accepted[0]) onUpload(doc.id, accepted[0])
@@ -62,7 +64,7 @@ export function DocumentSlot({ doc, onUpload, editable = true }: DocumentSlotPro
         <div className="flex gap-2 border-b border-[var(--color-error-light)] bg-[var(--color-error-light)] px-4 py-3">
           <XCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[var(--color-error)]" />
           <div>
-            <p className="text-xs font-semibold text-[var(--color-error)]">Rejection reason</p>
+            <p className="text-xs font-semibold text-[var(--color-error)]">{t('dashboard.rejectionReason')}</p>
             <p className="text-xs text-[var(--color-error)]/80">{doc.rejectionReason}</p>
           </div>
         </div>
@@ -78,7 +80,7 @@ export function DocumentSlot({ doc, onUpload, editable = true }: DocumentSlotPro
               <p className="text-sm font-medium text-emerald-800">{doc.fileName}</p>
               {doc.reviewedAt && (
                 <p className="text-xs text-emerald-600">
-                  Approved {new Date(doc.reviewedAt).toLocaleDateString('en-MY')}
+                  {t('documents.approved')} {new Date(doc.reviewedAt).toLocaleDateString(i18n.language === 'en' ? 'en-MY' : i18n.language)}
                 </p>
               )}
             </div>
@@ -90,14 +92,14 @@ export function DocumentSlot({ doc, onUpload, editable = true }: DocumentSlotPro
               <Eye className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm font-medium text-blue-800">{doc.fileName}</p>
-                <p className="text-xs text-blue-600">Under review</p>
+                <p className="text-xs text-blue-600">{t('documents.underReview')}</p>
               </div>
             </div>
             {editable && (
               <div {...getRootProps()}>
                 <input {...getInputProps()} />
                 <Button variant="outline" size="sm" className="text-xs">
-                  <RefreshCcw className="h-3 w-3" /> Replace
+                  <RefreshCcw className="h-3 w-3" /> {t('documents.replace')}
                 </Button>
               </div>
             )}
@@ -131,13 +133,13 @@ export function DocumentSlot({ doc, onUpload, editable = true }: DocumentSlotPro
             </div>
             <div>
               <p className="text-sm font-medium text-[var(--color-text)]">
-                {isDragActive ? 'Drop file here' : 'Drag & drop or click to upload'}
+                {isDragActive ? t('documents.chooseFile') : t('documents.dragDrop')}
               </p>
-              <p className="mt-0.5 text-xs text-[var(--color-muted)]">JPG, PNG or PDF · Max 10 MB</p>
+              <p className="mt-0.5 text-xs text-[var(--color-muted)]">{t('documents.fileTypes')}</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" type="button" className="pointer-events-none text-xs">
-                <Upload className="h-3 w-3" /> Choose File
+                <Upload className="h-3 w-3" /> {t('documents.chooseFile')}
               </Button>
               <Button
                 variant="outline"
@@ -146,7 +148,7 @@ export function DocumentSlot({ doc, onUpload, editable = true }: DocumentSlotPro
                 className="pointer-events-none text-xs"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Camera className="h-3 w-3" /> Take Photo
+                <Camera className="h-3 w-3" /> {t('documents.takePhoto')}
               </Button>
             </div>
           </div>

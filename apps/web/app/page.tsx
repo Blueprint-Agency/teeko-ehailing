@@ -2,42 +2,44 @@
 
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, Shield, Star, Zap, ChevronRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/driver/Header'
 import { useWebAuthStore } from '@/stores/authStore'
 
-const BENEFITS = [
-  {
-    icon: <Zap className="h-5 w-5" />,
-    title: 'Lower commission',
-    desc: 'Keep more of your earnings — Teeko charges the lowest commission in Malaysia.',
-  },
-  {
-    icon: <Shield className="h-5 w-5" />,
-    title: 'APAD compliant',
-    desc: 'We handle your EVP application — fully licensed e-hailing operations.',
-  },
-  {
-    icon: <Star className="h-5 w-5" />,
-    title: 'Flexible hours',
-    desc: 'Drive on your schedule. Go online and offline whenever you want.',
-  },
-  {
-    icon: <CheckCircle2 className="h-5 w-5" />,
-    title: 'Fast onboarding',
-    desc: 'Register online in minutes. Upload your documents, we handle the rest.',
-  },
-]
-
-const STEPS = [
-  { num: '01', title: 'Create Account', desc: 'Register with your phone number and basic details' },
-  { num: '02', title: 'Upload Documents', desc: 'NRIC, driving licence, insurance and vehicle documents' },
-  { num: '03', title: 'Wait for Approval', desc: 'Our team reviews documents in 1–3 working days' },
-  { num: '04', title: 'Start Earning', desc: 'Download the app and go online — start accepting rides' },
-]
-
 export default function LandingPage() {
+  const { t } = useTranslation()
   const { isAuthenticated, devRole, setDevRole } = useWebAuthStore()
+
+  const BENEFITS = [
+    {
+      icon: <Zap className="h-5 w-5" />,
+      title: t('onboarding.confirmation.step3Title'), // Using existing keys where appropriate or landing ones
+      desc: t('onboarding.confirmation.step3Desc'),
+    },
+    {
+      icon: <Shield className="h-5 w-5" />,
+      title: t('landing.stats.compliant'),
+      desc: t('landing.hero.description'),
+    },
+    {
+      icon: <Star className="h-5 w-5" />,
+      title: t('onboarding.agreement.title'),
+      desc: t('onboarding.agreement.subtitle'),
+    },
+    {
+      icon: <CheckCircle2 className="h-5 w-5" />,
+      title: t('onboarding.confirmation.step1Title'),
+      desc: t('onboarding.confirmation.step1Desc'),
+    },
+  ]
+
+  const STEPS = [
+    { num: '01', title: t('auth.register.createAccount'), desc: t('auth.register.subtitle') },
+    { num: '02', title: t('onboarding.personalDocs.title'), desc: t('onboarding.personalDocs.subtitle') },
+    { num: '03', title: t('onboarding.confirmation.step1Title'), desc: t('onboarding.confirmation.step1Desc') },
+    { num: '04', title: t('onboarding.confirmation.step3Title'), desc: t('onboarding.confirmation.step3Desc') },
+  ]
 
   return (
     <div className="min-h-screen">
@@ -56,30 +58,28 @@ export default function LandingPage() {
             <div>
               <div className="animate-fade-up mb-6 inline-flex items-center gap-2 rounded-full border border-[var(--color-teal)]/30 bg-[var(--color-teal)]/10 px-4 py-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-teal)]" />
-                <span className="text-sm font-medium text-[var(--color-teal)]">Now hiring driver-partners</span>
+                <span className="text-sm font-medium text-[var(--color-teal)]">{t('landing.hiring')}</span>
               </div>
 
               <h1 className="animate-fade-up animate-delay-100 mb-6 font-display text-5xl text-white lg:text-6xl">
-                Drive with <em className="not-italic text-[var(--color-teal)]">Teeko</em>.{' '}
-                <br />Earn more,{' '}
-                <br />pay less.
+                {t('landing.hero.title')}
+                <br /><em className="not-italic text-[var(--color-teal)]">{t('landing.hero.subtitle')}</em>
               </h1>
 
               <p className="animate-fade-up animate-delay-200 mb-8 text-lg leading-relaxed text-white/70">
-                Malaysia's newest e-hailing platform offers the lowest commission rates and full
-                APAD/JPJ compliance. Register online — drive within days.
+                {t('landing.hero.description')}
               </p>
 
               <div className="animate-fade-up animate-delay-300 flex flex-wrap items-center gap-3">
                 <Link href="/auth/register">
                   <Button size="xl" variant="primary">
-                    Register as a Driver
+                    {t('landing.hero.ctaRegister')}
                     <ArrowRight className="h-5 w-5" />
                   </Button>
                 </Link>
                 <Link href="/auth/login">
                   <Button size="xl" variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:border-white/40">
-                    Log in
+                    {t('landing.hero.ctaLogin')}
                   </Button>
                 </Link>
               </div>
@@ -90,10 +90,10 @@ export default function LandingPage() {
               <div className="relative rounded-[var(--radius-2xl)] border border-white/10 bg-white/5 p-8 backdrop-blur-sm">
                 <div className="mb-6 grid grid-cols-2 gap-4">
                   {[
-                    { label: 'Commission rate', value: '10%', sub: 'vs. 25–30% elsewhere' },
-                    { label: 'Avg. daily trips', value: '12–18', sub: 'Klang Valley drivers' },
-                    { label: 'Payout cycle', value: 'Daily', sub: 'T+1 bank transfer' },
-                    { label: 'Onboarding time', value: '< 7 days', sub: 'Doc review + EVP' },
+                    { label: t('landing.stats.commission'), value: '10%', sub: t('landing.stats.commissionSub') },
+                    { label: t('landing.stats.trips'), value: '12–18', sub: t('landing.stats.tripsSub') },
+                    { label: t('landing.stats.payout'), value: 'Daily', sub: t('landing.stats.payoutSub') },
+                    { label: t('landing.stats.onboarding'), value: '< 7 days', sub: t('landing.stats.onboardingSub') },
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
                       <p className="font-display text-2xl text-[var(--color-teal)]">{stat.value}</p>
@@ -104,7 +104,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center gap-2 text-sm text-white/60">
                   <Shield className="h-4 w-4 text-[var(--color-teal)]" />
-                  APAD-licensed · PDPA 2010 compliant
+                  {t('landing.stats.compliant')}
                 </div>
               </div>
             </div>
@@ -117,10 +117,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
             <h2 className="mb-3 font-display text-3xl text-[var(--color-navy)] lg:text-4xl">
-              From registration to road in 4 steps
+              {t('landing.howItWorks.title')}
             </h2>
             <p className="mx-auto max-w-xl text-[var(--color-muted)]">
-              Complete your onboarding here in the Driver Portal, then download the app to start earning.
+              {t('landing.howItWorks.subtitle')}
             </p>
           </div>
 
@@ -150,7 +150,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-12 text-center">
             <h2 className="mb-3 font-display text-3xl text-white lg:text-4xl">
-              Why choose Teeko?
+              {t('landing.benefits.title')}
             </h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -175,14 +175,14 @@ export default function LandingPage() {
       <section className="border-t border-[var(--color-border)] bg-[var(--color-teal-light)] py-16">
         <div className="mx-auto max-w-2xl px-6 text-center">
           <h2 className="mb-4 font-display text-3xl text-[var(--color-navy)]">
-            Ready to start driving?
+            {t('landing.cta.title')}
           </h2>
           <p className="mb-8 text-[var(--color-muted)]">
-            Join thousands of driver-partners already earning with Teeko across Malaysia.
+            {t('landing.cta.subtitle')}
           </p>
           <Link href="/auth/register">
             <Button size="xl" variant="navy">
-              Register Now — It's Free
+              {t('landing.cta.button')}
               <ArrowRight className="h-5 w-5" />
             </Button>
           </Link>
@@ -218,7 +218,7 @@ export default function LandingPage() {
             </button>
             {isAuthenticated && (
               <Link href="/dashboard" className="rounded bg-[var(--color-teal)] px-2 py-1 text-xs font-medium text-[var(--color-navy)]">
-                → Dashboard
+                → {t('nav.dashboard')}
               </Link>
             )}
           </div>
@@ -229,9 +229,9 @@ export default function LandingPage() {
       <footer className="border-t border-[var(--color-border)] bg-white py-8">
         <div className="mx-auto max-w-6xl px-6 text-center">
           <p className="text-sm text-[var(--color-muted)]">
-            © 2026 Teeko Sdn. Bhd. · APAD Licensed E-Hailing Operator ·{' '}
-            <a href="#" className="hover:text-[var(--color-teal)]">Privacy Policy</a> ·{' '}
-            <a href="#" className="hover:text-[var(--color-teal)]">Terms of Service</a>
+            {t('common.allRightsReserved')} ·{' '}
+            <a href="#" className="hover:text-[var(--color-teal)]">{t('common.privacyPolicy')}</a> ·{' '}
+            <a href="#" className="hover:text-[var(--color-teal)]">{t('common.termsOfService')}</a>
           </p>
         </div>
       </footer>

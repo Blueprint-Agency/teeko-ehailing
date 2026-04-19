@@ -1,0 +1,215 @@
+{
+  "common": {
+    "appName": "Teeko",
+    "tagline": "与 Teeko 一起驾驶",
+    "next": "下一步",
+    "back": "返回",
+    "submit": "提交",
+    "save": "保存",
+    "cancel": "取消",
+    "logout": "登出",
+    "login": "登录",
+    "loading": "加载中...",
+    "or": "或",
+    "required": "必填",
+    "optional": "可选",
+    "privacyPolicy": "隐私政策",
+    "termsOfService": "服务条款",
+    "allRightsReserved": "© 2026 Teeko Sdn. Bhd. · APAD 持牌电子召车营运商",
+    "actionRequired": "需要采取行动",
+    "step": "步骤",
+    "of": "/",
+    "other": "其他",
+    "continue": "继续"
+  },
+  "landing": {
+    "hiring": "现正招聘司机伙伴",
+    "hero": {
+      "title": "与 Teeko 一起驾驶。",
+      "subtitle": "赚得更多，支付更少。",
+      "description": "马来西亚最新的电子召车平台，提供最低的佣金率并完全符合 APAD/JPJ 规定。在线注册 — 几天内即可开始驾驶。",
+      "ctaRegister": "注册成为司机",
+      "ctaLogin": "登录"
+    },
+    "stats": {
+      "commission": "佣金率",
+      "commissionSub": "相比其他平台的 25–30%",
+      "trips": "日均行程",
+      "tripsSub": "巴生谷司机",
+      "payout": "结算周期",
+      "payoutSub": "T+1 银行转账",
+      "onboarding": "入职时间",
+      "onboardingSub": "文件审核 + EVP",
+      "compliant": "APAD 持牌 · 符合 PDPA 2010"
+    },
+    "howItWorks": {
+      "title": "从注册到上路仅需 4 个步骤",
+      "subtitle": "在此司机门户完成入职流程，然后下载应用开始赚钱。"
+    },
+    "benefits": {
+      "title": "为什么选择 Teeko？"
+    },
+    "cta": {
+      "title": "准备好开始驾驶了吗？",
+      "subtitle": "加入马来西亚各地已在 Teeko 赚钱的数千名司机伙伴行列。",
+      "button": "立即注册 — 免费"
+    }
+  },
+  "nav": {
+    "dashboard": "控制面板",
+    "profile": "个人资料",
+    "notifications": "通知"
+  },
+  "auth": {
+    "login": {
+      "title": "欢迎回来",
+      "subtitle": "输入您的马来西亚手机号码以继续",
+      "phonePlaceholder": "例如 011-23456789",
+      "phoneLabel": "马来西亚手机号码",
+      "sendOtp": "发送验证码",
+      "noAccount": "新司机？",
+      "registerLink": "在此注册"
+    },
+    "verify": {
+      "title": "验证您的号码",
+      "subtitle": "输入发送至此号码的 6 位验证码",
+      "enterDigits": "请输入全部 6 位数字",
+      "mockHint": "(v0.1 版本中，任何 6 位数字均有效)",
+      "button": "验证",
+      "resendTimer": "秒后重新发送",
+      "resendButton": "重新发送验证码",
+      "wrongNumber": "号码错误？",
+      "otpLabel": "一次性验证码",
+      "resend": "重新发送",
+      "resendIn": "{{seconds}}秒后重新发送",
+      "verify": "验证"
+    },
+    "register": {
+      "title": "开始您的 Teeko 司机伙伴之旅。",
+      "createAccount": "创建您的账户",
+      "subtitle": "开始您的 Teeko 司机伙伴之旅",
+      "fullNameLabel": "全名（需与 MyKad 一致）",
+      "emailLabel": "电子邮件地址",
+      "password": "密码",
+      "passwordHint": "最少 8 个字符",
+      "pdpaConsent": "我同意根据马来西亚 PDPA 2010 收集和使用我的个人数据，用于司机入职和监管合规目的。",
+      "hasAccount": "已经注册？",
+      "loginLink": "登录"
+    }
+  },
+  "onboarding": {
+    "stepOf": "第 {{current}} 步，共 {{total}} 步",
+    "agreement": {
+      "title": "司机协议",
+      "subtitle": "请在继续之前仔细阅读完整协议。",
+      "scrollPrompt": "滚动到底部以启用接受按钮",
+      "checkbox": "我已阅读并同意 Teeko 司机伙伴协议和服务条款",
+      "content": "TEEKO 司机伙伴协议\n\n最后更新：2026年1月1日\n\n1. 关系性质\n您是独立承包商，而非 Teeko 的员工、代理人或合伙人。\n\n2. 资格与许可\n您必须持有有效的 NRIC / MyKad、合格驾驶执照 (CDL) 以及由 APAD 或 LPKP 颁发的 PSV-D 执照（电子召车执照）。\n\n[为确保法律准确性，其余部分保持英文]\n\n3. E-HAILING VEHICLE PERMIT (EVP)\nTeeko will submit your EVP application to the relevant authority (APAD for West Malaysia / LPKP for East Malaysia) on your behalf after your documents are verified.\n\n4. COMMISSION AND PAYMENTS\nTeeko charges a platform commission on completed trips as disclosed in the current fee schedule.\n\n5. PDPA 2010 — DATA COLLECTION\nBy accepting this Agreement, you consent to the collection, use, and disclosure of your personal data for purposes including onboarding, EVP application, regulatory compliance, and communication.\n\n6. CODE OF CONDUCT\nYou agree to treat all riders with respect, comply with all applicable traffic laws, maintain your vehicle in a safe and clean condition.\n\n7. INSURANCE\nYou are responsible for maintaining valid e-hailing insurance for your vehicle.\n\n8. TERMINATION\nEither party may terminate this Agreement at any time.\n\n9. LIMITATION OF LIABILITY\nTo the maximum extent permitted by Malaysian law, Teeko's total liability to you shall not exceed the total commissions earned in the 30 days preceding the event giving rise to the claim.\n\n10. GOVERNING LAW\nThis Agreement is governed by the laws of Malaysia."
+    },
+    "personalDocs": {
+      "title": "个人文件",
+      "subtitle": "上传所需文件的清晰照片或扫描件。",
+      "instruction": "确保所有文件清晰、未过期且与您的 NRIC 姓名一致。低质量或过期的文件将被拒绝。",
+      "uploadPending": "请上传所有必需文件以继续"
+    },
+    "vehicleDetails": {
+      "title": "车辆详情",
+      "subtitle": "输入您将用于电子召车的车辆详情。",
+      "yearRestriction": "仅接受制造年份在过去 15 年内（{{start}}–{{end}}）的车辆。",
+      "infoHeading": "车辆信息",
+      "make": "汽车品牌",
+      "selectMake": "选择品牌...",
+      "model": "汽车型号",
+      "year": "制造年份",
+      "plate": "车牌号码",
+      "colour": "车身颜色",
+      "selectColour": "选择颜色...",
+      "colours": {
+        "white": "白色",
+        "silver": "银色",
+        "black": "黑色",
+        "grey": "灰色",
+        "blue": "蓝色",
+        "red": "红色",
+        "brown": "棕色",
+        "green": "绿色",
+        "gold": "金色"
+      }
+    },
+    "vehicleDocs": {
+      "title": "车辆文件",
+      "subtitle": "为您注册的车辆上传有效文件。"
+    },
+    "confirmation": {
+      "title": "申请已提交！",
+      "subtitle": "感谢您注册成为 Teeko 司机伙伴。您的申请正在审核中。我们将随时向您通报进度。",
+      "nextSteps": "后续流程",
+      "step1Title": "文件审核",
+      "step1Desc": "我们的团队将在 1-3 个工作日内审核您的所有文件。如果任何文件需要注意，我们将通过电子邮件通知您。",
+      "step1Timeline": "1-3 个工作日",
+      "step2Title": "EVP 申请",
+      "step2Desc": "文件获批后，Teeko 将代表您向 APAD 或 LPKP 提交电子召车车辆许可证 (EVP) 申请。",
+      "step2Timeline": "5-7 个工作日",
+      "step3Title": "账户激活",
+      "step3Desc": "EVP 获批后，您的账户将正式上线。您将收到包含 Teeko Driver 应用下载链接的短信。",
+      "step3Timeline": "EVP 获批后",
+      "getAppTitle": "准备开始驾驶",
+      "getAppDesc": "立即下载 Teeko Driver 应用。账户激活后，您即可开始接单。"
+    }
+  },
+  "dashboard": {
+    "title": "申请状态",
+    "subtitle": "追踪您的入职进度",
+    "docReview": "文件审核",
+    "evpApplication": "EVP 申请",
+    "accountStatus": "账户状态",
+    "downloadBanner": "您的账户已激活 — 请下载 Teeko Driver 应用开始赚钱",
+    "resubmit": "重新提交",
+    "rejectionReason": "拒绝原因",
+    "actionButton": "查看申请状态",
+    "stages": {
+      "pending": "待处理",
+      "in_progress": "审核中",
+      "approved": "已批准",
+      "rejected": "需要行动",
+      "not_started": "未开始",
+      "submitted": "已提交",
+      "pending_activation": "等待激活",
+      "active": "激活于",
+      "suspended": "已停用"
+    }
+  },
+  "profile": {
+    "title": "个人资料",
+    "personalInfo": "个人信息",
+    "fullName": "全名",
+    "email": "电子邮件",
+    "phone": "电话号码",
+    "phoneReadOnly": "电话号码不可更改。如需更改请联系支持团队。",
+    "language": "语言偏好",
+    "security": "安全与法律",
+    "changePassword": "修改密码",
+    "pdpaErasure": "请求删除数据 (PDPA)",
+    "languages": {
+      "en": "English",
+      "ms": "Bahasa Malaysia",
+      "zh": "简体中文",
+      "ta": "Tamil"
+    }
+  },
+  "documents": {
+    "upload": "上传文件",
+    "takePhoto": "拍照",
+    "chooseFile": "选择文件",
+    "replace": "更换",
+    "uploaded": "已上传",
+    "underReview": "审核中",
+    "approved": "已批准",
+    "rejected": "已拒绝",
+    "dragDrop": "拖拽或点击上传",
+    "fileTypes": "JPG, PNG 或 PDF · 最大 10 MB",
+    "blurWarning": "图像模糊 — 请重新拍摄",
+    "sizeError": "文件超过 10 MB 限制",
+    "typeError": "仅支持 JPG, PNG 或 PDF 文件"
+  }
+}

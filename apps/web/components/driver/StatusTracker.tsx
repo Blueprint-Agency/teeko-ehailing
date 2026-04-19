@@ -1,6 +1,7 @@
 'use client'
 
 import { CheckCircle2, Clock, XCircle, AlertCircle, Circle } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { Badge, statusVariant, statusLabel } from '@/components/ui/badge'
 import type { ApplicationStatus } from '@teeko/shared/types'
@@ -68,34 +69,36 @@ interface StatusTrackerProps {
 }
 
 export function StatusTracker({ status }: StatusTrackerProps) {
+  const { t, i18n } = useTranslation()
+
   const evpDetail =
     status.evpApplication !== 'not_started'
-      ? `Submitted to ${status.evpBody ?? 'APAD'} · Approval takes 5–7 working days`
-      : 'Will be submitted after document review is complete'
+      ? `${t('onboarding.confirmation.step2Desc')} (${status.evpBody ?? 'APAD'})`
+      : t('onboarding.confirmation.step2Title')
 
   return (
     <div className="rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-white p-6 shadow-[var(--shadow-md)]">
-      <h2 className="mb-6 font-display text-xl text-[var(--color-navy)]">Application Progress</h2>
+      <h2 className="mb-6 font-display text-xl text-[var(--color-navy)]">{t('dashboard.subtitle')}</h2>
       <Stage
         index={1}
-        title="Document Review"
+        title={t('dashboard.docReview')}
         status={status.docReview}
-        detail="Our team reviews your documents within 1–3 working days"
+        detail={t('onboarding.confirmation.step1Desc')}
       />
       <Stage
         index={2}
-        title="EVP Application"
+        title={t('dashboard.evpApplication')}
         status={status.evpApplication}
         detail={evpDetail}
       />
       <Stage
         index={3}
-        title="Account Activation"
+        title={t('dashboard.accountStatus')}
         status={status.accountStatus}
         detail={
           status.accountStatus === 'active'
-            ? `Activated on ${status.activatedDate ? new Date(status.activatedDate).toLocaleDateString('en-MY') : '—'}`
-            : 'You will be notified to download the Teeko Driver app'
+            ? `${t('dashboard.stages.active')} ${status.activatedDate ? new Date(status.activatedDate).toLocaleDateString(i18n.language === 'en' ? 'en-MY' : i18n.language) : ''}`
+            : t('onboarding.confirmation.step3Desc')
         }
         isLast
       />

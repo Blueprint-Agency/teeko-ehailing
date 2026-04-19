@@ -1,10 +1,12 @@
 'use client'
 
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import { OnboardingProgress } from '@/components/driver/OnboardingProgress'
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
   const { currentStep } = useOnboardingStore()
 
   return (
@@ -16,10 +18,10 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-teal)]">
               <span className="font-display text-xs font-bold text-[var(--color-navy)]">T</span>
             </div>
-            <span className="font-display text-lg text-[var(--color-navy)]">Teeko</span>
+            <span className="font-display text-lg text-[var(--color-navy)]">{t('common.appName')}</span>
           </Link>
           <span className="text-xs font-medium text-[var(--color-muted)]">
-            Step {currentStep + 1} of 5
+            {t('common.step')} {currentStep + 1} {t('common.of')} 5
           </span>
         </div>
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useWebAuthStore } from '@/stores/authStore'
@@ -10,6 +11,7 @@ import mockProfile from '@/data/mock-driver-profile.json'
 import type { DriverProfile } from '@teeko/shared/types'
 
 function VerifyForm() {
+  const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const phone = searchParams?.get('phone') ?? ''
@@ -46,7 +48,7 @@ function VerifyForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const code = otp.join('')
-    if (code.length < 6) { setError('Enter all 6 digits'); return }
+    if (code.length < 6) { setError(t('auth.verify.enterDigits')); return }
     setLoading(true)
     await new Promise((r) => setTimeout(r, 800))
     // Mock: any 6-digit code works
@@ -61,12 +63,12 @@ function VerifyForm() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-teal-light)]">
             <MessageSquare className="h-5 w-5 text-[var(--color-teal-dark)]" />
           </div>
-          <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">Verify your number</h1>
+          <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">{t('auth.verify.title')}</h1>
           <p className="text-[var(--color-muted)]">
-            Enter the 6-digit code sent to{' '}
+            {t('auth.verify.subtitle')}{' '}
             <span className="font-semibold text-[var(--color-text)]">{phone}</span>
           </p>
-          <p className="mt-1 text-xs text-[var(--color-muted)]">(In v0.1, any 6-digit code works)</p>
+          <p className="mt-1 text-xs text-[var(--color-muted)]">{t('auth.verify.mockHint')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="animate-fade-up animate-delay-100">
@@ -94,27 +96,27 @@ function VerifyForm() {
           )}
 
           <Button type="submit" size="lg" className="w-full" loading={loading}>
-            Verify
+            {t('auth.verify.button')}
           </Button>
         </form>
 
         <div className="animate-fade-up animate-delay-200 mt-6 text-center text-sm text-[var(--color-muted)]">
           {countdown > 0 ? (
-            <span>Resend code in {countdown}s</span>
+            <span>{t('auth.verify.resendTimer')} {countdown}s</span>
           ) : (
             <button
               onClick={() => setCountdown(30)}
               className="font-medium text-[var(--color-teal-dark)] hover:underline"
             >
-              Resend code
+              {t('auth.verify.resendButton')}
             </button>
           )}
         </div>
 
         <p className="mt-4 text-center text-sm text-[var(--color-muted)]">
-          Wrong number?{' '}
+          {t('auth.verify.wrongNumber')}{' '}
           <Link href="/auth/login" className="font-medium text-[var(--color-teal-dark)] hover:underline">
-            Go back
+            {t('common.goBack')}
           </Link>
         </p>
       </div>

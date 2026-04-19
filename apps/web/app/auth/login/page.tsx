@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,6 +16,7 @@ const schema = z.object({ phone: phoneSchema })
 type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
+  const { t } = useTranslation()
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
@@ -38,20 +40,20 @@ export default function LoginPage() {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-teal)]">
               <span className="font-display text-lg font-bold text-[var(--color-navy)]">T</span>
             </div>
-            <span className="font-display text-2xl text-white">Teeko</span>
+            <span className="font-display text-2xl text-white">{t('common.appName')}</span>
           </Link>
 
           <div>
             <h2 className="mb-4 font-display text-4xl text-white">
-              Good to have you back.
+              {t('auth.login.title')}
             </h2>
             <p className="text-white/60">
-              Log in to check your application status, resubmit documents, or continue onboarding.
+              {t('landing.cta.subtitle')}
             </p>
           </div>
 
           <p className="text-xs text-white/30">
-            APAD-licensed · PDPA 2010 compliant
+            {t('landing.stats.compliant')}
           </p>
         </div>
       </div>
@@ -63,14 +65,14 @@ export default function LoginPage() {
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-teal-light)]">
               <Phone className="h-5 w-5 text-[var(--color-teal-dark)]" />
             </div>
-            <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">Welcome back</h1>
-            <p className="text-[var(--color-muted)]">Enter your Malaysian mobile number to continue</p>
+            <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">{t('auth.login.title')}</h1>
+            <p className="text-[var(--color-muted)]">{t('auth.login.subtitle')}</p>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="animate-fade-up animate-delay-100 space-y-5">
             <Input
-              label="Malaysian mobile number"
-              placeholder="e.g. 011-23456789"
+              label={t('auth.login.phoneLabel')}
+              placeholder={t('auth.login.phonePlaceholder')}
               type="tel"
               required
               error={errors.phone?.message}
@@ -78,15 +80,15 @@ export default function LoginPage() {
             />
 
             <Button type="submit" size="lg" className="w-full" loading={loading}>
-              Send OTP
+              {t('auth.login.sendOtp')}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
 
           <p className="animate-fade-up animate-delay-200 mt-6 text-center text-sm text-[var(--color-muted)]">
-            New driver?{' '}
+            {t('auth.login.noAccount')}{' '}
             <Link href="/auth/register" className="font-medium text-[var(--color-teal-dark)] hover:underline">
-              Register here
+              {t('auth.login.registerLink')}
             </Link>
           </p>
         </div>

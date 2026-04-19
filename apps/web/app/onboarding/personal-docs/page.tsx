@@ -1,12 +1,14 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { useTranslation } from 'react-i18next'
 import { Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DocumentSlot } from '@/components/driver/DocumentSlot'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 
 export default function PersonalDocsPage() {
+  const { t } = useTranslation()
   const router = useRouter()
   const { personalDocs, updatePersonalDoc, setStep } = useOnboardingStore()
 
@@ -29,15 +31,15 @@ export default function PersonalDocsPage() {
   return (
     <div className="animate-fade-up">
       <div className="mb-8">
-        <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">Personal Documents</h1>
+        <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">{t('onboarding.personalDocs.title')}</h1>
         <p className="text-[var(--color-muted)]">
-          Upload clear photos or scans of all required documents.
+          {t('onboarding.personalDocs.subtitle')}
         </p>
       </div>
 
       <div className="mb-4 flex items-start gap-2 rounded-[var(--radius-md)] border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
         <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
-        <span>Ensure all documents are clear, unexpired, and match the name on your NRIC. Low-quality or expired documents will be rejected.</span>
+        <span>{t('onboarding.personalDocs.instruction')}</span>
       </div>
 
       <div className="space-y-4">
@@ -52,20 +54,20 @@ export default function PersonalDocsPage() {
 
       <div className="mt-8 flex items-center justify-between">
         <Button variant="outline" onClick={() => router.push('/onboarding/agreement')}>
-          Back
+          {t('common.back')}
         </Button>
         <Button
           size="lg"
           disabled={!allUploaded}
           onClick={handleNext}
         >
-          Continue to Vehicle Details
+          {t('common.continue')}
         </Button>
       </div>
 
       {!allUploaded && (
         <p className="mt-3 text-center text-xs text-[var(--color-muted)]">
-          Upload all {personalDocs.length} documents to continue
+          {t('onboarding.personalDocs.uploadPending')}
         </p>
       )}
     </div>
