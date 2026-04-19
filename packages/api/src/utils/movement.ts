@@ -23,7 +23,7 @@ export function simulateDriverMovement(
     return () => {};
   }
   const start = Date.now();
-  const tickMs = 250;
+  const tickMs = 80;
   const total = polyline.length - 1;
 
   const interval = setInterval(() => {

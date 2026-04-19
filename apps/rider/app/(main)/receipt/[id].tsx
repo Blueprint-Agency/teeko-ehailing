@@ -3,7 +3,7 @@ import { ScrollView, View } from 'react-native';
 
 import { usePaymentsStore, useTripStore } from '@teeko/api';
 import type { RideCategory } from '@teeko/shared';
-import { Icon, Pressable, ScreenContainer, Text } from '@teeko/ui';
+import { Icon, Pressable, ScreenContainer, Skeleton, Text } from '@teeko/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 const RIDE_LABELS: Record<RideCategory, string> = {
@@ -52,10 +52,14 @@ export default function ReceiptScreen() {
 
   if (!trip) {
     return (
-      <ScreenContainer>
+      <ScreenContainer edges={['top', 'left', 'right', 'bottom']}>
         <Header onBack={() => router.back()} />
-        <View className="flex-1 items-center justify-center">
-          <Text tone="secondary">Loading receipt…</Text>
+        <View className="mt-2 gap-3">
+          <Skeleton className="h-3 w-1/3" />
+          <Skeleton className="mt-3 h-10 w-1/2" />
+          <Skeleton className="h-3 w-2/3" />
+          <Skeleton className="mt-6 h-20 w-full" />
+          <Skeleton className="mt-2 h-20 w-full" />
         </View>
       </ScreenContainer>
     );

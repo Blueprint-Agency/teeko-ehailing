@@ -13,6 +13,7 @@ export { Pressable, type PressableProps, type HapticStyle } from './primitives/P
 export { Rating, type RatingProps } from './primitives/Rating';
 export { RatingPill, type RatingPillProps } from './primitives/RatingPill';
 export { ScreenContainer, type ScreenContainerProps } from './primitives/ScreenContainer';
+export { Skeleton, SkeletonRow, type SkeletonProps } from './primitives/Skeleton';
 export { Spinner, type SpinnerProps } from './primitives/Spinner';
 export { Text, type TextProps } from './primitives/Text';
 

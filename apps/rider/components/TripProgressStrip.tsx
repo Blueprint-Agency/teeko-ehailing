@@ -1,20 +1,10 @@
 import { View } from 'react-native';
 
 import { useTripStore } from '@teeko/api';
-import type { LatLng } from '@teeko/shared';
 import { Icon, Pressable, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
-function haversineKm(a: LatLng, b: LatLng): number {
-  const R = 6371;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const s =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(s));
-}
+import { formatDistance, haversineKm } from '../utils/distance';
 
 export function TripProgressStrip() {
   const router = useRouter();
@@ -31,13 +21,6 @@ export function TripProgressStrip() {
     driverPosition && destination
       ? haversineKm(driverPosition, { lat: destination.lat, lng: destination.lng })
       : null;
-
-  const distanceLabel =
-    distanceKm !== null
-      ? distanceKm < 1
-        ? `${Math.round(distanceKm * 1000)} m`
-        : `${distanceKm.toFixed(1)} km`
-      : '—';
 
   const etaLabel =
     status === 'arrived'
@@ -67,7 +50,7 @@ export function TripProgressStrip() {
           {statusLabel} · {driver.name.split(' ')[0]}
         </Text>
         <Text className="mt-0.5 text-xs text-white/80">
-          {etaLabel} · {distanceLabel} remaining
+          {etaLabel} · {formatDistance(distanceKm)} remaining
         </Text>
       </View>
       <Icon name="chevron-right" size={20} color="rgba(255,255,255,0.8)" />

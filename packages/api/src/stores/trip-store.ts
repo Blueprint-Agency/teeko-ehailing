@@ -27,6 +27,7 @@ export type TripState = {
   driverPosition: LatLng | null;
   driverHeading: number;
   history: Trip[];
+  historyLoading: boolean;
   error: string | null;
   setPickup: (p: Place) => void;
   setDestination: (p: Place) => void;
@@ -71,6 +72,7 @@ export const useTripStore = create<TripState>((set, get) => ({
   driverPosition: null,
   driverHeading: 0,
   history: [],
+  historyLoading: false,
   error: null,
 
   setPickup(p) {
@@ -116,19 +118,37 @@ export const useTripStore = create<TripState>((set, get) => ({
 
     try {
       const driver = await tripsApi.autoMatch(rideType);
+      // Use the curved approach polyline emitted by book() so the driver tracks
+      // along a road-like curve; fall back to a 2-point line if missing.
+      const approachPolyline =
+        trip.approachPolyline && trip.approachPolyline.length >= 2
+          ? trip.approachPolyline
+          : ([
+              [pickup.lat + 0.008, pickup.lng + 0.008],
+              [pickup.lat, pickup.lng],
+            ] as Array<[number, number]>);
+      const spawn = approachPolyline[0]!;
       set({
         driver,
         status: 'matched',
         trip: { ...trip, driver, status: 'matched' },
-        driverPosition: trip.routePolyline[0]
-          ? { lat: trip.routePolyline[0][0], lng: trip.routePolyline[0][1] }
-          : null,
+        driverPosition: { lat: spawn[0], lng: spawn[1] },
       });
+
+      // Animate driver approaching pickup during the 15s matched phase.
+      stopMovement?.();
+      stopMovement = simulateDriverMovement(
+        approachPolyline,
+        15_000,
+        ({ position, heading }) => set({ driverPosition: position, driverHeading: heading }),
+      );
 
       // Driver arrives to pickup after ~15s in mock-time.
       schedule(() => {
         if (get().status !== 'matched') return;
-        set({ status: 'arrived' });
+        stopMovement?.();
+        stopMovement = null;
+        set({ status: 'arrived', driverPosition: { lat: pickup.lat, lng: pickup.lng } });
 
         // Auto-start trip 5s after arrival.
         schedule(() => {
@@ -200,8 +220,13 @@ export const useTripStore = create<TripState>((set, get) => ({
   },
 
   async loadHistory() {
-    const history = await tripsApi.history();
-    set({ history });
+    set({ historyLoading: true });
+    try {
+      const history = await tripsApi.history();
+      set({ history, historyLoading: false });
+    } catch (e) {
+      set({ historyLoading: false, error: (e as Error).message });
+    }
   },
 
   reset() {

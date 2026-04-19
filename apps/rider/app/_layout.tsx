@@ -10,6 +10,7 @@ import {
 } from '@expo-google-fonts/nunito';
 import type { Locale } from '@teeko/shared';
 import { useAuthStore, useLocationStore } from '@teeko/api';
+import { initI18n, setLocale } from '@teeko/i18n';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Localization from 'expo-localization';
@@ -36,9 +37,16 @@ export default function RootLayout() {
   const setCurrent = useLocationStore((s) => s.setCurrent);
 
   useEffect(() => {
-    setLanguage(detectLocale());
+    const locale = detectLocale();
+    initI18n(locale);
+    setLanguage(locale);
     hydrate();
   }, [hydrate, setLanguage]);
+
+  const languagePref = useAuthStore((s) => s.languagePref);
+  useEffect(() => {
+    setLocale(languagePref);
+  }, [languagePref]);
 
   // PRD §4.1 + plan §2: request location on first launch, non-blocking.
   // Denial is tolerated — Home falls back to KL Sentral.
@@ -72,7 +80,11 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(main)" />
+        <Stack.Screen name="(auth)" options={{ presentation: 'modal', gestureEnabled: true }} />
+      </Stack>
     </SafeAreaProvider>
   );
 }

@@ -44,17 +44,48 @@ function distanceKm(a: LatLng, b: LatLng): number {
   return 2 * R * Math.asin(Math.sqrt(s));
 }
 
-function buildPolyline(a: LatLng, b: LatLng, steps = 20): Array<[number, number]> {
+// Cubic Bézier with two control points — renders as a road with a gentle elbow
+// instead of a single arc, so the polyline reads as a real route on the map.
+function buildPolyline(
+  a: LatLng,
+  b: LatLng,
+  steps = 48,
+  bend = 0.22,
+): Array<[number, number]> {
+  const dx = b.lat - a.lat;
+  const dy = b.lng - a.lng;
+  // Two control points at 1/3 and 2/3 along the line, perpendicularly offset
+  // in opposite directions to give the curve an S-bend feel.
+  const c1Lat = a.lat + dx * 0.33 + -dy * bend;
+  const c1Lng = a.lng + dy * 0.33 + dx * bend;
+  const c2Lat = a.lat + dx * 0.66 + dy * bend * 0.6;
+  const c2Lng = a.lng + dy * 0.66 + -dx * bend * 0.6;
   const pts: Array<[number, number]> = [];
   for (let i = 0; i <= steps; i += 1) {
     const t = i / steps;
-    // gentle curve via midpoint perturbation
-    const lat = a.lat + (b.lat - a.lat) * t;
-    const lng = a.lng + (b.lng - a.lng) * t;
-    const wobble = 0.0015 * Math.sin(t * Math.PI);
-    pts.push([lat + wobble, lng + wobble]);
+    const u = 1 - t;
+    const lat =
+      u * u * u * a.lat +
+      3 * u * u * t * c1Lat +
+      3 * u * t * t * c2Lat +
+      t * t * t * b.lat;
+    const lng =
+      u * u * u * a.lng +
+      3 * u * u * t * c1Lng +
+      3 * u * t * t * c2Lng +
+      t * t * t * b.lng;
+    pts.push([lat, lng]);
   }
   return pts;
+}
+
+// A short curved route from the driver's spawn point to the pickup, used during
+// the `matched` phase so the approach animation tracks along something that
+// reads as streets rather than a straight diagonal.
+function buildApproachPolyline(pickup: LatLng): Array<[number, number]> {
+  // Spawn ~0.008° NE of pickup (≈900m). Matches trip-store expectations.
+  const spawn: LatLng = { lat: pickup.lat + 0.008, lng: pickup.lng + 0.008 };
+  return buildPolyline(spawn, pickup, 36, 0.28);
 }
 
 export async function estimate(
@@ -97,6 +128,7 @@ export async function book(args: {
     fare: args.fare,
     paymentMethodId: args.paymentMethodId,
     routePolyline: buildPolyline(args.pickup, args.destination),
+    approachPolyline: buildApproachPolyline(args.pickup),
     createdAt: new Date().toISOString(),
   };
 }

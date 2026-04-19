@@ -24,6 +24,8 @@ export interface Rider {
   email?: string;
   rating: number;
   languagePref: Locale;
+  verified?: boolean;
+  signupDate?: string;
 }
 
 export interface Vehicle {
@@ -83,6 +85,7 @@ export interface Trip {
   fare: Fare;
   paymentMethodId: string;
   routePolyline: Array<[number, number]>;
+  approachPolyline?: Array<[number, number]>;
   createdAt: string;
   startedAt?: string;
   completedAt?: string;

@@ -3,13 +3,30 @@ import { StyleSheet } from 'react-native';
 import RNMapView, {
   PROVIDER_DEFAULT,
   PROVIDER_GOOGLE,
+  type Camera,
   type Region,
   type MapViewProps as RNMapViewProps,
 } from 'react-native-maps';
 
+export interface EdgePadding {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+export interface FitOptions {
+  edgePadding?: EdgePadding;
+  animated?: boolean;
+}
+
 export interface MapViewHandle {
   animateToRegion: (region: Region, duration?: number) => void;
-  fitToCoordinates: (coords: Array<{ latitude: number; longitude: number }>) => void;
+  fitToCoordinates: (
+    coords: Array<{ latitude: number; longitude: number }>,
+    opts?: FitOptions,
+  ) => void;
+  animateCamera: (camera: Partial<Camera>, duration?: number) => void;
 }
 
 export interface MapViewProps extends Omit<RNMapViewProps, 'provider'> {
@@ -30,11 +47,13 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   useImperativeHandle(ref, () => ({
     animateToRegion: (region, duration = 400) =>
       innerRef.current?.animateToRegion(region, duration),
-    fitToCoordinates: (coords) =>
+    fitToCoordinates: (coords, opts) =>
       innerRef.current?.fitToCoordinates(coords, {
-        edgePadding: { top: 80, bottom: 120, left: 40, right: 40 },
-        animated: true,
+        edgePadding: opts?.edgePadding ?? { top: 80, bottom: 120, left: 40, right: 40 },
+        animated: opts?.animated ?? true,
       }),
+    animateCamera: (camera, duration = 500) =>
+      innerRef.current?.animateCamera(camera, { duration }),
   }));
 
   return (

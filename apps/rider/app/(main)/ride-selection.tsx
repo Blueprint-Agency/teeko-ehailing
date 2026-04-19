@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ScrollView, View } from 'react-native';
 
 import {
@@ -16,7 +16,7 @@ import {
   ScreenContainer,
   Text,
 } from '@teeko/ui';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 
 import { PaymentMethodSheet } from '../../components/PaymentMethodSheet';
 import { PaymentSelectorRow } from '../../components/PaymentSelectorRow';
@@ -51,6 +51,7 @@ export default function RideSelectionScreen() {
   const loadMethods = usePaymentsStore((s) => s.load);
 
   const sheetRef = useRef<BottomSheetHandle>(null);
+  const pendingBookRef = useRef(false);
 
   useEffect(() => {
     loadMethods();
@@ -71,16 +72,33 @@ export default function RideSelectionScreen() {
     [methods, paymentMethodId],
   );
 
+  const proceedBook = useCallback(
+    (riderId: string) => {
+      router.push('/(main)/finding-driver');
+      book(riderId);
+    },
+    [book, router],
+  );
+
   const confirm = async () => {
+    if (!rideType || !paymentMethodId) return;
     if (!rider) {
-      pushToast({ kind: 'error', message: 'Please sign in again.' });
+      pendingBookRef.current = true;
+      pushToast({ kind: 'info', message: 'Sign in to book your ride.' });
+      router.push('/(auth)/login');
       return;
     }
-    if (!rideType || !paymentMethodId) return;
-    router.push('/(main)/finding-driver');
-    // Fire after navigation so state transitions run with finding-driver mounted.
-    book(rider.id);
+    proceedBook(rider.id);
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (pendingBookRef.current && rider && rideType && paymentMethodId) {
+        pendingBookRef.current = false;
+        proceedBook(rider.id);
+      }
+    }, [rider, rideType, paymentMethodId, proceedBook]),
+  );
 
   if (!pickup || !destination) {
     return (

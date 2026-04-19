@@ -5,9 +5,22 @@ import { StyleSheet, Text, View, type ViewProps } from 'react-native';
 // that is visually neutral and explicitly labelled so designers/devs know why
 // the map is missing. Ref methods are no-ops on web.
 
+export interface EdgePadding {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+}
+
+export interface FitOptions {
+  edgePadding?: EdgePadding;
+  animated?: boolean;
+}
+
 export interface MapViewHandle {
   animateToRegion: (...args: unknown[]) => void;
   fitToCoordinates: (...args: unknown[]) => void;
+  animateCamera: (...args: unknown[]) => void;
 }
 
 export interface MapViewProps extends ViewProps {
@@ -29,6 +42,7 @@ export const MapView = forwardRef<MapViewHandle, MapViewProps>(function MapView(
   useImperativeHandle(ref, () => ({
     animateToRegion: () => {},
     fitToCoordinates: () => {},
+    animateCamera: () => {},
   }));
 
   return (

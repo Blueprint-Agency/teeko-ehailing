@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
-import { useAuthStore, useLocationStore, useTripStore, useUIStore } from '@teeko/api';
-import { Button, Pressable, Text } from '@teeko/ui';
-import { MapView } from '@teeko/maps';
+import { useAuthStore, useTripStore, useUIStore } from '@teeko/api';
+import { Button, Icon, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
 import { SearchingIndicator } from '../../components/SearchingIndicator';
@@ -20,12 +19,10 @@ export default function FindingDriverScreen() {
   const destination = useTripStore((s) => s.destination);
   const rider = useAuthStore((s) => s.rider);
   const forceNoDrivers = useUIStore((s) => s.forceNoDrivers);
-  const currentLatLng = useLocationStore((s) => s.current);
 
   const [timedOut, setTimedOut] = useState(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Navigate on match or cancellation.
   useEffect(() => {
     if (status === 'matched' || status === 'arrived') {
       router.replace('/(main)/driver-matched');
@@ -34,7 +31,6 @@ export default function FindingDriverScreen() {
     }
   }, [router, status]);
 
-  // 60s safety timer.
   useEffect(() => {
     if (status !== 'searching' || timedOut) return;
     timeoutRef.current = setTimeout(() => {
@@ -62,30 +58,17 @@ export default function FindingDriverScreen() {
     }
   };
 
-  const centerRegion = {
-    latitude: pickup?.lat ?? currentLatLng.lat,
-    longitude: pickup?.lng ?? currentLatLng.lng,
-    latitudeDelta: 0.02,
-    longitudeDelta: 0.02,
-  };
-
   return (
-    <View className="flex-1 bg-surface">
-      <MapView
-        initialRegion={centerRegion}
-        scrollEnabled={false}
-        zoomEnabled={false}
-        rotateEnabled={false}
-        pitchEnabled={false}
-      />
-      {/* Dim overlay */}
-      <View pointerEvents="none" className="absolute inset-0 bg-black/40" />
-
-      <View className="absolute inset-0 items-center justify-center px-gutter">
+    <View className="flex-1 bg-white">
+      <View className="flex-1 items-center justify-center px-gutter">
         {showNoDrivers ? (
           <NoDriversState onTryAgain={tryAgain} onCancel={cancelBooking} />
         ) : (
-          <SearchingState onCancel={cancelBooking} destinationName={destination?.name} />
+          <SearchingState
+            onCancel={cancelBooking}
+            pickupName={pickup?.name}
+            destinationName={destination?.name}
+          />
         )}
       </View>
     </View>
@@ -94,26 +77,51 @@ export default function FindingDriverScreen() {
 
 function SearchingState({
   onCancel,
+  pickupName,
   destinationName,
 }: {
   onCancel: () => void;
+  pickupName?: string;
   destinationName?: string;
 }) {
   return (
-    <View className="items-center">
+    <View className="w-full max-w-sm items-center">
       <SearchingIndicator />
-      <Text weight="bold" className="mt-8 text-2xl text-white">
-        Finding your driver…
+      <Text weight="bold" className="mt-8 text-center text-[28px] leading-tight text-ink-primary">
+        Finding your driver
       </Text>
-      {destinationName ? (
-        <Text className="mt-2 text-sm text-white/80">Heading to {destinationName}</Text>
+      <Text tone="secondary" className="mt-2 text-center text-sm">
+        Matching you with a nearby Teeko driver…
+      </Text>
+
+      {(pickupName || destinationName) ? (
+        <View className="mt-8 w-full rounded-2xl border border-border bg-surface px-4 py-4">
+          {pickupName ? (
+            <View className="flex-row items-center">
+              <View className="h-2.5 w-2.5 rounded-full bg-ink-primary" />
+              <Text className="ml-3 flex-1 text-sm text-ink-primary" numberOfLines={1}>
+                {pickupName}
+              </Text>
+            </View>
+          ) : null}
+          {pickupName && destinationName ? (
+            <View className="ml-[4px] mt-1 mb-1 h-4 w-0.5 bg-ink-primary/30" />
+          ) : null}
+          {destinationName ? (
+            <View className="flex-row items-center">
+              <View className="h-2.5 w-2.5 items-center justify-center rounded-sm bg-primary">
+                <Icon name="flag" size={8} color="#FFFFFF" />
+              </View>
+              <Text className="ml-3 flex-1 text-sm text-ink-primary" numberOfLines={1}>
+                {destinationName}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       ) : null}
-      <View className="mt-10">
-        <Pressable onPress={onCancel} haptic="medium" className="px-6 py-3">
-          <Text weight="bold" className="text-base text-white">
-            Cancel
-          </Text>
-        </Pressable>
+
+      <View className="mt-8 w-full">
+        <Button label="Cancel request" variant="ghost" onPress={onCancel} />
       </View>
     </View>
   );
@@ -127,8 +135,11 @@ function NoDriversState({
   onCancel: () => void;
 }) {
   return (
-    <View className="w-full max-w-sm rounded-xl bg-surface p-6">
-      <Text weight="bold" className="text-xl">
+    <View className="w-full max-w-sm rounded-2xl bg-surface p-6">
+      <View className="h-12 w-12 items-center justify-center rounded-full bg-primary-50">
+        <Icon name="error-outline" size={28} color="#E11D2E" />
+      </View>
+      <Text weight="bold" className="mt-4 text-xl">
         No drivers available
       </Text>
       <Text tone="secondary" className="mt-2 text-sm">

@@ -8,7 +8,5 @@ export default function SplashGate() {
   if (status === 'unknown') {
     return <View className="flex-1 bg-surface" />;
   }
-  return (
-    <Redirect href={status === 'authed' ? '/(main)/(tabs)/rides' : '/(auth)/phone'} />
-  );
+  return <Redirect href="/(main)/(tabs)" />;
 }

@@ -5,24 +5,89 @@ import ridersJson from '../data/riders.json';
 
 const riders = ridersJson as Rider[];
 
-export type OtpChallenge = { phone: string; challengeId: string };
+export const EMAIL_INVALID = 'EMAIL_INVALID' as const;
+export const PASSWORD_INVALID = 'PASSWORD_INVALID' as const;
 
-export const OTP_INVALID = 'OTP_INVALID' as const;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export async function sendOtp(phone: string): Promise<OtpChallenge> {
+export type SignupResult = {
+  email: string;
+  verifyToken: string;
+};
+
+// Demo rule: any syntactically valid email + any non-empty password succeeds.
+export async function signInWithEmail(email: string, password: string): Promise<Rider> {
   await simulateLatency();
-  return { phone, challengeId: `otp_${Date.now()}` };
-}
-
-// Plan §3: any code starting with '1' succeeds (demo affordance); anything else throws OTP_INVALID.
-export async function verifyOtp(_challengeId: string, code: string): Promise<Rider> {
-  await simulateLatency();
-  if (!/^1\d{5}$/.test(code)) {
-    const err = new Error('OTP_INVALID');
-    err.name = OTP_INVALID;
+  if (!EMAIL_RE.test(email)) {
+    const err = new Error('EMAIL_INVALID');
+    err.name = EMAIL_INVALID;
     throw err;
   }
-  return riders[0]!;
+  if (!password) {
+    const err = new Error('PASSWORD_INVALID');
+    err.name = PASSWORD_INVALID;
+    throw err;
+  }
+  const base = riders[0]!;
+  return {
+    ...base,
+    email,
+    verified: true,
+    signupDate: base.signupDate ?? new Date().toISOString(),
+  };
+}
+
+// Signup starts verification — rider is not returned until verifyEmail completes.
+export async function signUpWithEmail(
+  _name: string,
+  email: string,
+  password: string,
+): Promise<SignupResult> {
+  await simulateLatency();
+  if (!EMAIL_RE.test(email)) {
+    const err = new Error('EMAIL_INVALID');
+    err.name = EMAIL_INVALID;
+    throw err;
+  }
+  if (!password) {
+    const err = new Error('PASSWORD_INVALID');
+    err.name = PASSWORD_INVALID;
+    throw err;
+  }
+  return { email, verifyToken: `verify_${Date.now()}` };
+}
+
+// Google sign-in skips verification — returns authed rider immediately.
+export async function signInWithGoogle(): Promise<Rider> {
+  await simulateLatency(500, 900);
+  const base = riders[0]!;
+  return {
+    ...base,
+    email: base.email ?? 'demo.user@gmail.com',
+    verified: true,
+    signupDate: base.signupDate ?? new Date().toISOString(),
+  };
+}
+
+// Verification step after signup — always succeeds in the mockup.
+export async function verifyEmail(
+  _token: string,
+  name: string,
+  email: string,
+): Promise<Rider> {
+  await simulateLatency(700, 1200);
+  const base = riders[0]!;
+  return {
+    ...base,
+    name: name || base.name,
+    email,
+    verified: true,
+    signupDate: new Date().toISOString(),
+  };
+}
+
+export async function resendVerification(_token: string): Promise<void> {
+  await simulateLatency(400, 700);
 }
 
 export async function me(): Promise<Rider | null> {

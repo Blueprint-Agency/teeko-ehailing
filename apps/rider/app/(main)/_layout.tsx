@@ -14,6 +14,8 @@ export default function MainLayout() {
       <Stack.Screen name="receipt/[id]" />
       <Stack.Screen name="account/personal" options={{ presentation: 'modal' }} />
       <Stack.Screen name="account/security" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="account/payments" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="account/demo" options={{ presentation: 'modal' }} />
     </Stack>
   );
 }

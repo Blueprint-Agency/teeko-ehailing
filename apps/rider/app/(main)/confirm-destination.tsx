@@ -81,7 +81,7 @@ export default function ConfirmDestinationScreen() {
         <CurrentLocationButton onPress={recenter} />
       </View>
 
-      <SafeAreaView edges={['bottom']} className="absolute bottom-0 left-0 right-0">
+      <SafeAreaView edges={['bottom']} className="absolute bottom-0 left-0 right-0 bg-surface">
         <View className="rounded-t-2xl border-t border-border bg-surface px-gutter pb-4 pt-5">
           <Text tone="secondary" className="text-xs">
             Destination
