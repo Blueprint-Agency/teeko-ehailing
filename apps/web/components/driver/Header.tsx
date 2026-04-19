@@ -36,7 +36,7 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
           : 'bg-white/95 border-[var(--color-border)]'
       )}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 no-underline">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-teal)]">
@@ -63,14 +63,14 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
         </Link>
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Language picker */}
           <div className="relative">
             <select
               value={locale}
               onChange={(e) => setLocale(e.target.value as Locale)}
               className={cn(
-                'appearance-none rounded-[var(--radius-md)] border px-3 py-1.5 pr-6 text-xs font-medium',
+                'appearance-none rounded-[var(--radius-md)] border px-2 py-1.5 pr-6 text-xs font-medium sm:px-3',
                 'focus:outline-none focus:ring-2 focus:ring-[var(--color-teal)]',
                 'cursor-pointer',
                 isNavy

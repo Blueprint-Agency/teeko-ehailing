@@ -12,16 +12,16 @@ import type { DocumentState } from '@teeko/shared/types'
 
 function DocRow({ doc }: { doc: DocumentState }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
+    <div className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-[var(--color-text)]">{doc.label}</p>
         {doc.rejectionReason && (
-          <p className="mt-0.5 truncate text-xs text-[var(--color-error)]">
+          <p className="mt-0.5 text-xs text-[var(--color-error)]">
             {doc.rejectionReason}
           </p>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 sm:justify-end">
         <Badge variant={statusVariant(doc.status)}>{statusLabel(doc.status)}</Badge>
         {doc.status === 'rejected' && (
           <Link href={`/dashboard/resubmit/${doc.id}`}>
@@ -46,7 +46,7 @@ export default function DashboardPage() {
     <div className="min-h-screen">
       <Header showNav />
 
-      <main className="mx-auto max-w-4xl px-6 py-10">
+      <main className="mx-auto w-full max-w-4xl px-6 py-10">
         {/* Page header */}
         <div className="animate-fade-up mb-8 flex items-start justify-between gap-4">
           <div>

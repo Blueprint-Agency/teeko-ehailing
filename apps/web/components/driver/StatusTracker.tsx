@@ -53,7 +53,7 @@ function Stage({ index, title, status, detail, isLast }: StageProps) {
 
       {/* Content */}
       <div className="pb-6">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="font-medium text-[var(--color-text)]">{title}</span>
           <Badge variant={statusVariant(status)}>{statusLabel(status)}</Badge>
         </div>
