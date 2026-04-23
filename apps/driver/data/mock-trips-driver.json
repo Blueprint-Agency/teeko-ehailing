@@ -1,0 +1,8 @@
+[
+  { "id": "trip_001", "date": "2026-04-23", "time": "08:14", "pickup": "Pavilion KL", "destination": "KLCC", "fare": 14.50, "distance": 3.2, "riderName": "Nurul A.", "ratingGiven": 5 },
+  { "id": "trip_002", "date": "2026-04-23", "time": "09:45", "pickup": "Bukit Bintang MRT", "destination": "Mid Valley", "fare": 18.00, "distance": 5.1, "riderName": "Lee C.", "ratingGiven": 5 },
+  { "id": "trip_003", "date": "2026-04-23", "time": "11:22", "pickup": "Chow Kit", "destination": "Sentul", "fare": 11.50, "distance": 4.0, "riderName": "Rajan K.", "ratingGiven": 4 },
+  { "id": "trip_004", "date": "2026-04-23", "time": "13:08", "pickup": "KLCC", "destination": "Ampang Park", "fare": 9.00, "distance": 2.5, "riderName": "Siti R.", "ratingGiven": 5 },
+  { "id": "trip_005", "date": "2026-04-23", "time": "15:30", "pickup": "Danga Bay", "destination": "IOI City Mall", "fare": 22.50, "distance": 7.8, "riderName": "Wong H.", "ratingGiven": 5 },
+  { "id": "trip_006", "date": "2026-04-23", "time": "17:15", "pickup": "Putrajaya Sentral", "destination": "Cyberjaya", "fare": 12.00, "distance": 3.9, "riderName": "Aisha B.", "ratingGiven": 5 }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "veh_001",
+    "make": "Perodua",
+    "model": "Myvi",
+    "year": 2022,
+    "plate": "WQK 4821",
+    "color": "Silver",
+    "isActive": true,
+    "docs": {
+      "carGrant": { "status": "approved", "expiry": null },
+      "roadTax": { "status": "approved", "expiry": "2026-08-31" },
+      "insurance": { "status": "approved", "expiry": "2026-10-15" },
+      "puspakom": { "status": "expiring_soon", "expiry": "2026-05-20" }
+    }
+  },
+  {
+    "id": "veh_002",
+    "make": "Proton",
+    "model": "X50",
+    "year": 2023,
+    "plate": "VDG 9134",
+    "color": "Jet Black",
+    "isActive": false,
+    "docs": {
+      "carGrant": { "status": "approved", "expiry": null },
+      "roadTax": { "status": "approved", "expiry": "2027-01-31" },
+      "insurance": { "status": "pending", "expiry": null },
+      "puspakom": { "status": "approved", "expiry": "2027-03-10" }
+    }
+  }
+]

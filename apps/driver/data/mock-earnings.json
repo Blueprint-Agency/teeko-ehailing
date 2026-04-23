@@ -1,0 +1,23 @@
+{
+  "todayTotal": 87.50,
+  "todayTrips": 6,
+  "weeklyTotal": 542.00,
+  "weeklyTrips": 38,
+  "cashoutEligible": true,
+  "cashoutMinimum": 50.00,
+  "dailyBreakdown": [
+    { "day": "Mon", "amount": 64.00 },
+    { "day": "Tue", "amount": 98.50 },
+    { "day": "Wed", "amount": 112.00 },
+    { "day": "Thu", "amount": 76.50 },
+    { "day": "Fri", "amount": 103.50 },
+    { "day": "Sat", "amount": 87.50 },
+    { "day": "Sun", "amount": 0 }
+  ],
+  "weeklyTotals": [
+    { "week": "W1", "amount": 480.00 },
+    { "week": "W2", "amount": 612.00 },
+    { "week": "W3", "amount": 398.00 },
+    { "week": "W4", "amount": 542.00 }
+  ]
+}

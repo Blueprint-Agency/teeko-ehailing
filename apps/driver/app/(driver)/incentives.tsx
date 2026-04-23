@@ -1,0 +1,112 @@
+import React from 'react';
+import {
+  View, Text, StyleSheet, SafeAreaView, StatusBar, ScrollView,
+} from 'react-native';
+import ScreenHeader from '../../components/driver/ScreenHeader';
+import { Colors } from '../../constants/colors';
+import incentives from '../../data/mock-incentives.json';
+
+export default function IncentivesScreen() {
+  return (
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+      <ScreenHeader title="Incentives" />
+
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.intro}>
+          Complete challenges to earn bonuses on top of your regular fares.
+        </Text>
+
+        {incentives.map((inc) => {
+          const pct = Math.min(inc.completedTrips / inc.targetTrips, 1);
+          const done = (inc as any).completed || pct >= 1;
+          const end = new Date(inc.endsAt);
+          const hoursLeft = Math.max(0, Math.floor((end.getTime() - Date.now()) / 3600000));
+
+          return (
+            <View key={inc.id} style={[styles.card, done && styles.cardDone]}>
+              {done && (
+                <View style={styles.doneBadge}>
+                  <Text style={styles.doneBadgeText}>✓ Earned</Text>
+                </View>
+              )}
+
+              <View style={styles.cardHeader}>
+                <View style={[styles.badge, { backgroundColor: inc.badgeColor + '20', borderColor: inc.badgeColor }]}>
+                  <Text style={[styles.badgeText, { color: inc.badgeColor }]}>
+                    RM {inc.bonusAmount.toFixed(0)}
+                  </Text>
+                </View>
+                <View style={styles.titleBlock}>
+                  <Text style={styles.cardTitle}>{inc.title}</Text>
+                  {!done && <Text style={styles.cardTimer}>⏱ {hoursLeft}h remaining</Text>}
+                </View>
+              </View>
+
+              <Text style={styles.cardDesc}>{inc.description}</Text>
+
+              <View style={styles.progressBlock}>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${pct * 100}%`, backgroundColor: inc.badgeColor }]} />
+                </View>
+                <Text style={styles.progressLabel}>
+                  {inc.completedTrips} / {inc.targetTrips} trips
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: Colors.bg },
+  scroll: { padding: 16, paddingBottom: 40 },
+  intro: { color: Colors.textSec, fontSize: 13, marginBottom: 20, lineHeight: 20 },
+
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: 12,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  cardDone: { borderColor: Colors.success, opacity: 0.8 },
+  doneBadge: {
+    position: 'absolute',
+    top: 0, right: 0,
+    backgroundColor: Colors.success,
+    paddingHorizontal: 12, paddingVertical: 4,
+    borderBottomLeftRadius: 12,
+  },
+  doneBadgeText: { color: '#000', fontSize: 11, fontWeight: '800' },
+
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  badge: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 6,
+    marginRight: 12,
+  },
+  badgeText: { fontWeight: '800', fontSize: 16 },
+  titleBlock: { flex: 1 },
+  cardTitle: { color: Colors.text, fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  cardTimer: { color: Colors.textSec, fontSize: 12 },
+
+  cardDesc: { color: Colors.textSec, fontSize: 13, lineHeight: 18, marginBottom: 14 },
+
+  progressBlock: {},
+  progressTrack: {
+    height: 8, borderRadius: 4,
+    backgroundColor: Colors.surfaceHigh,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressFill: { height: '100%', borderRadius: 4 },
+  progressLabel: { color: Colors.textSec, fontSize: 12, fontWeight: '600', textAlign: 'right' },
+});

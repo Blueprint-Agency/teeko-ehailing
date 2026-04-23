@@ -1,0 +1,34 @@
+[
+  {
+    "id": "notif_001",
+    "type": "approval",
+    "title": "Account Approved",
+    "body": "Your driver account has been approved. You can now go online and accept rides.",
+    "timestamp": "2026-04-20T10:30:00",
+    "read": true
+  },
+  {
+    "id": "notif_002",
+    "type": "doc_expiry",
+    "title": "PUSPAKOM Expiring Soon",
+    "body": "Your PUSPAKOM inspection certificate for WQK 4821 expires on 20 May 2026. Renew before the expiry date to stay active.",
+    "timestamp": "2026-04-22T08:00:00",
+    "read": false
+  },
+  {
+    "id": "notif_003",
+    "type": "incentive",
+    "title": "New Incentive Available",
+    "body": "Weekend Warrior campaign is live! Complete 20 trips this weekend to earn RM 50.",
+    "timestamp": "2026-04-22T12:00:00",
+    "read": false
+  },
+  {
+    "id": "notif_004",
+    "type": "payment",
+    "title": "Earnings Transferred",
+    "body": "RM 480.00 from last week's earnings has been transferred to your bank account.",
+    "timestamp": "2026-04-21T09:00:00",
+    "read": true
+  }
+]

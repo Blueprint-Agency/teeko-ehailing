@@ -1,0 +1,18 @@
+{
+  "id": "req_001",
+  "riderName": "Nurul Ain",
+  "riderRating": 4.8,
+  "riderTrips": 42,
+  "pickup": {
+    "label": "Pavilion KL, Bukit Bintang",
+    "distance": 0.8,
+    "eta": 3
+  },
+  "destination": {
+    "label": "KLCC, Jalan P. Ramlee",
+    "distance": 3.2
+  },
+  "fare": 14.50,
+  "rideType": "TeekoX",
+  "countdownSeconds": 20
+}

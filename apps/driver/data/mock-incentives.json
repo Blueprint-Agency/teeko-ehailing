@@ -1,0 +1,33 @@
+[
+  {
+    "id": "inc_001",
+    "title": "Weekend Warrior",
+    "description": "Complete 20 trips this weekend to earn a RM 50 bonus.",
+    "bonusAmount": 50.00,
+    "targetTrips": 20,
+    "completedTrips": 14,
+    "endsAt": "2026-04-26T23:59:00",
+    "badgeColor": "#CCFF00"
+  },
+  {
+    "id": "inc_002",
+    "title": "Morning Rush Champion",
+    "description": "Complete 8 trips between 6am–9am on weekdays.",
+    "bonusAmount": 30.00,
+    "targetTrips": 8,
+    "completedTrips": 8,
+    "endsAt": "2026-04-25T09:00:00",
+    "badgeColor": "#00D47E",
+    "completed": true
+  },
+  {
+    "id": "inc_003",
+    "title": "5-Star Streak",
+    "description": "Receive 10 consecutive 5-star ratings for a RM 20 bonus.",
+    "bonusAmount": 20.00,
+    "targetTrips": 10,
+    "completedTrips": 7,
+    "endsAt": "2026-04-30T23:59:00",
+    "badgeColor": "#FFAB00"
+  }
+]

@@ -1,0 +1,13 @@
+{
+  "id": "drv_001",
+  "name": "Ahmad Syafiq",
+  "phone": "+60 12-345 6789",
+  "rating": 4.92,
+  "totalTrips": 1284,
+  "onboardingStep": "approved",
+  "status": "active",
+  "joinedDate": "2025-08-14",
+  "photoUrl": null,
+  "language": "en",
+  "colorScheme": "dark"
+}
