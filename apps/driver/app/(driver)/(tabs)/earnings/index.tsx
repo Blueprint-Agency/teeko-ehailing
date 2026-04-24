@@ -1,21 +1,25 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, Alert,
 } from 'react-native';
-import ScreenHeader from '../../../components/driver/ScreenHeader';
-import { Colors } from '../../../constants/colors';
-import earnings from '../../../data/mock-earnings.json';
-import trips from '../../../data/mock-trips-driver.json';
+import ScreenHeader from '../../../../components/driver/ScreenHeader';
+import { useColors } from '../../../../constants/colors';
+import { useTheme } from '../../../../components/ThemeProvider';
+import earnings from '../../../../data/mock-earnings.json';
+import trips from '../../../../data/mock-trips-driver.json';
 
 const BAR_MAX = Math.max(...earnings.dailyBreakdown.map((d) => d.amount));
 
 export default function EarningsScreen() {
   const [tab, setTab] = useState<'today' | 'week'>('today');
+  const colors = useColors();
+  const { activeTheme } = useTheme();
+  const styles = createStyles(colors);
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title="Earnings" />
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -97,28 +101,28 @@ export default function EarningsScreen() {
           </View>
         ))}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 40 },
 
   heroCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 12,
     alignItems: 'center',
   },
-  heroLabel: { color: Colors.textSec, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
-  heroAmount: { color: Colors.accent, fontSize: 44, fontWeight: '800', letterSpacing: -1 },
-  heroSub: { color: Colors.textSec, fontSize: 13, marginTop: 4, marginBottom: 16 },
+  heroLabel: { color: colors.textSec, fontSize: 11, fontWeight: '700', letterSpacing: 1, marginBottom: 6 },
+  heroAmount: { color: colors.accent, fontSize: 44, fontWeight: '800', letterSpacing: -1 },
+  heroSub: { color: colors.textSec, fontSize: 13, marginTop: 4, marginBottom: 16 },
   cashoutBtn: {
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
@@ -126,29 +130,29 @@ const styles = StyleSheet.create({
   cashoutText: { color: '#000', fontWeight: '800', fontSize: 15 },
 
   todayCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 12,
   },
   todayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  todayLabel: { color: Colors.textSec, fontSize: 12, fontWeight: '600', marginBottom: 4 },
-  todayAmount: { color: Colors.text, fontSize: 28, fontWeight: '800' },
+  todayLabel: { color: colors.textSec, fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  todayAmount: { color: colors.text, fontSize: 28, fontWeight: '800' },
   todayTrips: { alignItems: 'center' },
-  todayTripsNum: { color: Colors.text, fontSize: 32, fontWeight: '800' },
-  todayTripsLabel: { color: Colors.textSec, fontSize: 12 },
+  todayTripsNum: { color: colors.text, fontSize: 32, fontWeight: '800' },
+  todayTripsLabel: { color: colors.textSec, fontSize: 12 },
 
   chartCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 20,
   },
-  chartTitle: { color: Colors.text, fontSize: 14, fontWeight: '700', marginBottom: 16 },
+  chartTitle: { color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 16 },
   barsContainer: {
     flexDirection: 'row',
     height: 120,
@@ -156,39 +160,39 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   barColumn: { flex: 1, alignItems: 'center' },
-  barAmt: { color: Colors.textSec, fontSize: 9, marginBottom: 4 },
+  barAmt: { color: colors.textSec, fontSize: 9, marginBottom: 4 },
   barTrack: {
     flex: 1,
     width: '100%',
-    backgroundColor: Colors.surfaceHigh,
+    backgroundColor: colors.surfaceHigh,
     borderRadius: 4,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
-  barFill: { width: '100%', backgroundColor: Colors.surfaceTop, borderRadius: 4 },
-  barFillActive: { backgroundColor: Colors.accent },
-  barDay: { color: Colors.textSec, fontSize: 10, marginTop: 6, fontWeight: '600' },
-  barDayActive: { color: Colors.accent },
+  barFill: { width: '100%', backgroundColor: colors.surfaceTop, borderRadius: 4 },
+  barFillActive: { backgroundColor: colors.accent },
+  barDay: { color: colors.textSec, fontSize: 10, marginTop: 6, fontWeight: '600' },
+  barDayActive: { color: colors.accent },
 
-  sectionTitle: { color: Colors.textSec, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginBottom: 10 },
+  sectionTitle: { color: colors.textSec, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginBottom: 10 },
   tripCard: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
   },
   tripLeft: { flex: 1 },
-  tripTime: { color: Colors.textSec, fontSize: 11, fontWeight: '600', marginBottom: 4 },
+  tripTime: { color: colors.textSec, fontSize: 11, fontWeight: '600', marginBottom: 4 },
   tripRoute: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 },
-  tripFrom: { color: Colors.text, fontSize: 13, fontWeight: '600', flex: 1 },
-  tripArrow: { color: Colors.textMut, fontSize: 12 },
-  tripTo: { color: Colors.text, fontSize: 13, fontWeight: '600', flex: 1 },
-  tripMeta: { color: Colors.textSec, fontSize: 11 },
+  tripFrom: { color: colors.text, fontSize: 13, fontWeight: '600', flex: 1 },
+  tripArrow: { color: colors.textMut, fontSize: 12 },
+  tripTo: { color: colors.text, fontSize: 13, fontWeight: '600', flex: 1 },
+  tripMeta: { color: colors.textSec, fontSize: 11 },
   tripRight: { alignItems: 'flex-end', marginLeft: 12 },
-  tripFare: { color: Colors.text, fontSize: 16, fontWeight: '800' },
-  tripRating: { color: Colors.warning, fontSize: 11, marginTop: 2 },
+  tripFare: { color: colors.text, fontSize: 16, fontWeight: '800' },
+  tripRating: { color: colors.warning, fontSize: 11, marginTop: 2 },
 });

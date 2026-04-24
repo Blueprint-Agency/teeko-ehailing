@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import ScreenHeader from '../../components/driver/ScreenHeader';
-import { Colors } from '../../constants/colors';
-import profile from '../../data/mock-driver-profile.json';
+import ScreenHeader from '../../../components/driver/ScreenHeader';
+import { useColors } from '../../../constants/colors';
+import { useTheme, ThemeType } from '../../../components/ThemeProvider';
+import profile from '../../../data/mock-driver-profile.json';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -15,15 +16,24 @@ const LANGUAGES = [
   { code: 'ta', label: 'தமிழ்' },
 ];
 
+const THEMES: { code: ThemeType; label: string }[] = [
+  { code: 'light', label: 'Light' },
+  { code: 'dark', label: 'Dark' },
+  { code: 'system', label: 'System' },
+];
+
 export default function ProfileScreen() {
   const router = useRouter();
+  const colors = useColors();
+  const { theme, setTheme, activeTheme } = useTheme();
   const [lang, setLang] = useState(profile.language);
 
   const stars = Math.round(profile.rating);
+  const styles = createStyles(colors);
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title="Profile" />
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -52,11 +62,29 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <View style={[styles.statusBadge, { backgroundColor: Colors.success + '20', borderColor: Colors.success }]}>
-                <Text style={[styles.statusBadgeText, { color: Colors.success }]}>Active</Text>
+              <View style={[styles.statusBadge, { backgroundColor: colors.success + '20', borderColor: colors.success }]}>
+                <Text style={[styles.statusBadgeText, { color: colors.success }]}>Active</Text>
               </View>
               <Text style={styles.statLbl}>Status</Text>
             </View>
+          </View>
+        </View>
+
+        {/* Appearance Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Appearance</Text>
+          <View style={styles.langGrid}>
+            {THEMES.map((t) => (
+              <TouchableOpacity
+                key={t.code}
+                style={[styles.langChip, theme === t.code && styles.langChipActive]}
+                onPress={() => setTheme(t.code)}
+              >
+                <Text style={[styles.langChipText, theme === t.code && styles.langChipTextActive]}>
+                  {t.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -119,77 +147,77 @@ export default function ProfileScreen() {
 
         <Text style={styles.version}>Teeko Driver v0.1 · Mockup</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   scroll: { paddingBottom: 40 },
 
   avatarSection: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     paddingVertical: 28,
     paddingHorizontal: 20,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
     marginBottom: 16,
   },
   avatar: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Colors.surfaceHigh,
-    borderWidth: 3, borderColor: Colors.accent,
+    backgroundColor: colors.surfaceHigh,
+    borderWidth: 3, borderColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
     marginBottom: 12,
   },
-  avatarText: { color: Colors.accent, fontSize: 34, fontWeight: '800' },
-  name: { color: Colors.text, fontSize: 22, fontWeight: '800' },
-  phone: { color: Colors.textSec, fontSize: 14, marginTop: 4, marginBottom: 10 },
+  avatarText: { color: colors.accent, fontSize: 34, fontWeight: '800' },
+  name: { color: colors.text, fontSize: 22, fontWeight: '800' },
+  phone: { color: colors.textSec, fontSize: 14, marginTop: 4, marginBottom: 10 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-  ratingStars: { color: Colors.warning, fontSize: 18 },
-  ratingNum: { color: Colors.text, fontSize: 18, fontWeight: '800' },
+  ratingStars: { color: colors.warning, fontSize: 18 },
+  ratingNum: { color: colors.text, fontSize: 18, fontWeight: '800' },
 
   statsRow: { flexDirection: 'row', alignItems: 'center' },
   statItem: { flex: 1, alignItems: 'center' },
-  statNum: { color: Colors.text, fontSize: 15, fontWeight: '700' },
-  statLbl: { color: Colors.textSec, fontSize: 11, marginTop: 2 },
-  statDivider: { width: 1, height: 30, backgroundColor: Colors.border },
+  statNum: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  statLbl: { color: colors.textSec, fontSize: 11, marginTop: 2 },
+  statDivider: { width: 1, height: 30, backgroundColor: colors.border },
   statusBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 3 },
   statusBadgeText: { fontSize: 12, fontWeight: '700' },
 
   section: { paddingHorizontal: 16, marginBottom: 16 },
   sectionTitle: {
-    color: Colors.textSec, fontSize: 11, fontWeight: '700',
+    color: colors.textSec, fontSize: 11, fontWeight: '700',
     letterSpacing: 0.8, marginBottom: 8,
   },
   langGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   langChip: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 10,
-    backgroundColor: Colors.surface,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border,
   },
-  langChipActive: { backgroundColor: 'rgba(204,255,0,0.1)', borderColor: Colors.accent },
-  langChipText: { color: Colors.textSec, fontSize: 13, fontWeight: '600' },
-  langChipTextActive: { color: Colors.accent },
+  langChipActive: { backgroundColor: colors.accent + '15', borderColor: colors.accent },
+  langChipText: { color: colors.textSec, fontSize: 13, fontWeight: '600' },
+  langChipTextActive: { color: colors.accent },
 
   settingRow: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 12, padding: 14, marginBottom: 8,
-    borderWidth: 1, borderColor: Colors.border,
+    borderWidth: 1, borderColor: colors.border,
   },
   settingIcon: { fontSize: 18, marginRight: 12 },
-  settingLabel: { flex: 1, color: Colors.text, fontSize: 14, fontWeight: '600' },
-  settingArrow: { color: Colors.textMut, fontSize: 20 },
+  settingLabel: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
+  settingArrow: { color: colors.textMut, fontSize: 20 },
 
   logoutBtn: {
     marginHorizontal: 16, marginTop: 4,
     height: 52, borderRadius: 14,
-    borderWidth: 1, borderColor: Colors.danger,
+    borderWidth: 1, borderColor: colors.danger,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,59,92,0.08)',
+    backgroundColor: colors.danger + '15',
   },
-  logoutText: { color: Colors.danger, fontSize: 16, fontWeight: '700' },
-  version: { color: Colors.textMut, fontSize: 11, textAlign: 'center', marginTop: 20 },
+  logoutText: { color: colors.danger, fontSize: 16, fontWeight: '700' },
+  version: { color: colors.textMut, fontSize: 11, textAlign: 'center', marginTop: 20 },
 });

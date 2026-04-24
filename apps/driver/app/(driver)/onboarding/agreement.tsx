@@ -1,11 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
-import { Colors } from '../../../constants/colors';
+import { useColors } from '../../../constants/colors';
+import { useTheme } from '../../../components/ThemeProvider';
 
 const TC_SECTIONS = [
   {
@@ -44,6 +45,9 @@ const TC_SECTIONS = [
 
 export default function AgreementScreen() {
   const router = useRouter();
+  const colors = useColors();
+  const { activeTheme } = useTheme();
+  const styles = createStyles(colors);
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -53,8 +57,8 @@ export default function AgreementScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title="Driver Agreement" onBack={() => router.back()} />
 
       <View style={styles.stepBar}>
@@ -97,33 +101,40 @@ export default function AgreementScreen() {
           </Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  stepBar: { flexDirection: 'row', height: 4, backgroundColor: Colors.border },
-  stepDone: { flex: 1, backgroundColor: Colors.success },
-  stepActive: { flex: 1, backgroundColor: Colors.accent },
-  stepTodo: { flex: 1, backgroundColor: Colors.border },
-  stepLabel: { color: Colors.textSec, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textAlign: 'center', paddingVertical: 8, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  stepBar: { flexDirection: 'row', height: 4, backgroundColor: colors.border },
+  stepDone: { flex: 1, backgroundColor: colors.success },
+  stepActive: { flex: 1, backgroundColor: colors.accent },
+  stepTodo: { flex: 1, backgroundColor: colors.border },
+  stepLabel: {
+    color: colors.textSec, fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
+    textAlign: 'center', paddingVertical: 8, backgroundColor: colors.surface,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
 
   scroll: { padding: 20, paddingBottom: 20 },
-  preamble: { color: Colors.textSec, fontSize: 13, lineHeight: 20, marginBottom: 24, padding: 14, backgroundColor: Colors.surface, borderRadius: 10, borderWidth: 1, borderColor: Colors.border },
+  preamble: {
+    color: colors.textSec, fontSize: 13, lineHeight: 20, marginBottom: 24, padding: 14,
+    backgroundColor: colors.surface, borderRadius: 10, borderWidth: 1, borderColor: colors.border,
+  },
   section: { marginBottom: 24 },
-  sectionTitle: { color: Colors.accent, fontSize: 14, fontWeight: '700', marginBottom: 8 },
-  sectionBody: { color: Colors.text, fontSize: 13, lineHeight: 22 },
+  sectionTitle: { color: colors.accent, fontSize: 14, fontWeight: '700', marginBottom: 8 },
+  sectionBody: { color: colors.text, fontSize: 13, lineHeight: 22 },
   bottomMarker: { alignItems: 'center', paddingVertical: 24 },
-  bottomMarkerText: { color: Colors.textMut, fontSize: 12 },
+  bottomMarkerText: { color: colors.textMut, fontSize: 12 },
 
   footer: {
-    padding: 20, borderTopWidth: 1, borderTopColor: Colors.border,
-    backgroundColor: Colors.surface,
+    padding: 20, borderTopWidth: 1, borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  scrollHint: { color: Colors.textSec, fontSize: 12, textAlign: 'center', marginBottom: 10 },
-  acceptBtn: { height: 56, borderRadius: 14, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
-  acceptBtnDisabled: { backgroundColor: Colors.surfaceHigh, borderWidth: 1, borderColor: Colors.border },
+  scrollHint: { color: colors.textSec, fontSize: 12, textAlign: 'center', marginBottom: 10 },
+  acceptBtn: { height: 56, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
+  acceptBtnDisabled: { backgroundColor: colors.surfaceHigh, borderWidth: 1, borderColor: colors.border },
   acceptText: { color: '#000', fontSize: 16, fontWeight: '800' },
-  acceptTextDisabled: { color: Colors.textMut },
+  acceptTextDisabled: { color: colors.textMut },
 });

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import ScreenHeader from '../../components/driver/ScreenHeader';
-import { Colors } from '../../constants/colors';
+import { useColors } from '../../constants/colors';
+import { useTheme } from '../../components/ThemeProvider';
 import notifs from '../../data/mock-notifications-driver.json';
 
 const TYPE_ICON: Record<string, string> = {
@@ -13,14 +14,6 @@ const TYPE_ICON: Record<string, string> = {
   incentive: '🎯',
   payment: '💰',
   suspension: '🚫',
-};
-
-const TYPE_COLOR: Record<string, string> = {
-  approval: Colors.success,
-  doc_expiry: Colors.warning,
-  incentive: Colors.accent,
-  payment: Colors.info,
-  suspension: Colors.danger,
 };
 
 function timeAgo(ts: string) {
@@ -33,16 +26,28 @@ function timeAgo(ts: string) {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const colors = useColors();
+  const { activeTheme } = useTheme();
+  const styles = createStyles(colors);
   const [read, setRead] = useState<string[]>(notifs.filter((n) => n.read).map((n) => n.id));
 
+  const TYPE_COLOR: Record<string, string> = {
+    approval: colors.success,
+    doc_expiry: colors.warning,
+    incentive: colors.accent,
+    payment: colors.info,
+    suspension: colors.danger,
+  };
+
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title="Notifications" onBack={() => router.back()} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {notifs.map((n) => {
           const isRead = read.includes(n.id);
+          const typeColor = TYPE_COLOR[n.type];
           return (
             <TouchableOpacity
               key={n.id}
@@ -50,7 +55,7 @@ export default function NotificationsScreen() {
               onPress={() => setRead((prev) => [...prev, n.id])}
               activeOpacity={0.8}
             >
-              <View style={[styles.iconBox, { backgroundColor: TYPE_COLOR[n.type] + '18' }]}>
+              <View style={[styles.iconBox, { backgroundColor: typeColor + '18' }]}>
                 <Text style={styles.iconText}>{TYPE_ICON[n.type]}</Text>
               </View>
               <View style={styles.content}>
@@ -60,30 +65,30 @@ export default function NotificationsScreen() {
                 </View>
                 <Text style={styles.body}>{n.body}</Text>
               </View>
-              {!isRead && <View style={[styles.unreadDot, { backgroundColor: TYPE_COLOR[n.type] }]} />}
+              {!isRead && <View style={[styles.unreadDot, { backgroundColor: typeColor }]} />}
             </TouchableOpacity>
           );
         })}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 40 },
 
   card: {
     flexDirection: 'row',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 14,
     padding: 14,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 10,
     position: 'relative',
   },
-  cardUnread: { borderColor: Colors.borderHigh, backgroundColor: Colors.surfaceHigh },
+  cardUnread: { borderColor: colors.borderHigh, backgroundColor: colors.surfaceHigh },
   iconBox: {
     width: 44, height: 44, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
@@ -92,9 +97,9 @@ const styles = StyleSheet.create({
   iconText: { fontSize: 20 },
   content: { flex: 1 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
-  title: { color: Colors.text, fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },
-  time: { color: Colors.textMut, fontSize: 11 },
-  body: { color: Colors.textSec, fontSize: 13, lineHeight: 18 },
+  title: { color: colors.text, fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },
+  time: { color: colors.textMut, fontSize: 11 },
+  body: { color: colors.textSec, fontSize: 13, lineHeight: 18 },
   unreadDot: {
     position: 'absolute', top: 14, right: 14,
     width: 8, height: 8, borderRadius: 4,

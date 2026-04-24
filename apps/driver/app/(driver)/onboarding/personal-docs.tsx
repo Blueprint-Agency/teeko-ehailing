@@ -1,18 +1,22 @@
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, ScrollView,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import DocumentSlot from '../../../components/driver/DocumentSlot';
-import { Colors } from '../../../constants/colors';
+import { useColors } from '../../../constants/colors';
+import { useTheme } from '../../../components/ThemeProvider';
 
 export default function PersonalDocsScreen() {
   const router = useRouter();
+  const colors = useColors();
+  const { activeTheme } = useTheme();
+  const styles = createStyles(colors);
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title="Personal Documents" onBack={() => router.back()} />
 
       <View style={styles.stepBar}>
@@ -61,27 +65,27 @@ export default function PersonalDocsScreen() {
           <Text style={styles.nextText}>Continue to Vehicle Docs</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
-  stepBar: { flexDirection: 'row', height: 4, backgroundColor: Colors.border },
-  stepDone: { flex: 1, backgroundColor: Colors.success },
-  stepActive: { flex: 1, backgroundColor: Colors.accent },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
+  stepBar: { flexDirection: 'row', height: 4, backgroundColor: colors.border },
+  stepDone: { flex: 1, backgroundColor: colors.success },
+  stepActive: { flex: 1, backgroundColor: colors.accent },
   stepLabel: {
-    color: Colors.textSec, fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
+    color: colors.textSec, fontSize: 11, fontWeight: '700', letterSpacing: 0.8,
     textAlign: 'center', paddingVertical: 8,
-    backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border,
+    backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border,
   },
   scroll: { padding: 20, paddingBottom: 20 },
   intro: {
-    color: Colors.textSec, fontSize: 13, lineHeight: 20, marginBottom: 24,
-    padding: 14, backgroundColor: Colors.surface, borderRadius: 10,
-    borderWidth: 1, borderColor: Colors.border,
+    color: colors.textSec, fontSize: 13, lineHeight: 20, marginBottom: 24,
+    padding: 14, backgroundColor: colors.surface, borderRadius: 10,
+    borderWidth: 1, borderColor: colors.border,
   },
-  footer: { padding: 20, borderTopWidth: 1, borderTopColor: Colors.border, backgroundColor: Colors.surface },
-  nextBtn: { height: 56, borderRadius: 14, backgroundColor: Colors.accent, alignItems: 'center', justifyContent: 'center' },
+  footer: { padding: 20, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  nextBtn: { height: 56, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   nextText: { color: '#000', fontSize: 16, fontWeight: '800' },
 });

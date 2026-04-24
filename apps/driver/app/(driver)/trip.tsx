@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, Alert,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import MapBackground from '../../components/driver/MapBackground';
-import { Colors } from '../../constants/colors';
+import { useColors } from '../../constants/colors';
+import { useTheme } from '../../components/ThemeProvider';
 import request from '../../data/mock-ride-request.json';
 
 const PHASES = [
@@ -17,6 +18,10 @@ const PHASES = [
 export default function TripScreen() {
   const router = useRouter();
   const [phaseIndex, setPhaseIndex] = useState(0);
+  const colors = useColors();
+  const { activeTheme } = useTheme();
+  const styles = createStyles(colors);
+
   const phase = PHASES[phaseIndex];
   const isCompleted = phaseIndex === 3;
 
@@ -36,8 +41,8 @@ export default function TripScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
 
       {/* Phase stepper */}
       <View style={styles.stepper}>
@@ -125,12 +130,12 @@ export default function TripScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
 
   stepper: {
     flexDirection: 'row',
@@ -138,93 +143,93 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 4,
-    backgroundColor: Colors.bg,
+    backgroundColor: colors.bg,
   },
   stepItem: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   stepDot: {
     width: 22, height: 22, borderRadius: 11,
-    borderWidth: 2, borderColor: Colors.border,
+    borderWidth: 2, borderColor: colors.border,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
   },
-  stepDotDone: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  stepDotActive: { borderColor: Colors.accent },
-  stepActiveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.accent },
+  stepDotDone: { backgroundColor: colors.accent, borderColor: colors.accent },
+  stepDotActive: { borderColor: colors.accent },
+  stepActiveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
   stepCheck: { color: '#000', fontSize: 12, fontWeight: '800' },
-  stepLine: { flex: 1, height: 2, backgroundColor: Colors.border, marginHorizontal: 4 },
-  stepLineDone: { backgroundColor: Colors.accent },
+  stepLine: { flex: 1, height: 2, backgroundColor: colors.border, marginHorizontal: 4 },
+  stepLineDone: { backgroundColor: colors.accent },
   phaseLabel: {
-    color: Colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 0.8,
-    textAlign: 'center', paddingBottom: 8, backgroundColor: Colors.bg,
+    color: colors.accent, fontSize: 12, fontWeight: '700', letterSpacing: 0.8,
+    textAlign: 'center', paddingBottom: 8, backgroundColor: colors.bg,
   },
 
   card: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: Colors.border,
+    borderTopColor: colors.border,
     padding: 20,
     paddingBottom: 28,
   },
   riderInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   riderAvatar: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.surfaceHigh,
-    borderWidth: 2, borderColor: Colors.accent,
+    backgroundColor: colors.surfaceHigh,
+    borderWidth: 2, borderColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
-  riderAvatarText: { color: Colors.accent, fontWeight: '800', fontSize: 18 },
+  riderAvatarText: { color: colors.accent, fontWeight: '800', fontSize: 18 },
   riderDetails: { flex: 1, marginLeft: 12 },
-  riderName: { color: Colors.text, fontSize: 16, fontWeight: '700' },
-  riderMeta: { color: Colors.textSec, fontSize: 13, marginTop: 2 },
+  riderName: { color: colors.text, fontSize: 16, fontWeight: '700' },
+  riderMeta: { color: colors.textSec, fontSize: 13, marginTop: 2 },
   callBtn: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.surfaceHigh,
+    backgroundColor: colors.surfaceHigh,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.border,
+    borderWidth: 1, borderColor: colors.border,
   },
   callIcon: { fontSize: 20 },
 
   routeCard: {
-    backgroundColor: Colors.surfaceHigh,
+    backgroundColor: colors.surfaceHigh,
     borderRadius: 12,
     padding: 14,
     marginBottom: 12,
   },
   routeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  dotPickup: { width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.accent },
-  dotDrop: { width: 10, height: 10, borderRadius: 2, backgroundColor: Colors.danger },
-  routeText: { flex: 1, color: Colors.text, fontSize: 13, fontWeight: '600' },
-  routeConnector: { width: 1, height: 12, backgroundColor: Colors.border, marginLeft: 5, marginVertical: 4 },
+  dotPickup: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.accent },
+  dotDrop: { width: 10, height: 10, borderRadius: 2, backgroundColor: colors.danger },
+  routeText: { flex: 1, color: colors.text, fontSize: 13, fontWeight: '600' },
+  routeConnector: { width: 1, height: 12, backgroundColor: colors.border, marginLeft: 5, marginVertical: 4 },
 
   fareRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14,
   },
-  fareLabel: { color: Colors.textSec, fontSize: 13 },
-  fareValue: { color: Colors.text, fontSize: 20, fontWeight: '800' },
+  fareLabel: { color: colors.textSec, fontSize: 13 },
+  fareValue: { color: colors.text, fontSize: 20, fontWeight: '800' },
 
   navBtns: { flexDirection: 'row', gap: 10, marginBottom: 14 },
   navBtn: {
     flex: 1, height: 40, borderRadius: 10,
-    backgroundColor: Colors.surfaceHigh,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: colors.surfaceHigh,
+    borderWidth: 1, borderColor: colors.border,
     alignItems: 'center', justifyContent: 'center',
   },
-  navBtnText: { color: Colors.text, fontSize: 13, fontWeight: '600' },
+  navBtnText: { color: colors.text, fontSize: 13, fontWeight: '600' },
 
   actionRow: { flexDirection: 'row', gap: 12 },
   sosBtn: {
     width: 56, height: 56, borderRadius: 14,
-    backgroundColor: 'rgba(255,59,92,0.15)',
-    borderWidth: 1.5, borderColor: Colors.danger,
+    backgroundColor: colors.danger + '15',
+    borderWidth: 1.5, borderColor: colors.danger,
     alignItems: 'center', justifyContent: 'center',
   },
-  sosBtnText: { color: Colors.danger, fontSize: 13, fontWeight: '800' },
+  sosBtnText: { color: colors.danger, fontSize: 13, fontWeight: '800' },
   phaseBtn: {
     flex: 1, height: 56, borderRadius: 14,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
-  phaseBtnDone: { backgroundColor: Colors.success },
+  phaseBtnDone: { backgroundColor: colors.success },
   phaseBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
   phaseBtnTextDone: { color: '#000' },
 });

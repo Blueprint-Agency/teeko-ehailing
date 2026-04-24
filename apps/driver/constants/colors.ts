@@ -1,4 +1,4 @@
-import { useColorScheme } from 'react-native';
+import { useTheme } from '../components/ThemeProvider';
 
 export const DarkColors = {
   bg: '#0A0A0E',
@@ -46,6 +46,6 @@ export const LightColors = {
 export const Colors = DarkColors;
 
 export function useColors() {
-  const scheme = useColorScheme();
-  return scheme === 'dark' ? DarkColors : LightColors;
+  const { activeTheme } = useTheme();
+  return activeTheme === 'dark' ? DarkColors : LightColors;
 }

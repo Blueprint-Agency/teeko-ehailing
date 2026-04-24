@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Colors } from '../../constants/colors';
+import { useColors } from '../../constants/colors';
 
 interface Props {
   title: string;
@@ -9,6 +9,9 @@ interface Props {
 }
 
 export default function ScreenHeader({ title, onBack, right }: Props) {
+  const colors = useColors();
+  const styles = createStyles(colors);
+
   return (
     <View style={styles.header}>
       {onBack ? (
@@ -24,28 +27,28 @@ export default function ScreenHeader({ title, onBack, right }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    backgroundColor: Colors.bg,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.bg,
   },
   back: {
     width: 36,
   },
   backArrow: {
-    color: Colors.accent,
+    color: colors.accent,
     fontSize: 22,
     fontWeight: '600',
   },
   title: {
     flex: 1,
     textAlign: 'center',
-    color: Colors.text,
+    color: colors.text,
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.2,

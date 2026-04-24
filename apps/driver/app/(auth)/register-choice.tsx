@@ -1,16 +1,20 @@
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors } from '../../constants/colors';
+import { useColors } from '../../constants/colors';
+import { useTheme } from '../../components/ThemeProvider';
 
 export default function RegisterChoiceScreen() {
   const router = useRouter();
+  const colors = useColors();
+  const { activeTheme } = useTheme();
+  const styles = createStyles(colors);
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <View style={styles.container}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backText}>← Back</Text>
@@ -50,44 +54,44 @@ export default function RegisterChoiceScreen() {
           Driver registration requires a valid CDL, PSV-D licence, and vehicle documents. Review takes 1–3 business days.
         </Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   container: { flex: 1, padding: 24 },
   backBtn: { marginBottom: 32 },
-  backText: { color: Colors.accent, fontSize: 16 },
+  backText: { color: colors.accent, fontSize: 16 },
 
-  title: { color: Colors.text, fontSize: 30, fontWeight: '900', marginBottom: 8 },
-  subtitle: { color: Colors.textSec, fontSize: 15, marginBottom: 28 },
+  title: { color: colors.text, fontSize: 30, fontWeight: '900', marginBottom: 8 },
+  subtitle: { color: colors.textSec, fontSize: 15, marginBottom: 28 },
 
   card: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 18, padding: 20,
-    borderWidth: 1.5, borderColor: Colors.accent,
+    borderWidth: 1.5, borderColor: colors.accent,
     marginBottom: 14,
     flexDirection: 'row', alignItems: 'center',
   },
-  cardRider: { borderColor: Colors.border },
+  cardRider: { borderColor: colors.border },
   cardIcon: {
     width: 56, height: 56, borderRadius: 14,
-    backgroundColor: 'rgba(204,255,0,0.12)',
+    backgroundColor: colors.accent + '1F',
     alignItems: 'center', justifyContent: 'center',
     marginRight: 14,
   },
-  cardIconRider: { backgroundColor: Colors.surfaceHigh },
+  cardIconRider: { backgroundColor: colors.surfaceHigh },
   cardIconText: { fontSize: 28 },
   cardContent: { flex: 1 },
-  cardTitle: { color: Colors.text, fontSize: 17, fontWeight: '700', marginBottom: 4 },
-  cardDesc: { color: Colors.textSec, fontSize: 13, lineHeight: 18 },
+  cardTitle: { color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 4 },
+  cardDesc: { color: colors.textSec, fontSize: 13, lineHeight: 18 },
   cardBadge: {
-    backgroundColor: 'rgba(204,255,0,0.12)',
+    backgroundColor: colors.accent + '1F',
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
-    borderWidth: 1, borderColor: Colors.accent,
+    borderWidth: 1, borderColor: colors.accent,
   },
-  cardBadgeText: { color: Colors.accent, fontSize: 11, fontWeight: '800' },
+  cardBadgeText: { color: colors.accent, fontSize: 11, fontWeight: '800' },
 
-  disclaimer: { color: Colors.textMut, fontSize: 12, lineHeight: 18, marginTop: 8 },
+  disclaimer: { color: colors.textMut, fontSize: 12, lineHeight: 18, marginTop: 8 },
 });

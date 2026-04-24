@@ -1,23 +1,24 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, SafeAreaView, StatusBar, useColorScheme,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import MapBackground from '../../../components/driver/MapBackground';
-import { useColors } from '../../../constants/colors';
-import earnings from '../../../data/mock-earnings.json';
-import profile from '../../../data/mock-driver-profile.json';
+import MapBackground from '../../../../components/driver/MapBackground';
+import { useColors } from '../../../../constants/colors';
+import { useTheme } from '../../../../components/ThemeProvider';
+import earnings from '../../../../data/mock-earnings.json';
+import profile from '../../../../data/mock-driver-profile.json';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [isOnline, setIsOnline] = useState(false);
   const [radius, setRadius] = useState(5);
   const colors = useColors();
-  const scheme = useColorScheme();
+  const { activeTheme } = useTheme();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <StatusBar barStyle={scheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
 
       {/* Top HUD */}
       <View style={[styles.hud, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
@@ -42,10 +43,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Map */}
-      <MapBackground>
-        {/* Radius ring */}
-        <View style={[styles.radiusRing, { width: radius * 32, height: radius * 32, borderRadius: radius * 16, borderColor: colors.accent + '40' }]} />
-
+      <MapBackground radius={radius}>
         {/* Surge pill */}
         <View style={styles.surgePill}>
           <View style={[styles.surgeDot, { backgroundColor: colors.surge }]} />
@@ -114,7 +112,7 @@ export default function HomeScreen() {
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -163,14 +161,6 @@ const styles = StyleSheet.create({
   },
   notifBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 
-  radiusRing: {
-    position: 'absolute',
-    top: '25%',
-    left: '25%',
-    backgroundColor: 'rgba(204,255,0,0.04)',
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-  },
   surgePill: {
     position: 'absolute',
     top: 16,
@@ -214,14 +204,22 @@ const styles = StyleSheet.create({
   },
   toggleBtnText: { color: '#000', fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
 
-  radiusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  radiusLabel: { fontSize: 13, fontWeight: '600' },
-  radiusBtns: { flexDirection: 'row', gap: 8 },
-  radiusChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
+  radiusRow: { marginTop: 4 },
+  radiusLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 12,
+    textTransform: 'uppercase'
   },
-  radiusChipText: { fontSize: 13, fontWeight: '600' },
+  radiusBtns: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  radiusChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+    borderWidth: 1,
+    minWidth: 64,
+    alignItems: 'center',
+  },
+  radiusChipText: { fontSize: 13, fontWeight: '700' },
 });

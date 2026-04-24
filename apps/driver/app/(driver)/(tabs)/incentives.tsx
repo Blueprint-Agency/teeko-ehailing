@@ -1,15 +1,20 @@
 import React from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, StatusBar, ScrollView,
+  View, Text, StyleSheet, StatusBar, ScrollView,
 } from 'react-native';
-import ScreenHeader from '../../components/driver/ScreenHeader';
-import { Colors } from '../../constants/colors';
-import incentives from '../../data/mock-incentives.json';
+import ScreenHeader from '../../../components/driver/ScreenHeader';
+import { useColors } from '../../../constants/colors';
+import { useTheme } from '../../../components/ThemeProvider';
+import incentives from '../../../data/mock-incentives.json';
 
 export default function IncentivesScreen() {
+  const colors = useColors();
+  const { activeTheme } = useTheme();
+  const styles = createStyles(colors);
+
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title="Incentives" />
 
       <ScrollView contentContainerStyle={styles.scroll}>
@@ -57,30 +62,30 @@ export default function IncentivesScreen() {
           );
         })}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 40 },
-  intro: { color: Colors.textSec, fontSize: 13, marginBottom: 20, lineHeight: 20 },
+  intro: { color: colors.textSec, fontSize: 13, marginBottom: 20, lineHeight: 20 },
 
   card: {
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     marginBottom: 12,
     position: 'relative',
     overflow: 'hidden',
   },
-  cardDone: { borderColor: Colors.success, opacity: 0.8 },
+  cardDone: { borderColor: colors.success, opacity: 0.8 },
   doneBadge: {
     position: 'absolute',
     top: 0, right: 0,
-    backgroundColor: Colors.success,
+    backgroundColor: colors.success,
     paddingHorizontal: 12, paddingVertical: 4,
     borderBottomLeftRadius: 12,
   },
@@ -95,18 +100,18 @@ const styles = StyleSheet.create({
   },
   badgeText: { fontWeight: '800', fontSize: 16 },
   titleBlock: { flex: 1 },
-  cardTitle: { color: Colors.text, fontSize: 16, fontWeight: '700', marginBottom: 2 },
-  cardTimer: { color: Colors.textSec, fontSize: 12 },
+  cardTitle: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  cardTimer: { color: colors.textSec, fontSize: 12 },
 
-  cardDesc: { color: Colors.textSec, fontSize: 13, lineHeight: 18, marginBottom: 14 },
+  cardDesc: { color: colors.textSec, fontSize: 13, lineHeight: 18, marginBottom: 14 },
 
   progressBlock: {},
   progressTrack: {
     height: 8, borderRadius: 4,
-    backgroundColor: Colors.surfaceHigh,
+    backgroundColor: colors.surfaceHigh,
     overflow: 'hidden',
     marginBottom: 6,
   },
   progressFill: { height: '100%', borderRadius: 4 },
-  progressLabel: { color: Colors.textSec, fontSize: 12, fontWeight: '600', textAlign: 'right' },
+  progressLabel: { color: colors.textSec, fontSize: 12, fontWeight: '600', textAlign: 'right' },
 });

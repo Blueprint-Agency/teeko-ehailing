@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
-import { Colors } from '../../constants/colors';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useColors } from '../../constants/colors';
 
 interface Props {
   label: string;
@@ -9,7 +9,9 @@ interface Props {
 }
 
 export default function DocumentSlot({ label, required, hint }: Props) {
+  const colors = useColors();
   const [filled, setFilled] = useState(false);
+  const styles = createStyles(colors);
 
   return (
     <View style={styles.container}>
@@ -49,22 +51,22 @@ export default function DocumentSlot({ label, required, hint }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: any) => StyleSheet.create({
   container: { marginBottom: 20 },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  label: { color: Colors.text, fontSize: 14, fontWeight: '600' },
-  required: { color: Colors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
-  hint: { color: Colors.textSec, fontSize: 12, marginBottom: 8 },
+  label: { color: colors.text, fontSize: 14, fontWeight: '600' },
+  required: { color: colors.accent, fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+  hint: { color: colors.textSec, fontSize: 12, marginBottom: 8 },
   slot: {
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: colors.border,
     borderStyle: 'dashed',
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
   },
   slotFilled: {
-    borderColor: Colors.success,
+    borderColor: colors.success,
     borderStyle: 'solid',
   },
   empty: {
@@ -73,9 +75,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 80,
   },
-  emptyIcon: { fontSize: 24, color: Colors.textMut, marginBottom: 4 },
-  emptyText: { color: Colors.textSec, fontSize: 14, fontWeight: '600' },
-  emptyOr: { color: Colors.textMut, fontSize: 12, marginTop: 2 },
+  emptyIcon: { fontSize: 24, color: colors.textMut, marginBottom: 4 },
+  emptyText: { color: colors.textSec, fontSize: 14, fontWeight: '600' },
+  emptyOr: { color: colors.textMut, fontSize: 12, marginTop: 2 },
   filled: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -85,19 +87,19 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    backgroundColor: Colors.surfaceHigh,
+    backgroundColor: colors.surfaceHigh,
     alignItems: 'center',
     justifyContent: 'center',
   },
   thumbnailIcon: { fontSize: 20 },
   filledInfo: { flex: 1, marginLeft: 12 },
-  filledText: { color: Colors.text, fontSize: 13, fontWeight: '600' },
-  retake: { color: Colors.textSec, fontSize: 12, marginTop: 2 },
+  filledText: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  retake: { color: colors.textSec, fontSize: 12, marginTop: 2 },
   checkBadge: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: Colors.success,
+    backgroundColor: colors.success,
     alignItems: 'center',
     justifyContent: 'center',
   },

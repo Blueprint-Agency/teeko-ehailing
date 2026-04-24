@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  SafeAreaView, StatusBar, ScrollView, KeyboardAvoidingView, Platform,
+  StatusBar, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import ScreenHeader from '../../components/driver/ScreenHeader';
-import { Colors } from '../../constants/colors';
+import { useColors } from '../../constants/colors';
+import { useTheme } from '../../components/ThemeProvider';
 import { useRouter } from 'expo-router';
 
 const MOCK_CHAT = [
@@ -21,12 +22,15 @@ const QUICK_TOPICS = [
 
 export default function SupportScreen() {
   const router = useRouter();
+  const colors = useColors();
+  const { activeTheme } = useTheme();
+  const styles = createStyles(colors);
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'chat' | 'form'>('chat');
 
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.bg} />
+    <View style={styles.root}>
+      <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title="Support" onBack={() => router.back()} />
 
       {/* Tab toggle */}
@@ -75,7 +79,7 @@ export default function SupportScreen() {
             <TextInput
               style={styles.input}
               placeholder="Type a message..."
-              placeholderTextColor={Colors.textMut}
+              placeholderTextColor={colors.textMut}
               value={message}
               onChangeText={setMessage}
               multiline
@@ -100,14 +104,14 @@ export default function SupportScreen() {
           <TextInput
             style={styles.formInput}
             placeholder="e.g. trip_001"
-            placeholderTextColor={Colors.textMut}
+            placeholderTextColor={colors.textMut}
           />
 
           <Text style={styles.formLabel}>Description</Text>
           <TextInput
             style={[styles.formInput, styles.formTextarea]}
             placeholder="Describe your issue in detail..."
-            placeholderTextColor={Colors.textMut}
+            placeholderTextColor={colors.textMut}
             multiline
             numberOfLines={5}
           />
@@ -117,91 +121,91 @@ export default function SupportScreen() {
           </TouchableOpacity>
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: Colors.bg },
+const createStyles = (colors: any) => StyleSheet.create({
+  root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
 
   tabs: {
     flexDirection: 'row',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+    borderBottomColor: colors.border,
   },
   tab: {
     flex: 1, paddingVertical: 14, alignItems: 'center',
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  tabActive: { borderBottomColor: Colors.accent },
-  tabText: { color: Colors.textSec, fontSize: 14, fontWeight: '600' },
-  tabTextActive: { color: Colors.accent },
+  tabActive: { borderBottomColor: colors.accent },
+  tabText: { color: colors.textSec, fontSize: 14, fontWeight: '600' },
+  tabTextActive: { color: colors.accent },
 
   chatScroll: { padding: 16, paddingBottom: 20 },
   agentStatus: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surface,
+    backgroundColor: colors.surface,
     borderRadius: 10, padding: 10, marginBottom: 16,
-    borderWidth: 1, borderColor: Colors.border,
+    borderWidth: 1, borderColor: colors.border,
   },
-  agentDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.online, marginRight: 8 },
-  agentStatusText: { color: Colors.textSec, fontSize: 12 },
+  agentDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.online, marginRight: 8 },
+  agentStatusText: { color: colors.textSec, fontSize: 12 },
 
   bubble: {
     maxWidth: '80%', borderRadius: 16, padding: 12, marginBottom: 10,
-    backgroundColor: Colors.surface,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: colors.surface,
+    borderWidth: 1, borderColor: colors.border,
     alignSelf: 'flex-start',
   },
   bubbleDriver: {
     alignSelf: 'flex-end',
-    backgroundColor: 'rgba(204,255,0,0.1)',
-    borderColor: 'rgba(204,255,0,0.2)',
+    backgroundColor: colors.accent + '1A',
+    borderColor: colors.accent + '33',
   },
-  bubbleText: { color: Colors.text, fontSize: 14, lineHeight: 20 },
-  bubbleTextDriver: { color: Colors.text },
-  bubbleTime: { color: Colors.textMut, fontSize: 10, marginTop: 4 },
+  bubbleText: { color: colors.text, fontSize: 14, lineHeight: 20 },
+  bubbleTextDriver: { color: colors.text },
+  bubbleTime: { color: colors.textMut, fontSize: 10, marginTop: 4 },
   bubbleTimeDriver: { textAlign: 'right' },
 
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end',
-    padding: 12, borderTopWidth: 1, borderTopColor: Colors.border,
-    backgroundColor: Colors.surface, gap: 10,
+    padding: 12, borderTopWidth: 1, borderTopColor: colors.border,
+    backgroundColor: colors.surface, gap: 10,
   },
   input: {
     flex: 1,
-    backgroundColor: Colors.surfaceHigh,
-    borderRadius: 12, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: colors.surfaceHigh,
+    borderRadius: 12, borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: 14, paddingVertical: 10,
-    color: Colors.text, fontSize: 14, maxHeight: 80,
+    color: colors.text, fontSize: 14, maxHeight: 80,
   },
   sendBtn: {
     width: 44, height: 44, borderRadius: 12,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
   sendIcon: { color: '#000', fontSize: 18, fontWeight: '700' },
 
   formScroll: { padding: 16, paddingBottom: 40 },
-  formLabel: { color: Colors.textSec, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, marginTop: 16 },
+  formLabel: { color: colors.textSec, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, marginTop: 16 },
   topicGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   topicChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10,
-    backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
   },
-  topicChipText: { color: Colors.text, fontSize: 13, fontWeight: '600' },
+  topicChipText: { color: colors.text, fontSize: 13, fontWeight: '600' },
   formInput: {
-    backgroundColor: Colors.surface, borderRadius: 12,
-    borderWidth: 1, borderColor: Colors.border,
+    backgroundColor: colors.surface, borderRadius: 12,
+    borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: 14, paddingVertical: 12,
-    color: Colors.text, fontSize: 14,
+    color: colors.text, fontSize: 14,
   },
   formTextarea: { height: 100, textAlignVertical: 'top' },
   submitBtn: {
     marginTop: 20, height: 54, borderRadius: 14,
-    backgroundColor: Colors.accent,
+    backgroundColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
   submitText: { color: '#000', fontSize: 16, fontWeight: '800' },
