@@ -5,18 +5,20 @@ import {
 import { useRouter } from 'expo-router';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 
-const STATUS_STEPS = [
-  { key: 'submitted', label: 'Application Submitted', done: true, active: false },
-  { key: 'review', label: 'Under Review', done: false, active: true },
-  { key: 'background', label: 'Background Check', done: false, active: false },
-  { key: 'approved', label: 'Account Approved', done: false, active: false },
-];
+const STATUS_STEP_KEYS = [
+  { key: 'submitted', labelKey: 'stepSubmitted', done: true, active: false },
+  { key: 'review', labelKey: 'stepUnderReview', done: false, active: true },
+  { key: 'background', labelKey: 'stepBackground', done: false, active: false },
+  { key: 'approved', labelKey: 'stepApproved', done: false, active: false },
+] as const;
 
 export default function PendingReviewScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
 
   return (
@@ -30,14 +32,12 @@ export default function PendingReviewScreen() {
             <Text style={styles.iconEmoji}>🔍</Text>
           </View>
 
-          <Text style={styles.title}>Application Under Review</Text>
-          <Text style={styles.subtitle}>
-            Our team is reviewing your documents. You'll receive a notification once your account is approved — typically within 1–3 business days.
-          </Text>
+          <Text style={styles.title}>{t('driver.pendingTitle')}</Text>
+          <Text style={styles.subtitle}>{t('driver.pendingSubtitle')}</Text>
 
           {/* Status tracker */}
           <View style={styles.tracker}>
-            {STATUS_STEPS.map((step, i) => (
+            {STATUS_STEP_KEYS.map((step, i) => (
               <View key={step.key} style={styles.trackRow}>
                 <View style={styles.trackLeft}>
                   <View style={[
@@ -48,7 +48,7 @@ export default function PendingReviewScreen() {
                     {step.done && <Text style={styles.trackCheck}>✓</Text>}
                     {step.active && <View style={styles.trackPulse} />}
                   </View>
-                  {i < STATUS_STEPS.length - 1 && (
+                  {i < STATUS_STEP_KEYS.length - 1 && (
                     <View style={[styles.trackLine, step.done && styles.trackLineDone]} />
                   )}
                 </View>
@@ -58,10 +58,10 @@ export default function PendingReviewScreen() {
                     step.done && styles.trackLabelDone,
                     step.active && styles.trackLabelActive,
                   ]}>
-                    {step.label}
+                    {t(`driver.${step.labelKey}`)}
                   </Text>
                   {step.active && (
-                    <Text style={styles.trackSub}>In progress · Est. 1–3 business days</Text>
+                    <Text style={styles.trackSub}>{t('driver.stepInProgress')}</Text>
                   )}
                 </View>
               </View>
@@ -69,19 +69,15 @@ export default function PendingReviewScreen() {
           </View>
 
           <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>What to expect</Text>
-            <Text style={styles.infoBody}>
-              • You'll receive an SMS and app notification when approved{'\n'}
-              • If any document is rejected, you'll be notified with details{'\n'}
-              • You can re-upload documents at any time from your profile
-            </Text>
+            <Text style={styles.infoTitle}>{t('driver.whatToExpect')}</Text>
+            <Text style={styles.infoBody}>{t('driver.whatToExpectBody')}</Text>
           </View>
 
           <TouchableOpacity
             style={styles.supportBtn}
             onPress={() => router.push('/(driver)/support')}
           >
-            <Text style={styles.supportBtnText}>Contact Support</Text>
+            <Text style={styles.supportBtnText}>{t('driver.contactSupport')}</Text>
           </TouchableOpacity>
 
           {/* Dev shortcut */}

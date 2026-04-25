@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import ScreenHeader from '../../components/driver/ScreenHeader';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import notifs from '../../data/mock-notifications-driver.json';
 
 const TYPE_ICON: Record<string, string> = {
@@ -16,18 +17,23 @@ const TYPE_ICON: Record<string, string> = {
   suspension: '🚫',
 };
 
-function timeAgo(ts: string) {
-  const diff = Date.now() - new Date(ts).getTime();
-  const h = Math.floor(diff / 3600000);
-  if (h < 1) return 'Just now';
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+function useTimeAgo() {
+  const t = useT();
+  return (ts: string) => {
+    const diff = Date.now() - new Date(ts).getTime();
+    const h = Math.floor(diff / 3600000);
+    if (h < 1) return t('driver.justNow');
+    if (h < 24) return t('driver.hoursAgo', { h });
+    return t('driver.daysAgo', { d: Math.floor(h / 24) });
+  };
 }
 
 export default function NotificationsScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
+  const timeAgo = useTimeAgo();
   const styles = createStyles(colors);
   const [read, setRead] = useState<string[]>(notifs.filter((n) => n.read).map((n) => n.id));
 
@@ -42,7 +48,7 @@ export default function NotificationsScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title="Notifications" onBack={() => router.back()} />
+      <ScreenHeader title={t('driver.notificationsTitle')} onBack={() => router.back()} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {notifs.map((n) => {

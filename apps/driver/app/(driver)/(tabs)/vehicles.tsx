@@ -6,27 +6,30 @@ import { useRouter } from 'expo-router';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import vehicles from '../../../data/mock-vehicles.json';
 
-const DOC_LABELS: Record<string, string> = {
-  carGrant: 'Car Grant / VOC',
-  roadTax: 'Road Tax',
-  insurance: 'e-Hailing Insurance',
-  puspakom: 'PUSPAKOM',
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  approved: 'Valid',
-  pending: 'Pending',
-  expiring_soon: 'Expiring Soon',
-  expired: 'Expired',
-};
 
 export default function VehiclesScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
+
+  const DOC_LABELS: Record<string, string> = {
+    carGrant: t('driver.docCarGrant'),
+    roadTax: t('driver.docRoadTax'),
+    insurance: t('driver.docInsurance'),
+    puspakom: t('driver.docPuspakom'),
+  };
+
+  const STATUS_LABEL: Record<string, string> = {
+    approved: t('driver.statusValid'),
+    pending: t('driver.statusPending'),
+    expiring_soon: t('driver.statusExpiringSoon'),
+    expired: t('driver.statusExpired'),
+  };
 
   const STATUS_COLOR: Record<string, string> = {
     approved: colors.success,
@@ -39,7 +42,7 @@ export default function VehiclesScreen() {
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader
-        title="My Vehicles"
+        title={t('driver.myVehiclesTitle')}
         right={
           <TouchableOpacity onPress={() => Alert.alert('Add Vehicle', 'Vehicle registration coming soon.')}>
             <Text style={styles.addBtn}>＋</Text>
@@ -52,7 +55,7 @@ export default function VehiclesScreen() {
           <View key={v.id} style={[styles.card, v.isActive && styles.cardActive]}>
             {v.isActive && (
               <View style={styles.activePill}>
-                <Text style={styles.activePillText}>Active Vehicle</Text>
+                <Text style={styles.activePillText}>{t('driver.activeVehicle')}</Text>
               </View>
             )}
 
@@ -69,7 +72,7 @@ export default function VehiclesScreen() {
 
             <View style={styles.docDivider} />
 
-            <Text style={styles.docsTitle}>Documents</Text>
+            <Text style={styles.docsTitle}>{t('driver.vehicleDocs')}</Text>
             {Object.entries(v.docs).map(([key, doc]) => (
               <View key={key} style={styles.docRow}>
                 <Text style={styles.docLabel}>{DOC_LABELS[key]}</Text>

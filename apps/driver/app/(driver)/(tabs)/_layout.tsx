@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '../../../constants/colors';
+import { useT } from '@teeko/i18n';
 
 function TabIcon({ emoji, label, focused, colors }: { emoji: string; label: string; focused: boolean; colors: ReturnType<typeof useColors> }) {
   return (
@@ -16,6 +17,7 @@ function TabIcon({ emoji, label, focused, colors }: { emoji: string; label: stri
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
   const colors = useColors();
+  const t = useT();
 
   const tabBarHeight = 64 + insets.bottom;
 
@@ -47,31 +49,31 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home/index"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🗺" label="Map" focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🗺" label={t('driver.tabMap')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen
         name="earnings/index"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="💰" label="Earnings" focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="💰" label={t('driver.tabEarnings')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen
         name="incentives"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🎯" label="Bonus" focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🎯" label={t('driver.tabBonus')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen
         name="vehicles"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🚗" label="Vehicle" focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🚗" label={t('driver.tabVehicle')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label="Profile" focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label={t('driver.tabProfile')} focused={focused} colors={colors} />,
         }}
       />
     </Tabs>

@@ -7,6 +7,9 @@ import { useRouter } from 'expo-router';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme, ThemeType } from '../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
+import { useLocale } from '../../../providers/LocaleProvider';
+import type { Locale } from '@teeko/shared';
 import profile from '../../../data/mock-driver-profile.json';
 
 const LANGUAGES = [
@@ -26,7 +29,9 @@ export default function ProfileScreen() {
   const router = useRouter();
   const colors = useColors();
   const { theme, setTheme, activeTheme } = useTheme();
-  const [lang, setLang] = useState(profile.language);
+  const t = useT();
+  const { locale, changeLocale } = useLocale();
+  const [lang, setLang] = useState<string>(locale);
 
   const stars = Math.round(profile.rating);
   const styles = createStyles(colors);
@@ -34,7 +39,7 @@ export default function ProfileScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title="Profile" />
+      <ScreenHeader title={t('driver.profile')} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Avatar + name */}
@@ -53,26 +58,26 @@ export default function ProfileScreen() {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statNum}>{profile.totalTrips.toLocaleString()}</Text>
-              <Text style={styles.statLbl}>Trips</Text>
+              <Text style={styles.statLbl}>{t('driver.trips')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statNum}>Since {new Date(profile.joinedDate).getFullYear()}</Text>
-              <Text style={styles.statLbl}>Member</Text>
+              <Text style={styles.statNum}>{t('driver.since', { year: new Date(profile.joinedDate).getFullYear() })}</Text>
+              <Text style={styles.statLbl}>{t('driver.member')}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <View style={[styles.statusBadge, { backgroundColor: colors.success + '20', borderColor: colors.success }]}>
-                <Text style={[styles.statusBadgeText, { color: colors.success }]}>Active</Text>
+                <Text style={[styles.statusBadgeText, { color: colors.success }]}>{t('driver.active')}</Text>
               </View>
-              <Text style={styles.statLbl}>Status</Text>
+              <Text style={styles.statLbl}>{t('driver.status')}</Text>
             </View>
           </View>
         </View>
 
         {/* Appearance Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Appearance</Text>
+          <Text style={styles.sectionTitle}>{t('driver.appearance')}</Text>
           <View style={styles.langGrid}>
             {THEMES.map((t) => (
               <TouchableOpacity
@@ -90,13 +95,13 @@ export default function ProfileScreen() {
 
         {/* Language picker */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Language</Text>
+          <Text style={styles.sectionTitle}>{t('driver.language')}</Text>
           <View style={styles.langGrid}>
             {LANGUAGES.map((l) => (
               <TouchableOpacity
                 key={l.code}
                 style={[styles.langChip, lang === l.code && styles.langChipActive]}
-                onPress={() => setLang(l.code)}
+                onPress={() => { setLang(l.code); changeLocale(l.code as Locale); }}
               >
                 <Text style={[styles.langChipText, lang === l.code && styles.langChipTextActive]}>
                   {l.label}
@@ -108,12 +113,12 @@ export default function ProfileScreen() {
 
         {/* Settings rows */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
+          <Text style={styles.sectionTitle}>{t('driver.account')}</Text>
           {[
-            { label: 'Personal Information', icon: '👤', action: () => Alert.alert('Personal Info', 'Edit personal information') },
-            { label: 'Documents', icon: '📄', action: () => router.push('/(driver)/onboarding/personal-docs') },
-            { label: 'My Vehicles', icon: '🚗', action: () => router.push('/(driver)/(tabs)/vehicles') },
-            { label: 'Bank Account', icon: '🏦', action: () => Alert.alert('Bank', 'Bank account management') },
+            { label: t('driver.personalInfo'), icon: '👤', action: () => Alert.alert(t('driver.personalInfo'), 'Edit personal information') },
+            { label: t('driver.documents'), icon: '📄', action: () => router.push('/(driver)/onboarding/personal-docs') },
+            { label: t('driver.myVehicles'), icon: '🚗', action: () => router.push('/(driver)/(tabs)/vehicles') },
+            { label: t('driver.bankAccount'), icon: '🏦', action: () => Alert.alert(t('driver.bankAccount'), 'Bank account management') },
           ].map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
               <Text style={styles.settingIcon}>{item.icon}</Text>
@@ -124,11 +129,11 @@ export default function ProfileScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
+          <Text style={styles.sectionTitle}>{t('driver.support')}</Text>
           {[
-            { label: 'Help Center', icon: '❓', action: () => router.push('/(driver)/support') },
-            { label: 'Terms & Conditions', icon: '📋', action: () => router.push('/(driver)/onboarding/agreement') },
-            { label: 'Privacy Policy', icon: '🔒', action: () => Alert.alert('Privacy', 'Privacy policy') },
+            { label: t('driver.helpCenter'), icon: '❓', action: () => router.push('/(driver)/support') },
+            { label: t('driver.terms'), icon: '📋', action: () => router.push('/(driver)/onboarding/agreement') },
+            { label: t('driver.privacy'), icon: '🔒', action: () => Alert.alert(t('driver.privacy'), 'Privacy policy') },
           ].map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
               <Text style={styles.settingIcon}>{item.icon}</Text>
@@ -142,7 +147,7 @@ export default function ProfileScreen() {
           style={styles.logoutBtn}
           onPress={() => router.replace('/(auth)/login')}
         >
-          <Text style={styles.logoutText}>Sign Out</Text>
+          <Text style={styles.logoutText}>{t('driver.signOut')}</Text>
         </TouchableOpacity>
 
         <Text style={styles.version}>Teeko Driver v0.1 · Mockup</Text>

@@ -7,53 +7,33 @@ import ScreenHeader from '../../../components/driver/ScreenHeader';
 import DocumentSlot from '../../../components/driver/DocumentSlot';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 
 export default function PersonalDocsScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title="Personal Documents" onBack={() => router.back()} />
+      <ScreenHeader title={t('driver.personalDocsTitle')} onBack={() => router.back()} />
 
       <View style={styles.stepBar}>
         <View style={styles.stepDone} /><View style={styles.stepDone} /><View style={styles.stepActive} />
       </View>
-      <Text style={styles.stepLabel}>Step 2 of 3 — Personal Documents</Text>
+      <Text style={styles.stepLabel}>{t('driver.step2Label')}</Text>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.intro}>
-          Upload clear, unobstructed photos of each document. All documents must be valid and legible. Blurry or expired documents will be rejected.
-        </Text>
+        <Text style={styles.intro}>{t('driver.personalDocsIntro')}</Text>
 
-        <DocumentSlot
-          label="MyKad / NRIC (Front)"
-          required
-          hint="Show the front face clearly. Ensure all text is readable."
-        />
-        <DocumentSlot
-          label="MyKad / NRIC (Back)"
-          required
-          hint="Show the back face with the chip visible."
-        />
-        <DocumentSlot
-          label="Driving Licence (CDL)"
-          required
-          hint="Must be valid and show your licence class."
-        />
-        <DocumentSlot
-          label="PSV-D Licence"
-          required
-          hint="Public Service Vehicle (Domestic) licence issued by APAD."
-        />
-        <DocumentSlot
-          label="Profile Selfie"
-          required
-          hint="Take a clear selfie facing the camera in good lighting. No hats or sunglasses."
-        />
+        <DocumentSlot label={t('driver.docMykadFront')} required hint={t('driver.docMykadFrontHint')} />
+        <DocumentSlot label={t('driver.docMykadBack')} required hint={t('driver.docMykadBackHint')} />
+        <DocumentSlot label={t('driver.docCdl')} required hint={t('driver.docCdlHint')} />
+        <DocumentSlot label={t('driver.docPsvd')} required hint={t('driver.docPsvdHint')} />
+        <DocumentSlot label={t('driver.docSelfie')} required hint={t('driver.docSelfieHint')} />
       </ScrollView>
 
       <View style={styles.footer}>
@@ -62,7 +42,7 @@ export default function PersonalDocsScreen() {
           onPress={() => router.push('/(driver)/onboarding/vehicle-docs')}
           activeOpacity={0.85}
         >
-          <Text style={styles.nextText}>Continue to Vehicle Docs</Text>
+          <Text style={styles.nextText}>{t('driver.continueToVehicleDocs')}</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 
 const TC_SECTIONS = [
   {
@@ -47,6 +48,7 @@ export default function AgreementScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
 
@@ -59,21 +61,19 @@ export default function AgreementScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title="Driver Agreement" onBack={() => router.back()} />
+      <ScreenHeader title={t('driver.agreementTitle')} onBack={() => router.back()} />
 
       <View style={styles.stepBar}>
         <View style={styles.stepDone} /><View style={styles.stepActive} /><View style={styles.stepTodo} />
       </View>
-      <Text style={styles.stepLabel}>Step 1 of 3 — Terms & Conditions</Text>
+      <Text style={styles.stepLabel}>{t('driver.step1Label')}</Text>
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         onScroll={handleScroll}
         scrollEventThrottle={100}
       >
-        <Text style={styles.preamble}>
-          Please read and scroll through the full agreement before accepting. This document is also available in Bahasa Malaysia upon request.
-        </Text>
+        <Text style={styles.preamble}>{t('driver.agreementPreamble')}</Text>
 
         {TC_SECTIONS.map((s) => (
           <View key={s.title} style={styles.section}>
@@ -83,13 +83,13 @@ export default function AgreementScreen() {
         ))}
 
         <View style={styles.bottomMarker}>
-          <Text style={styles.bottomMarkerText}>— End of Agreement —</Text>
+          <Text style={styles.bottomMarkerText}>{t('driver.endOfAgreement')}</Text>
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
         {!scrolledToBottom && (
-          <Text style={styles.scrollHint}>↓ Scroll to the bottom to accept</Text>
+          <Text style={styles.scrollHint}>{t('driver.scrollToAccept')}</Text>
         )}
         <TouchableOpacity
           style={[styles.acceptBtn, !scrolledToBottom && styles.acceptBtnDisabled]}
@@ -97,7 +97,7 @@ export default function AgreementScreen() {
           activeOpacity={scrolledToBottom ? 0.85 : 1}
         >
           <Text style={[styles.acceptText, !scrolledToBottom && styles.acceptTextDisabled]}>
-            I Accept & Continue
+            {t('driver.acceptAndContinue')}
           </Text>
         </TouchableOpacity>
       </View>

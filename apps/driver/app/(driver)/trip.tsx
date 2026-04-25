@@ -6,21 +6,25 @@ import { useRouter } from 'expo-router';
 import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import request from '../../data/mock-ride-request.json';
 
-const PHASES = [
-  { key: 'navigating', label: 'Navigating to Pickup' },
-  { key: 'arrived', label: 'Arrived at Pickup' },
-  { key: 'inprogress', label: 'Trip in Progress' },
-  { key: 'completed', label: 'Trip Completed' },
-];
+const PHASE_KEYS = ['navigating', 'arrived', 'inprogress', 'completed'] as const;
 
 export default function TripScreen() {
   const router = useRouter();
   const [phaseIndex, setPhaseIndex] = useState(0);
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
+
+  const PHASES = [
+    { key: 'navigating', label: t('driver.navigatingToPickup') },
+    { key: 'arrived', label: t('driver.arrivedAtPickup') },
+    { key: 'inprogress', label: t('driver.tripInProgress') },
+    { key: 'completed', label: t('driver.tripCompleted') },
+  ];
 
   const phase = PHASES[phaseIndex];
   const isCompleted = phaseIndex === 3;
@@ -34,10 +38,10 @@ export default function TripScreen() {
   };
 
   const phaseActionLabel = () => {
-    if (phaseIndex === 0) return 'I\'ve Arrived';
-    if (phaseIndex === 1) return 'Start Trip';
-    if (phaseIndex === 2) return 'End Trip';
-    return 'Back to Home';
+    if (phaseIndex === 0) return t('driver.iveArrived');
+    if (phaseIndex === 1) return t('driver.startTrip');
+    if (phaseIndex === 2) return t('driver.endTrip');
+    return t('driver.backToHome');
   };
 
   return (
@@ -95,7 +99,7 @@ export default function TripScreen() {
         </View>
 
         <View style={styles.fareRow}>
-          <Text style={styles.fareLabel}>Est. Fare</Text>
+          <Text style={styles.fareLabel}>{t('driver.estFare')}</Text>
           <Text style={styles.fareValue}>RM {request.fare.toFixed(2)}</Text>
         </View>
 
@@ -103,10 +107,10 @@ export default function TripScreen() {
         {!isCompleted && (
           <View style={styles.navBtns}>
             <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('Maps', 'Opening Google Maps...')}>
-              <Text style={styles.navBtnText}>Open in Maps</Text>
+              <Text style={styles.navBtnText}>{t('driver.openInMaps')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('Waze', 'Opening Waze...')}>
-              <Text style={styles.navBtnText}>Open in Waze</Text>
+              <Text style={styles.navBtnText}>{t('driver.openInWaze')}</Text>
             </TouchableOpacity>
           </View>
         )}

@@ -6,12 +6,14 @@ import { useRouter } from 'expo-router';
 import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import request from '../../data/mock-ride-request.json';
 
 export default function RideRequestScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
   const [remaining, setRemaining] = useState(request.countdownSeconds);
 
@@ -59,7 +61,7 @@ export default function RideRequestScreen() {
             <View style={styles.riderRow}>
               <Text style={styles.riderName}>{request.riderName}</Text>
               <Text style={styles.riderStar}>★ {request.riderRating}</Text>
-              <Text style={styles.riderTrips}>· {request.riderTrips} trips</Text>
+              <Text style={styles.riderTrips}>· {t('driver.riderTrips', { count: request.riderTrips })}</Text>
             </View>
           </View>
         </View>
@@ -71,7 +73,7 @@ export default function RideRequestScreen() {
           <View style={styles.routeRow}>
             <View style={styles.dotPickup} />
             <View style={styles.routeTexts}>
-              <Text style={styles.routeLabel}>PICKUP · {request.pickup.eta} min away</Text>
+              <Text style={styles.routeLabel}>{t('driver.pickupEta', { eta: request.pickup.eta })}</Text>
               <Text style={styles.routePlace}>{request.pickup.label}</Text>
             </View>
             <Text style={styles.routeDist}>{request.pickup.distance} km</Text>
@@ -82,7 +84,7 @@ export default function RideRequestScreen() {
           <View style={styles.routeRow}>
             <View style={styles.dotDrop} />
             <View style={styles.routeTexts}>
-              <Text style={styles.routeLabel}>DROP-OFF</Text>
+              <Text style={styles.routeLabel}>{t('driver.dropOff')}</Text>
               <Text style={styles.routePlace}>{request.destination.label}</Text>
             </View>
             <Text style={styles.routeDist}>{request.destination.distance} km</Text>
@@ -98,7 +100,7 @@ export default function RideRequestScreen() {
             onPress={() => router.back()}
             activeOpacity={0.8}
           >
-            <Text style={styles.declineText}>Decline</Text>
+            <Text style={styles.declineText}>{t('driver.decline')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -106,7 +108,7 @@ export default function RideRequestScreen() {
             onPress={() => router.replace('/(driver)/trip')}
             activeOpacity={0.85}
           >
-            <Text style={styles.acceptText}>Accept Ride</Text>
+            <Text style={styles.acceptText}>{t('driver.acceptRide')}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import MapBackground from '../../../../components/driver/MapBackground';
 import { useColors } from '../../../../constants/colors';
 import { useTheme } from '../../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import earnings from '../../../../data/mock-earnings.json';
 import profile from '../../../../data/mock-driver-profile.json';
 
@@ -15,6 +16,7 @@ export default function HomeScreen() {
   const [radius, setRadius] = useState(5);
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -30,8 +32,8 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <View style={styles.hudCenter}>
-          <Text style={[styles.hudLabel, { color: colors.text }]}>{isOnline ? 'YOU ARE ONLINE' : 'YOU ARE OFFLINE'}</Text>
-          <Text style={[styles.hudSub, { color: colors.textSec }]}>Radius: {radius} km</Text>
+          <Text style={[styles.hudLabel, { color: colors.text }]}>{isOnline ? t('driver.online') : t('driver.offline')}</Text>
+          <Text style={[styles.hudSub, { color: colors.textSec }]}>{t('driver.radius', { r: radius })}</Text>
         </View>
 
         <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/(driver)/notifications')}>
@@ -57,17 +59,17 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: colors.text }]}>RM {earnings.todayTotal.toFixed(2)}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSec }]}>Today</Text>
+            <Text style={[styles.statLabel, { color: colors.textSec }]}>{t('driver.today')}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: colors.text }]}>{earnings.todayTrips}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSec }]}>Trips</Text>
+            <Text style={[styles.statLabel, { color: colors.textSec }]}>{t('driver.trips')}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
             <Text style={[styles.statValue, { color: colors.text }]}>{profile.rating}</Text>
-            <Text style={[styles.statLabel, { color: colors.textSec }]}>Rating</Text>
+            <Text style={[styles.statLabel, { color: colors.textSec }]}>{t('driver.rating')}</Text>
           </View>
         </View>
 
@@ -86,13 +88,13 @@ export default function HomeScreen() {
           activeOpacity={0.85}
         >
           <Text style={[styles.toggleBtnText, isOnline && { color: colors.textSec }]}>
-            {isOnline ? 'Go Offline' : 'Go Online'}
+            {isOnline ? t('driver.goOffline') : t('driver.goOnline')}
           </Text>
         </TouchableOpacity>
 
         {/* Radius selector */}
         <View style={styles.radiusRow}>
-          <Text style={[styles.radiusLabel, { color: colors.textSec }]}>Operating Radius</Text>
+          <Text style={[styles.radiusLabel, { color: colors.textSec }]}>{t('driver.operatingRadius')}</Text>
           <View style={styles.radiusBtns}>
             {[3, 5, 10, 15].map((r) => (
               <TouchableOpacity

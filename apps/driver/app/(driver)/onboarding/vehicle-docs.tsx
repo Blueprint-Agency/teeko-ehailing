@@ -7,53 +7,33 @@ import ScreenHeader from '../../../components/driver/ScreenHeader';
 import DocumentSlot from '../../../components/driver/DocumentSlot';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 
 export default function VehicleDocsScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title="Vehicle Documents" onBack={() => router.back()} />
+      <ScreenHeader title={t('driver.vehicleDocsTitle')} onBack={() => router.back()} />
 
       <View style={styles.stepBar}>
         <View style={styles.stepDone} /><View style={styles.stepDone} /><View style={styles.stepDone} />
       </View>
-      <Text style={styles.stepLabel}>Step 3 of 3 — Vehicle Documents</Text>
+      <Text style={styles.stepLabel}>{t('driver.step3Label')}</Text>
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.intro}>
-          Upload documents for the vehicle you intend to register. Each vehicle requires its own set of documents.
-        </Text>
+        <Text style={styles.intro}>{t('driver.vehicleDocsIntro')}</Text>
 
-        <DocumentSlot
-          label="Car Grant / VOC"
-          required
-          hint="Vehicle Ownership Certificate (VOC) or car grant from JPJ."
-        />
-        <DocumentSlot
-          label="Road Tax"
-          required
-          hint="Current road tax must be valid for at least 3 months."
-        />
-        <DocumentSlot
-          label="e-Hailing Insurance Cover Note"
-          required
-          hint="Insurance policy with e-hailing endorsement. Must cover all passengers per trip."
-        />
-        <DocumentSlot
-          label="PUSPAKOM Inspection Certificate"
-          required
-          hint="Annual vehicle inspection certificate from PUSPAKOM. Must not be expired."
-        />
-        <DocumentSlot
-          label="Vehicle Photo (Front ¾)"
-          required
-          hint="Clear photo showing the vehicle plate, make, and colour."
-        />
+        <DocumentSlot label={t('driver.docCarGrant')} required hint={t('driver.docCarGrantHint')} />
+        <DocumentSlot label={t('driver.docRoadTax')} required hint={t('driver.docRoadTaxHint')} />
+        <DocumentSlot label={t('driver.docInsuranceFull')} required hint={t('driver.docInsuranceHint')} />
+        <DocumentSlot label={t('driver.docPuspakomFull')} required hint={t('driver.docPuspakomHint')} />
+        <DocumentSlot label={t('driver.docVehiclePhoto')} required hint={t('driver.docVehiclePhotoHint')} />
       </ScrollView>
 
       <View style={styles.footer}>
@@ -62,11 +42,9 @@ export default function VehicleDocsScreen() {
           onPress={() => router.replace('/(driver)/onboarding/pending')}
           activeOpacity={0.85}
         >
-          <Text style={styles.submitText}>Submit for Review</Text>
+          <Text style={styles.submitText}>{t('driver.submitForReview')}</Text>
         </TouchableOpacity>
-        <Text style={styles.footerNote}>
-          Our team reviews applications within 1–3 business days.
-        </Text>
+        <Text style={styles.footerNote}>{t('driver.reviewNote')}</Text>
       </View>
     </View>
   );

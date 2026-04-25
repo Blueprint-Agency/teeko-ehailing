@@ -22,6 +22,9 @@ importers:
       '@expo/metro-runtime':
         specifier: ~6.1.2
         version: 6.1.2(expo@54.0.33)(react-dom@19.1.0(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0))(@types/react@19.1.10)(react@19.1.0))(react@19.1.0)
+      '@teeko/i18n':
+        specifier: workspace:*
+        version: link:../../packages/i18n
       '@teeko/shared':
         specifier: workspace:*
         version: link:../../packages/shared

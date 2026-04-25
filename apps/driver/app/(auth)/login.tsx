@@ -6,11 +6,13 @@ import {
 import { useRouter } from 'expo-router';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 
 export default function LoginScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const [phone, setPhone] = useState('');
 
   const styles = createStyles(colors);
@@ -30,12 +32,12 @@ export default function LoginScreen() {
               <Text style={styles.logoText}>T</Text>
             </View>
             <Text style={styles.brand}>teeko</Text>
-            <Text style={styles.tagline}>Drive. Earn. Thrive.</Text>
+            <Text style={styles.tagline}>{t('driver.loginTagline')}</Text>
           </View>
 
           {/* Phone input */}
           <View style={styles.inputBlock}>
-            <Text style={styles.inputLabel}>Phone Number</Text>
+            <Text style={styles.inputLabel}>{t('driver.phoneNumber')}</Text>
             <View style={styles.inputRow}>
               <View style={styles.prefix}>
                 <Text style={styles.prefixText}>🇲🇾 +60</Text>
@@ -56,7 +58,7 @@ export default function LoginScreen() {
             onPress={handleContinue}
             activeOpacity={0.85}
           >
-            <Text style={styles.continueBtnText}>Continue</Text>
+            <Text style={styles.continueBtnText}>{t('driver.continue')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -64,7 +66,7 @@ export default function LoginScreen() {
             onPress={() => router.push('/(auth)/register-choice')}
           >
             <Text style={styles.registerLinkText}>
-              New to Teeko? <Text style={styles.registerLinkAccent}>Register here</Text>
+              {t('driver.newToTeeko')} <Text style={styles.registerLinkAccent}>{t('driver.registerHere')}</Text>
             </Text>
           </TouchableOpacity>
 

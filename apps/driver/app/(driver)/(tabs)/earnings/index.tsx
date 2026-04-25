@@ -6,6 +6,7 @@ import {
 import ScreenHeader from '../../../../components/driver/ScreenHeader';
 import { useColors } from '../../../../constants/colors';
 import { useTheme } from '../../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import earnings from '../../../../data/mock-earnings.json';
 import trips from '../../../../data/mock-trips-driver.json';
 
@@ -15,26 +16,27 @@ export default function EarningsScreen() {
   const [tab, setTab] = useState<'today' | 'week'>('today');
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title="Earnings" />
+      <ScreenHeader title={t('driver.earnings')} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
         {/* Hero card */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroLabel}>THIS WEEK</Text>
+          <Text style={styles.heroLabel}>{t('driver.thisWeek')}</Text>
           <Text style={styles.heroAmount}>RM {earnings.weeklyTotal.toFixed(2)}</Text>
-          <Text style={styles.heroSub}>{earnings.weeklyTrips} trips completed</Text>
+          <Text style={styles.heroSub}>{t('driver.tripsCompleted', { count: earnings.weeklyTrips })}</Text>
 
           {earnings.cashoutEligible && (
             <TouchableOpacity
               style={styles.cashoutBtn}
               onPress={() => Alert.alert('Early Cashout', 'Funds will be transferred within 2 hours.')}
             >
-              <Text style={styles.cashoutText}>⚡ Early Cashout</Text>
+              <Text style={styles.cashoutText}>{t('driver.earlyCashout')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -43,19 +45,19 @@ export default function EarningsScreen() {
         <View style={styles.todayCard}>
           <View style={styles.todayRow}>
             <View>
-              <Text style={styles.todayLabel}>Today's Earnings</Text>
+              <Text style={styles.todayLabel}>{t('driver.todaysEarnings')}</Text>
               <Text style={styles.todayAmount}>RM {earnings.todayTotal.toFixed(2)}</Text>
             </View>
             <View style={styles.todayTrips}>
               <Text style={styles.todayTripsNum}>{earnings.todayTrips}</Text>
-              <Text style={styles.todayTripsLabel}>Trips</Text>
+              <Text style={styles.todayTripsLabel}>{t('driver.trips')}</Text>
             </View>
           </View>
         </View>
 
         {/* Bar chart */}
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Last 7 Days</Text>
+          <Text style={styles.chartTitle}>{t('driver.last7Days')}</Text>
           <View style={styles.barsContainer}>
             {earnings.dailyBreakdown.map((d) => {
               const heightPct = BAR_MAX > 0 ? (d.amount / BAR_MAX) * 100 : 0;
@@ -82,7 +84,7 @@ export default function EarningsScreen() {
         </View>
 
         {/* Trip history */}
-        <Text style={styles.sectionTitle}>Today's Trips</Text>
+        <Text style={styles.sectionTitle}>{t('driver.todaysTrips')}</Text>
         {trips.map((trip) => (
           <View key={trip.id} style={styles.tripCard}>
             <View style={styles.tripLeft}>

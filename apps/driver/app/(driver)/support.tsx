@@ -6,6 +6,7 @@ import {
 import ScreenHeader from '../../components/driver/ScreenHeader';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import { useRouter } from 'expo-router';
 
 const MOCK_CHAT = [
@@ -16,14 +17,15 @@ const MOCK_CHAT = [
   { id: 5, from: 'agent', text: 'Is there anything else I can help you with?', time: '10:35 AM' },
 ];
 
-const QUICK_TOPICS = [
-  'Fare dispute', 'Document upload', 'Account suspension', 'Payment issue', 'Other',
-];
+const QUICK_TOPIC_KEYS = [
+  'topicFareDispute', 'topicDocUpload', 'topicSuspension', 'topicPayment', 'topicOther',
+] as const;
 
 export default function SupportScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'chat' | 'form'>('chat');
@@ -31,7 +33,7 @@ export default function SupportScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title="Support" onBack={() => router.back()} />
+      <ScreenHeader title={t('driver.supportTitle')} onBack={() => router.back()} />
 
       {/* Tab toggle */}
       <View style={styles.tabs}>
@@ -39,13 +41,13 @@ export default function SupportScreen() {
           style={[styles.tab, activeTab === 'chat' && styles.tabActive]}
           onPress={() => setActiveTab('chat')}
         >
-          <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>Live Chat</Text>
+          <Text style={[styles.tabText, activeTab === 'chat' && styles.tabTextActive]}>{t('driver.liveChat')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'form' && styles.tabActive]}
           onPress={() => setActiveTab('form')}
         >
-          <Text style={[styles.tabText, activeTab === 'form' && styles.tabTextActive]}>Report Issue</Text>
+          <Text style={[styles.tabText, activeTab === 'form' && styles.tabTextActive]}>{t('driver.reportIssue')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -57,7 +59,7 @@ export default function SupportScreen() {
           <ScrollView contentContainerStyle={styles.chatScroll}>
             <View style={styles.agentStatus}>
               <View style={styles.agentDot} />
-              <Text style={styles.agentStatusText}>Support agent online · Avg wait &lt;2 min</Text>
+              <Text style={styles.agentStatusText}>{t('driver.agentOnline')}</Text>
             </View>
 
             {MOCK_CHAT.map((msg) => (
@@ -78,7 +80,7 @@ export default function SupportScreen() {
           <View style={styles.inputRow}>
             <TextInput
               style={styles.input}
-              placeholder="Type a message..."
+              placeholder={t('driver.typeMessage')}
               placeholderTextColor={colors.textMut}
               value={message}
               onChangeText={setMessage}
@@ -91,33 +93,33 @@ export default function SupportScreen() {
         </KeyboardAvoidingView>
       ) : (
         <ScrollView contentContainerStyle={styles.formScroll}>
-          <Text style={styles.formLabel}>Topic</Text>
+          <Text style={styles.formLabel}>{t('driver.formTopic')}</Text>
           <View style={styles.topicGrid}>
-            {QUICK_TOPICS.map((t) => (
-              <TouchableOpacity key={t} style={styles.topicChip}>
-                <Text style={styles.topicChipText}>{t}</Text>
+            {QUICK_TOPIC_KEYS.map((key) => (
+              <TouchableOpacity key={key} style={styles.topicChip}>
+                <Text style={styles.topicChipText}>{t(`driver.${key}`)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <Text style={styles.formLabel}>Trip ID (optional)</Text>
+          <Text style={styles.formLabel}>{t('driver.formTripId')}</Text>
           <TextInput
             style={styles.formInput}
-            placeholder="e.g. trip_001"
+            placeholder={t('driver.formTripIdPlaceholder')}
             placeholderTextColor={colors.textMut}
           />
 
-          <Text style={styles.formLabel}>Description</Text>
+          <Text style={styles.formLabel}>{t('driver.formDescription')}</Text>
           <TextInput
             style={[styles.formInput, styles.formTextarea]}
-            placeholder="Describe your issue in detail..."
+            placeholder={t('driver.formDescPlaceholder')}
             placeholderTextColor={colors.textMut}
             multiline
             numberOfLines={5}
           />
 
           <TouchableOpacity style={styles.submitBtn}>
-            <Text style={styles.submitText}>Submit Report</Text>
+            <Text style={styles.submitText}>{t('driver.submitReport')}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}

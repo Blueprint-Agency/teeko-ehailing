@@ -5,11 +5,13 @@ import {
 import { useRouter } from 'expo-router';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 
 export default function RegisterChoiceScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
 
   return (
@@ -20,8 +22,8 @@ export default function RegisterChoiceScreen() {
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>Join Teeko</Text>
-        <Text style={styles.subtitle}>How would you like to use Teeko?</Text>
+        <Text style={styles.title}>{t('driver.joinTeeko')}</Text>
+        <Text style={styles.subtitle}>{t('driver.howToUse')}</Text>
 
         <TouchableOpacity
           style={styles.card}
@@ -30,17 +32,15 @@ export default function RegisterChoiceScreen() {
         >
           <View style={styles.cardIcon}><Text style={styles.cardIconText}>🚗</Text></View>
           <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Sign up as a Driver</Text>
-            <Text style={styles.cardDesc}>Earn money on your schedule. Drive when you want.</Text>
+            <Text style={styles.cardTitle}>{t('driver.signUpAsDriver')}</Text>
+            <Text style={styles.cardDesc}>{t('driver.driverCardDesc')}</Text>
           </View>
           <View style={styles.cardBadge}>
             <Text style={styles.cardBadgeText}>RM 500+/week</Text>
           </View>
         </TouchableOpacity>
 
-        <Text style={styles.disclaimer}>
-          Driver registration requires a valid CDL, PSV-D licence, and vehicle documents. Review takes 1–3 business days.
-        </Text>
+        <Text style={styles.disclaimer}>{t('driver.driverDisclaimer')}</Text>
       </View>
     </View>
   );

@@ -5,22 +5,22 @@ import {
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import incentives from '../../../data/mock-incentives.json';
 
 export default function IncentivesScreen() {
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const styles = createStyles(colors);
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title="Incentives" />
+      <ScreenHeader title={t('driver.incentivesTitle')} />
 
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.intro}>
-          Complete challenges to earn bonuses on top of your regular fares.
-        </Text>
+        <Text style={styles.intro}>{t('driver.incentivesIntro')}</Text>
 
         {incentives.map((inc) => {
           const pct = Math.min(inc.completedTrips / inc.targetTrips, 1);
@@ -32,7 +32,7 @@ export default function IncentivesScreen() {
             <View key={inc.id} style={[styles.card, done && styles.cardDone]}>
               {done && (
                 <View style={styles.doneBadge}>
-                  <Text style={styles.doneBadgeText}>✓ Earned</Text>
+                  <Text style={styles.doneBadgeText}>{t('driver.earned')}</Text>
                 </View>
               )}
 
@@ -44,7 +44,7 @@ export default function IncentivesScreen() {
                 </View>
                 <View style={styles.titleBlock}>
                   <Text style={styles.cardTitle}>{inc.title}</Text>
-                  {!done && <Text style={styles.cardTimer}>⏱ {hoursLeft}h remaining</Text>}
+                  {!done && <Text style={styles.cardTimer}>⏱ {t('driver.hoursRemaining', { h: hoursLeft })}</Text>}
                 </View>
               </View>
 
@@ -55,7 +55,7 @@ export default function IncentivesScreen() {
                   <View style={[styles.progressFill, { width: `${pct * 100}%`, backgroundColor: inc.badgeColor }]} />
                 </View>
                 <Text style={styles.progressLabel}>
-                  {inc.completedTrips} / {inc.targetTrips} trips
+                  {t('driver.tripsProgress', { completed: inc.completedTrips, target: inc.targetTrips })}
                 </Text>
               </View>
             </View>
