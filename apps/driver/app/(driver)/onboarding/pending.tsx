@@ -87,7 +87,7 @@ export default function PendingReviewScreen() {
           {/* Dev shortcut */}
           <TouchableOpacity
             style={styles.devBtn}
-            onPress={() => router.replace('/(driver)/home')}
+            onPress={() => router.replace('/(driver)/(tabs)/home')}
           >
             <Text style={styles.devBtnText}>[ Dev ] Skip to Home →</Text>
           </TouchableOpacity>

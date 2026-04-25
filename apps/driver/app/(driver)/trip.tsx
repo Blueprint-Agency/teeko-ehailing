@@ -27,7 +27,7 @@ export default function TripScreen() {
 
   const advancePhase = () => {
     if (isCompleted) {
-      router.replace('/(driver)/home');
+      router.replace('/(driver)/(tabs)/home');
     } else {
       setPhaseIndex((i) => Math.min(i + 1, 3));
     }

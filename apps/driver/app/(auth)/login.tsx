@@ -16,7 +16,7 @@ export default function LoginScreen() {
   const styles = createStyles(colors);
 
   const handleContinue = () => {
-    router.replace('/(driver)/home');
+    router.replace('/(driver)/(tabs)/home');
   };
 
   return (

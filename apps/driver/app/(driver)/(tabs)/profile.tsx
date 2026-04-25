@@ -112,7 +112,7 @@ export default function ProfileScreen() {
           {[
             { label: 'Personal Information', icon: '👤', action: () => Alert.alert('Personal Info', 'Edit personal information') },
             { label: 'Documents', icon: '📄', action: () => router.push('/(driver)/onboarding/personal-docs') },
-            { label: 'My Vehicles', icon: '🚗', action: () => router.push('/(driver)/vehicles') },
+            { label: 'My Vehicles', icon: '🚗', action: () => router.push('/(driver)/(tabs)/vehicles') },
             { label: 'Bank Account', icon: '🏦', action: () => Alert.alert('Bank', 'Bank account management') },
           ].map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
