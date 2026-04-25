@@ -22,7 +22,7 @@ export default function HomeScreen() {
 
       {/* Top HUD */}
       <View style={[styles.hud, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
-        <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push('/(driver)/profile')}>
+        <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push('/(driver)/(tabs)/profile')}>
           <View style={[styles.avatar, { backgroundColor: colors.surfaceHigh, borderColor: colors.accent }]}>
             <Text style={[styles.avatarText, { color: colors.accent }]}>{profile.name.charAt(0)}</Text>
           </View>
