@@ -38,18 +38,6 @@ export default function RegisterChoiceScreen() {
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.card, styles.cardRider]}
-          onPress={() => router.back()}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.cardIcon, styles.cardIconRider]}><Text style={styles.cardIconText}>👤</Text></View>
-          <View style={styles.cardContent}>
-            <Text style={styles.cardTitle}>Sign up as a Rider</Text>
-            <Text style={styles.cardDesc}>Get affordable rides across Malaysia.</Text>
-          </View>
-        </TouchableOpacity>
-
         <Text style={styles.disclaimer}>
           Driver registration requires a valid CDL, PSV-D licence, and vehicle documents. Review takes 1–3 business days.
         </Text>
@@ -74,14 +62,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 14,
     flexDirection: 'row', alignItems: 'center',
   },
-  cardRider: { borderColor: colors.border },
   cardIcon: {
     width: 56, height: 56, borderRadius: 14,
     backgroundColor: colors.accent + '1F',
     alignItems: 'center', justifyContent: 'center',
     marginRight: 14,
   },
-  cardIconRider: { backgroundColor: colors.surfaceHigh },
   cardIconText: { fontSize: 28 },
   cardContent: { flex: 1 },
   cardTitle: { color: colors.text, fontSize: 17, fontWeight: '700', marginBottom: 4 },
