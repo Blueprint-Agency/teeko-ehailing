@@ -164,6 +164,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.accent + '1A',
     borderColor: colors.accent + '33',
   },
+  bubbleAgent: {},
   bubbleText: { color: colors.text, fontSize: 14, lineHeight: 20 },
   bubbleTextDriver: { color: colors.text },
   bubbleTime: { color: colors.textMut, fontSize: 10, marginTop: 4 },
