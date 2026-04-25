@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "expo start",
     "dev:web": "expo start --web",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "build": "expo export --platform android --platform ios",
     "typecheck": "tsc --noEmit"
   },
@@ -20,6 +20,7 @@
     "expo-location": "~19.0.8",
     "expo-router": "~6.0.23",
     "expo-status-bar": "~3.0.9",
+    "expo-updates": "~29.0.16",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-maps": "1.20.1",
