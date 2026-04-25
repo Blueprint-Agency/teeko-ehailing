@@ -229,7 +229,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
-  phaseBtnDone: { backgroundColor: colors.success },
+  phaseBtnDone: { backgroundColor: colors.accent },
   phaseBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
   phaseBtnTextDone: { color: '#000' },
 });
