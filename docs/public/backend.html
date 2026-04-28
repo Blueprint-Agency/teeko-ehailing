@@ -1,0 +1,1223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>E-hailing — Architecture brief</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<style>
+  :root {
+    --paper:      #fbfaf5;
+    --paper-2:    #f4f1e9;
+    --paper-3:    #ecead9;
+    --line:       #e2dfd2;
+    --line-soft:  #ece9dc;
+
+    --ink:        #1c1c1a;
+    --ink-2:      #3a3a36;
+    --ink-3:      #6b6b63;
+    --ink-4:      #9b9a90;
+
+    --accent:     #a64b27;     /* muted terracotta — used very sparingly */
+    --accent-2:   #c97a4f;
+    --leaf:       #5a7a52;     /* secondary, for tags */
+
+    --serif:      "Newsreader", "Iowan Old Style", Georgia, serif;
+    --sans:       "IBM Plex Sans", system-ui, sans-serif;
+    --mono:       "JetBrains Mono", ui-monospace, monospace;
+
+    --sidebar-w: 252px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-weight: 400;
+    font-size: 15.5px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection { background: var(--accent); color: var(--paper); }
+
+  a { color: inherit; }
+
+  /* =========================================================
+     LAYOUT — sidebar + main
+     ========================================================= */
+  .layout {
+    display: grid;
+    grid-template-columns: var(--sidebar-w) 1fr;
+    min-height: 100vh;
+  }
+
+  /* ---------- SIDEBAR ---------- */
+  .sidebar {
+    position: sticky; top: 0;
+    height: 100vh;
+    border-right: 1px solid var(--line);
+    background: var(--paper-2);
+    padding: 2.25rem 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    overflow-y: auto;
+  }
+  .brand {
+    font-family: var(--serif);
+    font-size: 1.18rem;
+    font-weight: 400;
+    letter-spacing: -0.005em;
+    line-height: 1.2;
+  }
+  .brand em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .brand-sub {
+    margin-top: 0.35rem;
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    color: var(--ink-3);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .nav-label {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    color: var(--ink-4);
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+  .nav {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .nav a {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0.55rem 0.5rem;
+    border-radius: 5px;
+    text-decoration: none;
+    color: var(--ink-2);
+    font-size: 0.93rem;
+    transition: background 0.15s, color 0.15s;
+    position: relative;
+  }
+  .nav a:hover {
+    background: var(--paper-3);
+    color: var(--ink);
+  }
+  .nav a.active {
+    color: var(--ink);
+    background: var(--paper-3);
+  }
+  .nav a.active::before {
+    content: "";
+    position: absolute;
+    left: -1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 18px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+  .nav .num {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--ink-4);
+    letter-spacing: 0.06em;
+    min-width: 1.8rem;
+  }
+  .nav a:hover .num,
+  .nav a.active .num { color: var(--accent); }
+
+  .sidebar-foot {
+    margin-top: auto;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--ink-4);
+    letter-spacing: 0.04em;
+    line-height: 1.7;
+  }
+
+  /* ---------- MAIN ---------- */
+  main {
+    padding: 4rem clamp(1.5rem, 5vw, 5rem) 6rem;
+    max-width: 920px;
+  }
+
+  section + section {
+    margin-top: 5rem;
+    padding-top: 4rem;
+    border-top: 1px solid var(--line);
+  }
+
+  /* ---------- TYPOGRAPHY ---------- */
+  .chap {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+  }
+  .chap::before {
+    content: "";
+    display: inline-block;
+    width: 22px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 350;
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    line-height: 1.05;
+    letter-spacing: -0.018em;
+    margin: 0;
+    font-variation-settings: "opsz" 60;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(1.55rem, 3vw, 2rem);
+    line-height: 1.15;
+    letter-spacing: -0.012em;
+    margin: 0 0 0.8rem;
+    font-variation-settings: "opsz" 36;
+  }
+  h2 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  h3 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  h3 em { font-style: italic; color: var(--accent); }
+
+  .lead {
+    color: var(--ink-2);
+    font-size: 1.02rem;
+    max-width: 60ch;
+    margin: 0.5rem 0 2.5rem;
+  }
+  .lead em {
+    font-family: var(--serif);
+    font-style: italic;
+    color: var(--ink);
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    background: var(--paper-2);
+    padding: 0.05rem 0.32rem;
+    border-radius: 3px;
+    color: var(--ink-2);
+  }
+
+  /* ---------- HERO ---------- */
+  .hero { padding-top: 0; }
+  .hero h1 { max-width: 14ch; }
+  .hero .lead {
+    margin-top: 1.4rem;
+    max-width: 56ch;
+    font-size: 1.06rem;
+    color: var(--ink-2);
+  }
+
+  .stats {
+    margin-top: 2.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .stat {
+    padding: 1rem 1.1rem;
+    border-right: 1px solid var(--line);
+  }
+  .stat:last-child { border-right: none; }
+  .stat dt {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    color: var(--ink-4);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+  .stat dd {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    font-weight: 400;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+
+  /* ---------- TOPOLOGY DIAGRAM ---------- */
+  .topo-card {
+    margin-top: 2.5rem;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 1.75rem;
+  }
+  .topo-svg { width: 100%; height: auto; display: block; }
+
+  /* ---------- MODULES ---------- */
+  .modgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .mod {
+    background: var(--paper);
+    padding: 1.1rem 1.2rem 1.25rem;
+    transition: background 0.15s;
+  }
+  .mod:hover { background: var(--paper-2); }
+  .mod-name {
+    font-family: var(--mono);
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--ink);
+    margin: 0 0 0.4rem;
+  }
+  .mod-name::before {
+    content: "/";
+    color: var(--accent);
+    margin-right: 0.1rem;
+  }
+  .mod-desc {
+    margin: 0 0 0.85rem;
+    color: var(--ink-2);
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+  .pills {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+  .pill {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 0.16rem 0.45rem;
+    border-radius: 100px;
+    color: var(--ink-3);
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+  }
+  .pill.r { color: var(--accent); border-color: rgba(166,75,39,0.25); background: rgba(166,75,39,0.06); }
+  .pill.d { color: var(--leaf); border-color: rgba(90,122,82,0.3); background: rgba(90,122,82,0.07); }
+  .pill.a { color: var(--ink-2); }
+
+  /* ---------- CODE PANEL (FILE TREE) ---------- */
+  .code-card {
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .code-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-3);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--ink-3);
+    letter-spacing: 0.06em;
+  }
+  pre.code {
+    margin: 0;
+    padding: 1.25rem 1.4rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    line-height: 1.7;
+    color: var(--ink-2);
+    tab-size: 4;
+  }
+  .code .c { color: var(--ink-4); }
+  .code .k { color: var(--accent); }
+  .code .b { color: var(--ink); font-weight: 500; }
+
+  /* ---------- SCHEMA ---------- */
+  .group {
+    margin-top: 2.4rem;
+  }
+  .group:first-of-type { margin-top: 0; }
+  .group-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  .group-head h3 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .group-meta {
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-4);
+  }
+  .tbls {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 12px;
+  }
+  .tbl {
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    overflow: hidden;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .tbl:hover {
+    border-color: var(--ink-4);
+  }
+  .tbl-h {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-2);
+  }
+  .tbl-h .nm {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 0.85rem;
+    color: var(--ink);
+  }
+  .tbl-h .ct {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    color: var(--ink-4);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .tbl ul {
+    list-style: none;
+    margin: 0;
+    padding: 0.4rem 0;
+    font-family: var(--mono);
+    font-size: 0.74rem;
+  }
+  .tbl li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    padding: 0.22rem 0.85rem;
+    color: var(--ink-2);
+  }
+  .tbl li .name { color: var(--ink); }
+  .tbl li .name.pk::after { content: " ★"; color: var(--accent); font-size: 0.85em; }
+  .tbl li .name.fk::after { content: " ↗"; color: var(--leaf); font-size: 0.85em; }
+  .tbl li .typ {
+    color: var(--ink-4);
+    font-size: 0.7rem;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ---------- RULES ---------- */
+  .rules {
+    border-top: 1px solid var(--line);
+  }
+  .rule {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 1.5rem;
+    padding: 1.4rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .rule-num {
+    font-family: var(--serif);
+    font-size: 1.3rem;
+    color: var(--accent);
+    font-style: italic;
+    line-height: 1.4;
+  }
+  .rule h4 {
+    margin: 0 0 0.3rem;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 1.08rem;
+    color: var(--ink);
+  }
+  .rule h4 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .rule p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 0.95rem;
+    max-width: 64ch;
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 880px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar {
+      position: static;
+      height: auto;
+      border-right: none;
+      border-bottom: 1px solid var(--line);
+      padding: 1.5rem 1.5rem 1.25rem;
+    }
+    .sidebar-foot { display: none; }
+    .nav { flex-direction: row; flex-wrap: wrap; gap: 0.25rem; }
+    .nav a.active::before { display: none; }
+    main { padding: 2.5rem 1.5rem 4rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ====================== SIDEBAR ====================== -->
+  <aside class="sidebar">
+    <div>
+      <div class="brand">A three-headed <em>e-hailing</em> system</div>
+      <div class="brand-sub">Architecture · 2026</div>
+    </div>
+
+    <div>
+      <div class="nav-label">Brief</div>
+      <ul class="nav">
+        <li><a href="#overview" class="nav-link active"><span class="num">00</span><span>Overview</span></a></li>
+        <li><a href="#topology" class="nav-link"><span class="num">01</span><span>Topology</span></a></li>
+        <li><a href="#modules" class="nav-link"><span class="num">02</span><span>Modules</span></a></li>
+        <li><a href="#tree" class="nav-link"><span class="num">03</span><span>File tree</span></a></li>
+        <li><a href="#schema" class="nav-link"><span class="num">04</span><span>Schema</span></a></li>
+        <li><a href="#rules" class="nav-link"><span class="num">05</span><span>House rules</span></a></li>
+      </ul>
+    </div>
+
+    <div class="sidebar-foot">
+      Node.js · TypeScript<br/>
+      Postgres 15 · PostGIS<br/>
+      Redis · BullMQ
+    </div>
+  </aside>
+
+  <!-- ====================== MAIN ====================== -->
+  <main>
+
+    <!-- 00 — OVERVIEW -->
+    <section id="overview" class="hero">
+      <p class="chap">Chapter 00 · The brief</p>
+      <h1>Three apps, one <em>core</em>.</h1>
+      <p class="lead">
+        A backend for a basic e-hailing system — <em>rider</em>,
+        <em>driver</em>, and <em>admin</em> — built as a modular monolith
+        on Postgres and Redis. One backend, one database, three frontends.
+        Designed to ship fast today and split cleanly later.
+      </p>
+
+      <dl class="stats">
+        <div class="stat">
+          <dt>Frontends</dt>
+          <dd>3</dd>
+        </div>
+        <div class="stat">
+          <dt>Backend</dt>
+          <dd>1</dd>
+        </div>
+        <div class="stat">
+          <dt>Database</dt>
+          <dd>1</dd>
+        </div>
+        <div class="stat">
+          <dt>Modules</dt>
+          <dd>12</dd>
+        </div>
+        <div class="stat">
+          <dt>Tables</dt>
+          <dd>21</dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- 01 — TOPOLOGY -->
+    <section id="topology">
+      <p class="chap">Chapter 01 · Topology</p>
+      <h2>The shape of the system, <em>at a glance</em>.</h2>
+      <p class="lead">
+        Three frontends speak to one backend over versioned, audience-scoped
+        API prefixes. The backend persists to one Postgres database and
+        leans on Redis for hot real-time state.
+      </p>
+
+      <div class="topo-card">
+        <svg class="topo-svg" viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" aria-label="System topology">
+          <defs>
+            <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse">
+              <circle cx="1" cy="1" r="0.7" fill="#d4d1c2"/>
+            </pattern>
+          </defs>
+          <rect width="880" height="320" fill="url(#dots)" opacity="0.6"/>
+
+          <g font-family="JetBrains Mono" font-size="10" letter-spacing="1.4" fill="#9b9a90">
+            <text x="20" y="26">FRONTENDS</text>
+            <text x="20" y="160">BACKEND</text>
+            <text x="20" y="284">PERSISTENCE</text>
+          </g>
+
+          <!-- frontends -->
+          <g>
+            <rect x="100" y="40" width="200" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+            <text x="118" y="66" font-family="Newsreader" font-size="17" fill="#1c1c1a">rider app</text>
+            <text x="118" y="86" font-family="JetBrains Mono" font-size="9.5" letter-spacing="1" fill="#a64b27">/api/v1/rider/*</text>
+
+            <rect x="340" y="40" width="200" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+            <text x="358" y="66" font-family="Newsreader" font-size="17" fill="#1c1c1a">driver app</text>
+            <text x="358" y="86" font-family="JetBrains Mono" font-size="9.5" letter-spacing="1" fill="#5a7a52">/api/v1/driver/*</text>
+
+            <rect x="580" y="40" width="200" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+            <text x="598" y="66" font-family="Newsreader" font-size="17" fill="#1c1c1a">admin panel</text>
+            <text x="598" y="86" font-family="JetBrains Mono" font-size="9.5" letter-spacing="1" fill="#3a3a36">/api/v1/admin/*</text>
+          </g>
+
+          <!-- connectors -->
+          <g stroke="#cdc9b8" stroke-width="1" fill="none">
+            <line x1="200" y1="98"  x2="200" y2="148"/>
+            <line x1="440" y1="98"  x2="440" y2="148"/>
+            <line x1="680" y1="98"  x2="680" y2="148"/>
+          </g>
+
+          <!-- backend -->
+          <rect x="100" y="148" width="680" height="74" rx="6" fill="#fbfaf5" stroke="#a64b27" stroke-opacity="0.5"/>
+          <text x="120" y="178" font-family="Newsreader" font-size="18" fill="#1c1c1a">backend</text>
+          <text x="190" y="178" font-family="Newsreader" font-size="18" font-style="italic" fill="#a64b27">· modular monolith</text>
+          <text x="120" y="200" font-family="JetBrains Mono" font-size="9.5" letter-spacing="0.8" fill="#6b6b63">identity · riders · drivers · trips · dispatch · tracking · pricing · payments · ratings · maps · admin</text>
+          <text x="120" y="214" font-family="JetBrains Mono" font-size="9.5" letter-spacing="0.8" fill="#9b9a90">+ workers · websocket gateway · webhooks</text>
+
+          <!-- to persistence -->
+          <g stroke="#cdc9b8" stroke-width="1" fill="none">
+            <line x1="240" y1="222" x2="240" y2="252"/>
+            <line x1="440" y1="222" x2="440" y2="252"/>
+            <line x1="640" y1="222" x2="640" y2="252"/>
+          </g>
+
+          <!-- persistence -->
+          <rect x="160" y="252" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+          <text x="178" y="276" font-family="Newsreader" font-size="15" fill="#1c1c1a">postgres</text>
+          <text x="178" y="291" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">single schema · postgis</text>
+
+          <rect x="360" y="252" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+          <text x="378" y="276" font-family="Newsreader" font-size="15" fill="#1c1c1a">redis</text>
+          <text x="378" y="291" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">geo · queue · pubsub</text>
+
+          <rect x="560" y="252" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+          <text x="578" y="276" font-family="Newsreader" font-size="15" fill="#1c1c1a">object store</text>
+          <text x="578" y="291" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">documents · receipts</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- 02 — MODULES -->
+    <section id="modules">
+      <p class="chap">Chapter 02 · Bounded contexts</p>
+      <h2>A dozen <em>small worlds</em>.</h2>
+      <p class="lead">
+        Each module owns its tables and exposes a single service — the
+        source of truth for that domain. Audience routes
+        (<code>api/rider/</code>, <code>api/driver/</code>,
+        <code>api/admin/</code>) call into these services. Pills below
+        show which audiences <em>use</em> each module.
+      </p>
+
+      <div class="modgrid">
+        <div class="mod">
+          <h3 class="mod-name">identity</h3>
+          <p class="mod-desc">Users, OTP, JWT, refresh tokens.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">riders</h3>
+          <p class="mod-desc">Profile, saved places, payment methods.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">drivers</h3>
+          <p class="mod-desc">Profile, vehicles, documents, online status.</p>
+          <div class="pills"><span class="pill d">driver</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">trips</h3>
+          <p class="mod-desc">Lifecycle state machine + event log.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">dispatch</h3>
+          <p class="mod-desc">Match riders to drivers via offer queue.</p>
+          <div class="pills"><span class="pill a">queue</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">tracking</h3>
+          <p class="mod-desc">WebSocket gateway, Redis GEO writes.</p>
+          <div class="pills"><span class="pill a">ws</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">pricing</h3>
+          <p class="mod-desc">Fare quotes, surge, breakdown.</p>
+          <div class="pills"><span class="pill r">rider</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">payments</h3>
+          <p class="mod-desc">Intents, captures, refunds, payouts.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">ratings</h3>
+          <p class="mod-desc">Bidirectional post-trip ratings.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">notifications</h3>
+          <p class="mod-desc">Push, SMS, email — pluggable providers.</p>
+          <div class="pills"><span class="pill a">worker</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">maps</h3>
+          <p class="mod-desc">Google Maps proxy: places, directions.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">admin</h3>
+          <p class="mod-desc">Cross-module ops, audit, force-cancel.</p>
+          <div class="pills"><span class="pill a">admin</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 03 — TREE -->
+    <section id="tree">
+      <p class="chap">Chapter 03 · Repository</p>
+      <h2>Routes by <em>audience</em>, domain by <em>context</em>.</h2>
+      <p class="lead">
+        Two trees that meet at the service layer.
+        <code>api/</code> is shaped by who is calling — rider, driver,
+        admin — so each frontend team finds their endpoints in one folder.
+        <code>modules/</code> is shaped by what the system does, with one
+        source of truth per domain.
+      </p>
+
+      <div class="code-card">
+        <div class="code-head">
+          <span>ehailing-backend / src</span>
+          <span>ts · esm</span>
+        </div>
+<pre class="code"><span class="b">ehailing-backend/</span>
+├─ <span class="b">src/</span>
+│  ├─ server.ts                    <span class="c"># process bootstrap</span>
+│  ├─ app.ts                       <span class="c"># route mounting + middleware</span>
+│  │
+│  ├─ <span class="k">config/</span>     env · db · redis · logger
+│  │
+│  ├─ <span class="k">api/</span>                          <span class="c"># === API SURFACE — by audience ===</span>
+│  │  ├─ <span class="b">rider/</span>
+│  │  │   ├─ index.ts              <span class="c"># mounts all rider routes</span>
+│  │  │   ├─ auth.routes.ts        <span class="c"># /auth/otp, /me</span>
+│  │  │   ├─ profile.routes.ts     <span class="c"># /saved-places, /payment-methods</span>
+│  │  │   ├─ trips.routes.ts       <span class="c"># POST /trips, /cancel</span>
+│  │  │   ├─ pricing.routes.ts     <span class="c"># POST /quotes</span>
+│  │  │   ├─ maps.routes.ts        <span class="c"># /places, /directions</span>
+│  │  │   ├─ ratings.routes.ts
+│  │  │   └─ dto/                  <span class="c"># rider-shaped req/res types</span>
+│  │  │
+│  │  ├─ <span class="b">driver/</span>
+│  │  │   ├─ index.ts
+│  │  │   ├─ auth.routes.ts
+│  │  │   ├─ profile.routes.ts     <span class="c"># /vehicles, /documents</span>
+│  │  │   ├─ status.routes.ts      <span class="c"># /online, /offline</span>
+│  │  │   ├─ trips.routes.ts       <span class="c"># /accept, /arrive, /pickup, /complete</span>
+│  │  │   ├─ earnings.routes.ts    <span class="c"># /payouts, /history</span>
+│  │  │   ├─ ratings.routes.ts
+│  │  │   └─ dto/                  <span class="c"># driver-shaped types</span>
+│  │  │
+│  │  ├─ <span class="b">admin/</span>
+│  │  │   ├─ index.ts
+│  │  │   ├─ auth.routes.ts        <span class="c"># password / SSO</span>
+│  │  │   ├─ users.routes.ts       <span class="c"># search, suspend</span>
+│  │  │   ├─ drivers.routes.ts     <span class="c"># approve, doc review</span>
+│  │  │   ├─ trips.routes.ts       <span class="c"># force-cancel, audit</span>
+│  │  │   ├─ payments.routes.ts    <span class="c"># refunds</span>
+│  │  │   ├─ metrics.routes.ts
+│  │  │   └─ dto/
+│  │  │
+│  │  ├─ webhooks/  stripe.routes.ts   <span class="c"># no auth, signature-verified</span>
+│  │  └─ ws/        gateway.ts         <span class="c"># jwt-auth on connect</span>
+│  │
+│  ├─ <span class="k">modules/</span>                     <span class="c"># === DOMAIN — by bounded context ===</span>
+│  │  ├─ identity/      service · repo · types
+│  │  ├─ riders/        service · repo
+│  │  ├─ drivers/       service · status · repo
+│  │  ├─ trips/         service · state · events · repo · types
+│  │  ├─ dispatch/      service · matcher · queue
+│  │  ├─ tracking/      service · geo
+│  │  ├─ pricing/       service · rules
+│  │  ├─ payments/      service · webhook · providers/stripe.ts
+│  │  ├─ ratings/       service
+│  │  ├─ notifications/ service · providers/{ fcm, twilio }.ts
+│  │  └─ maps/          service · cache · google.client
+│  │
+│  ├─ <span class="k">http/</span>       middleware/ { auth · requireRole · rateLimit · errorHandler }
+│  ├─ <span class="k">jobs/</span>       worker · dispatch.worker · notifications.worker · payouts.worker
+│  ├─ <span class="k">events/</span>     bus.ts
+│  ├─ <span class="k">db/</span>         migrations · seeds · schema
+│  └─ <span class="k">shared/</span>     errors · geo · ids · time
+│
+├─ tests/         integration · unit
+├─ docker-compose.yml              <span class="c"># postgres · redis</span>
+├─ Dockerfile
+└─ package.json
+</pre>
+      </div>
+
+      <h3 style="margin-top:2.5rem;font-size:1.1rem;">Route mounting <em>·</em> one line per audience</h3>
+      <div class="code-card" style="margin-top:0.9rem;">
+        <div class="code-head">
+          <span>src/app.ts</span>
+          <span>ts</span>
+        </div>
+<pre class="code">app.use(<span class="k">'/api/v1/rider'</span>,  jwtAuth, requireRole(<span class="k">'rider'</span>),  riderRoutes);
+app.use(<span class="k">'/api/v1/driver'</span>, jwtAuth, requireRole(<span class="k">'driver'</span>), driverRoutes);
+app.use(<span class="k">'/api/v1/admin'</span>,  sessionAuth, requireRole(<span class="k">'admin'</span>), adminRoutes);
+app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="c">// signature-verified, no auth</span>
+</pre>
+      </div>
+
+      <h3 style="margin-top:2.5rem;font-size:1.1rem;">A request, <em>end to end</em></h3>
+      <div class="code-card" style="margin-top:0.9rem;">
+        <div class="code-head">
+          <span>POST /api/v1/rider/trips</span>
+          <span>flow</span>
+        </div>
+<pre class="code"><span class="b">middleware</span>      jwtAuth · requireRole(<span class="k">'rider'</span>)
+   ↓
+<span class="b">api/rider/trips.routes.ts</span>          <span class="c"># parse + zod-validate input</span>
+   ↓
+<span class="b">modules/trips/trips.service</span>.requestTrip()    <span class="c"># single source of truth</span>
+   ├─ modules/pricing.service.quoteFor(...)        <span class="c"># cross-module via service</span>
+   ├─ modules/trips/trips.state.guard(<span class="k">'requested'</span>) <span class="c"># state machine</span>
+   ├─ modules/trips/trips.repo.insert(...)         <span class="c"># private to module</span>
+   └─ modules/trips/trips.events.emit(<span class="k">'requested'</span>) <span class="c"># → bus → dispatch worker</span>
+   ↓
+<span class="b">api/rider/dto/trip.dto</span>.toRiderResponse(trip)   <span class="c"># audience-specific shape</span>
+   ↓
+<span class="b">res.json</span>(...)
+</pre>
+      </div>
+    </section>
+
+    <!-- 04 — SCHEMA -->
+    <section id="schema">
+      <p class="chap">Chapter 04 · Data model</p>
+      <h2>One schema, <em>many</em> bounded contexts.</h2>
+      <p class="lead">
+        Tables grouped by ownership. Money in integer cents, geometry in
+        <code>GEOGRAPHY(POINT, 4326)</code>, every state change written
+        to an append-only event log. <span style="color:var(--accent)">★</span>
+        primary key · <span style="color:var(--leaf)">↗</span> foreign key.
+      </p>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>identity <em>·</em> who they are</h3>
+          <span class="group-meta">4 tables</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">users</span><span class="ct">8 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name">phone</span><span class="typ">text · uniq</span></li>
+              <li><span class="name">email</span><span class="typ">text</span></li>
+              <li><span class="name">full_name</span><span class="typ">text</span></li>
+              <li><span class="name">status</span><span class="typ">enum</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">user_roles</span><span class="ct">2 cols</span></div>
+            <ul>
+              <li><span class="name pk fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name pk">role</span><span class="typ">rider · driver · admin</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">auth_otp_codes</span><span class="ct">5 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name">phone</span><span class="typ">text</span></li>
+              <li><span class="name">code_hash</span><span class="typ">text</span></li>
+              <li><span class="name">expires_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">refresh_tokens</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">token_hash</span><span class="typ">text</span></li>
+              <li><span class="name">device_id</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>riders <em>·</em> who is hailing</h3>
+          <span class="group-meta">2 tables</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">rider_profiles</span><span class="ct">5 cols</span></div>
+            <ul>
+              <li><span class="name pk fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name fk">default_payment_method_id</span><span class="typ">↗</span></li>
+              <li><span class="name">rating_avg</span><span class="typ">numeric</span></li>
+              <li><span class="name">rating_count</span><span class="typ">int</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">saved_places</span><span class="ct">5 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">label</span><span class="typ">home · work</span></li>
+              <li><span class="name">location</span><span class="typ">point</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>drivers <em>·</em> who is driving</h3>
+          <span class="group-meta">4 tables</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">driver_profiles</span><span class="ct">9 cols</span></div>
+            <ul>
+              <li><span class="name pk fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">license_number</span><span class="typ">text · uniq</span></li>
+              <li><span class="name">approval_status</span><span class="typ">enum</span></li>
+              <li><span class="name">availability</span><span class="typ">offline · online · on_trip</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">vehicles</span><span class="ct">8 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">plate_number</span><span class="typ">text · uniq</span></li>
+              <li><span class="name">vehicle_class</span><span class="typ">standard · premium · xl</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">driver_documents</span><span class="ct">8 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">kind</span><span class="typ">license · insurance · …</span></li>
+              <li><span class="name">status</span><span class="typ">pending · approved · rejected</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">driver_locations</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">location</span><span class="typ">point</span></li>
+              <li><span class="name">heading · speed</span><span class="typ">numeric</span></li>
+              <li><span class="name">recorded_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>trips <em>·</em> the core domain</h3>
+          <span class="group-meta">4 tables · the heart</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">fare_quotes</span><span class="ct">13 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">rider_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">pickup · dropoff</span><span class="typ">point</span></li>
+              <li><span class="name">total_cents</span><span class="typ">int</span></li>
+              <li><span class="name">surge_multiplier</span><span class="typ">numeric</span></li>
+              <li><span class="name">expires_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">trips</span><span class="ct">23 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">rider_id · driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name fk">vehicle_id · fare_quote_id</span><span class="typ">↗</span></li>
+              <li><span class="name">status</span><span class="typ">requested → completed</span></li>
+              <li><span class="name">pickup · dropoff</span><span class="typ">point</span></li>
+              <li><span class="name">final_fare_cents</span><span class="typ">int</span></li>
+              <li><span class="name">route_polyline</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">trip_events</span><span class="ct">5 cols · append-only</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
+              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name">event_type</span><span class="typ">accepted · arrived · …</span></li>
+              <li><span class="name fk">actor_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">payload</span><span class="typ">jsonb</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">trip_offers</span><span class="ct">7 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">status</span><span class="typ">pending · accepted · expired</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>payments <em>·</em> the money</h3>
+          <span class="group-meta">4 tables · cents only</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">payment_methods</span><span class="ct">10 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">kind</span><span class="typ">card · wallet · cash</span></li>
+              <li><span class="name">brand · last4</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">payments</span><span class="ct">11 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name">amount_cents</span><span class="typ">int</span></li>
+              <li><span class="name">status</span><span class="typ">pending · captured · refunded</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">refunds</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">payment_id</span><span class="typ">→ payments</span></li>
+              <li><span class="name">amount_cents</span><span class="typ">int</span></li>
+              <li><span class="name fk">issued_by</span><span class="typ">→ admin</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">driver_payouts</span><span class="ct">11 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">period_start · end</span><span class="typ">date</span></li>
+              <li><span class="name">net_cents</span><span class="typ">int</span></li>
+              <li><span class="name">status</span><span class="typ">pending · paid · failed</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>ratings &amp; ops <em>·</em> after, around, above</h3>
+          <span class="group-meta">4 tables</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">ratings</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name fk">rater · ratee</span><span class="typ">→ users</span></li>
+              <li><span class="name">score</span><span class="typ">1..5</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">device_tokens</span><span class="ct">5 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">platform</span><span class="typ">ios · android · web</span></li>
+              <li><span class="name">token</span><span class="typ">text · uniq</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">notifications</span><span class="ct">7 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">channel</span><span class="typ">push · sms · email</span></li>
+              <li><span class="name">payload</span><span class="typ">jsonb</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">admin_audit_log</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
+              <li><span class="name fk">admin_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">action</span><span class="typ">driver.approve · …</span></li>
+              <li><span class="name">target_type · id</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 — RULES -->
+    <section id="rules">
+      <p class="chap">Chapter 05 · House rules</p>
+      <h2>Eight rules to <em>keep</em> the monolith honest.</h2>
+      <p class="lead">
+        A modular monolith degrades into a regular monolith the day someone
+        reaches across a boundary "just this once". These are the fences.
+      </p>
+
+      <div class="rules">
+        <div class="rule">
+          <span class="rule-num">01</span>
+          <div>
+            <h4>One service per module is <em>the source of truth</em>.</h4>
+            <p>Routes, workers, and websockets all delegate to the module's service. Repos stay private to their module — no cross-module SQL.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">02</span>
+          <div>
+            <h4>Routes by <em>audience</em>, domain by <em>context</em>.</h4>
+            <p><code>api/{rider,driver,admin}/</code> hold the per-audience surface; <code>modules/</code> hold the domain. Routes are thin and call into services. DTOs live with routes; domain types live with modules.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">03</span>
+          <div>
+            <h4>Trip state changes go through the <em>state machine</em>.</h4>
+            <p>No raw <code>UPDATE trips SET status</code>. Every transition writes to <code>trip_events</code> — the audit log doubles as a replay source.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">04</span>
+          <div>
+            <h4>Dispatch and tracking have <em>no HTTP routes</em>.</h4>
+            <p>Dispatch is queue-driven (BullMQ); tracking is WebSocket-driven (Redis GEO). Different scaling profiles, different transports.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">05</span>
+          <div>
+            <h4>Workers run in a <em>separate process</em>.</h4>
+            <p>The API and the worker share code, not a runtime. Scale where it's needed without touching request latency.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">06</span>
+          <div>
+            <h4>Money in <em>integer cents</em>, geometry in 4326.</h4>
+            <p><code>amount_cents int</code> · <code>GEOGRAPHY(POINT, 4326)</code>. Floats compound rounding errors; settled.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">07</span>
+          <div>
+            <h4>One Postgres database, <em>three roles</em>.</h4>
+            <p><code>app_owner</code> for migrations. <code>app_user</code> at runtime. <code>app_readonly</code> for BI. Auth lives in middleware — the backend is the trust boundary.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">08</span>
+          <div>
+            <h4>Design for <em>extraction</em>, not separation.</h4>
+            <p>Modules look like services from outside (one entrypoint, owned data) so any one — likely <code>tracking</code> first — can be lifted into its own process when it earns it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // active sidebar item on scroll
+  const links = document.querySelectorAll('.nav-link');
+  const sections = [...links].map(a => document.querySelector(a.getAttribute('href')));
+  function setActive() {
+    const y = window.scrollY + 120;
+    let idx = 0;
+    sections.forEach((s, i) => { if (s && s.offsetTop <= y) idx = i; });
+    links.forEach(a => a.classList.remove('active'));
+    links[idx]?.classList.add('active');
+  }
+  window.addEventListener('scroll', setActive, { passive: true });
+  setActive();
+</script>
+
+</body>
+</html>
