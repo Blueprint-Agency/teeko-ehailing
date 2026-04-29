@@ -528,7 +528,7 @@
   <!-- ====================== SIDEBAR ====================== -->
   <aside class="sidebar">
     <div>
-      <div class="brand">A three-headed <em>e-hailing</em> system</div>
+      <div class="brand">A four-headed <em>e-hailing</em> system</div>
       <div class="brand-sub">Architecture · 2026</div>
     </div>
 
@@ -545,9 +545,10 @@
     </div>
 
     <div class="sidebar-foot">
-      Node.js · TypeScript<br/>
+      Node.js · Fastify<br/>
       Postgres 15 · PostGIS<br/>
-      Redis · BullMQ
+      Redis · BullMQ<br/>
+      Socket.io · Auth0
     </div>
   </aside>
 
@@ -557,18 +558,19 @@
     <!-- 00 — OVERVIEW -->
     <section id="overview" class="hero">
       <p class="chap">Chapter 00 · The brief</p>
-      <h1>Three apps, one <em>core</em>.</h1>
+      <h1>Four apps, one <em>core</em>.</h1>
       <p class="lead">
-        A backend for a basic e-hailing system — <em>rider</em>,
-        <em>driver</em>, and <em>admin</em> — built as a modular monolith
-        on Postgres and Redis. One backend, one database, three frontends.
-        Designed to ship fast today and split cleanly later.
+        A backend for a Malaysian e-hailing system serving four audiences —
+        <em>rider</em>, <em>driver</em>, <em>driver-web</em> (onboarding portal),
+        and <em>admin</em> — built as a modular monolith on Postgres and Redis,
+        with <em>Auth0</em> in front. One backend, one database, four frontends.
+        Designed to ship a thin v0.1 today and grow into v1.0 without restructuring.
       </p>
 
       <dl class="stats">
         <div class="stat">
           <dt>Frontends</dt>
-          <dd>3</dd>
+          <dd>4</dd>
         </div>
         <div class="stat">
           <dt>Backend</dt>
@@ -580,11 +582,11 @@
         </div>
         <div class="stat">
           <dt>Modules</dt>
-          <dd>12</dd>
+          <dd>18</dd>
         </div>
         <div class="stat">
           <dt>Tables</dt>
-          <dd>21</dd>
+          <dd>~50</dd>
         </div>
       </dl>
     </section>
@@ -594,74 +596,93 @@
       <p class="chap">Chapter 01 · Topology</p>
       <h2>The shape of the system, <em>at a glance</em>.</h2>
       <p class="lead">
-        Three frontends speak to one backend over versioned, audience-scoped
-        API prefixes. The backend persists to one Postgres database and
-        leans on Redis for hot real-time state.
+        Four frontends speak to one backend over versioned, audience-scoped API
+        prefixes. <em>Auth0</em> sits in front for phone OTP and admin SSO; the
+        backend verifies tokens against JWKS. Postgres holds the schema; Redis
+        carries hot real-time state and the BullMQ queue.
       </p>
 
       <div class="topo-card">
-        <svg class="topo-svg" viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" aria-label="System topology">
+        <svg class="topo-svg" viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" aria-label="System topology">
           <defs>
             <pattern id="dots" width="14" height="14" patternUnits="userSpaceOnUse">
               <circle cx="1" cy="1" r="0.7" fill="#d4d1c2"/>
             </pattern>
           </defs>
-          <rect width="880" height="320" fill="url(#dots)" opacity="0.6"/>
+          <rect width="880" height="380" fill="url(#dots)" opacity="0.6"/>
 
           <g font-family="JetBrains Mono" font-size="10" letter-spacing="1.4" fill="#9b9a90">
             <text x="20" y="26">FRONTENDS</text>
-            <text x="20" y="160">BACKEND</text>
-            <text x="20" y="284">PERSISTENCE</text>
+            <text x="20" y="148">IDENTITY</text>
+            <text x="20" y="218">BACKEND</text>
+            <text x="20" y="344">PERSISTENCE</text>
           </g>
 
-          <!-- frontends -->
+          <!-- frontends (4 across) -->
           <g>
-            <rect x="100" y="40" width="200" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
-            <text x="118" y="66" font-family="Newsreader" font-size="17" fill="#1c1c1a">rider app</text>
-            <text x="118" y="86" font-family="JetBrains Mono" font-size="9.5" letter-spacing="1" fill="#a64b27">/api/v1/rider/*</text>
+            <rect x="96" y="40" width="160" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+            <text x="112" y="66" font-family="Newsreader" font-size="16" fill="#1c1c1a">rider app</text>
+            <text x="112" y="86" font-family="JetBrains Mono" font-size="9" letter-spacing="0.8" fill="#a64b27">/api/v1/rider/*</text>
 
-            <rect x="340" y="40" width="200" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
-            <text x="358" y="66" font-family="Newsreader" font-size="17" fill="#1c1c1a">driver app</text>
-            <text x="358" y="86" font-family="JetBrains Mono" font-size="9.5" letter-spacing="1" fill="#5a7a52">/api/v1/driver/*</text>
+            <rect x="272" y="40" width="160" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+            <text x="288" y="66" font-family="Newsreader" font-size="16" fill="#1c1c1a">driver app</text>
+            <text x="288" y="86" font-family="JetBrains Mono" font-size="9" letter-spacing="0.8" fill="#5a7a52">/api/v1/driver/*</text>
 
-            <rect x="580" y="40" width="200" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
-            <text x="598" y="66" font-family="Newsreader" font-size="17" fill="#1c1c1a">admin panel</text>
-            <text x="598" y="86" font-family="JetBrains Mono" font-size="9.5" letter-spacing="1" fill="#3a3a36">/api/v1/admin/*</text>
+            <rect x="448" y="40" width="160" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+            <text x="464" y="66" font-family="Newsreader" font-size="16" fill="#1c1c1a">driver-web</text>
+            <text x="464" y="86" font-family="JetBrains Mono" font-size="9" letter-spacing="0.8" fill="#5a7a52">/api/v1/driver-web/*</text>
+
+            <rect x="624" y="40" width="160" height="58" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+            <text x="640" y="66" font-family="Newsreader" font-size="16" fill="#1c1c1a">admin panel</text>
+            <text x="640" y="86" font-family="JetBrains Mono" font-size="9" letter-spacing="0.8" fill="#3a3a36">/api/v1/admin/*</text>
           </g>
 
-          <!-- connectors -->
+          <!-- frontend → auth0 connectors -->
           <g stroke="#cdc9b8" stroke-width="1" fill="none">
-            <line x1="200" y1="98"  x2="200" y2="148"/>
-            <line x1="440" y1="98"  x2="440" y2="148"/>
-            <line x1="680" y1="98"  x2="680" y2="148"/>
+            <line x1="176" y1="98" x2="176" y2="120"/>
+            <line x1="352" y1="98" x2="352" y2="120"/>
+            <line x1="528" y1="98" x2="528" y2="120"/>
+            <line x1="704" y1="98" x2="704" y2="120"/>
+          </g>
+
+          <!-- auth0 layer -->
+          <rect x="96" y="120" width="688" height="36" rx="5" fill="#fbfaf5" stroke="#a64b27" stroke-opacity="0.35" stroke-dasharray="3 3"/>
+          <text x="116" y="143" font-family="Newsreader" font-size="14" fill="#1c1c1a">Auth0</text>
+          <text x="160" y="143" font-family="JetBrains Mono" font-size="9" letter-spacing="0.8" fill="#9b9a90">phone OTP · admin SSO · JWT (verified via JWKS at the backend edge)</text>
+
+          <!-- auth0 → backend connector -->
+          <g stroke="#cdc9b8" stroke-width="1" fill="none">
+            <line x1="440" y1="156" x2="440" y2="186"/>
           </g>
 
           <!-- backend -->
-          <rect x="100" y="148" width="680" height="74" rx="6" fill="#fbfaf5" stroke="#a64b27" stroke-opacity="0.5"/>
-          <text x="120" y="178" font-family="Newsreader" font-size="18" fill="#1c1c1a">backend</text>
-          <text x="190" y="178" font-family="Newsreader" font-size="18" font-style="italic" fill="#a64b27">· modular monolith</text>
-          <text x="120" y="200" font-family="JetBrains Mono" font-size="9.5" letter-spacing="0.8" fill="#6b6b63">identity · riders · drivers · trips · dispatch · tracking · pricing · payments · ratings · maps · admin</text>
-          <text x="120" y="214" font-family="JetBrains Mono" font-size="9.5" letter-spacing="0.8" fill="#9b9a90">+ workers · websocket gateway · webhooks</text>
+          <rect x="96" y="186" width="688" height="96" rx="6" fill="#fbfaf5" stroke="#a64b27" stroke-opacity="0.5"/>
+          <text x="116" y="216" font-family="Newsreader" font-size="18" fill="#1c1c1a">backend</text>
+          <text x="186" y="216" font-family="Newsreader" font-size="18" font-style="italic" fill="#a64b27">· modular monolith</text>
+          <text x="116" y="238" font-family="JetBrains Mono" font-size="9" letter-spacing="0.6" fill="#6b6b63">identity · riders · drivers · onboarding · trips · dispatch · tracking · pricing</text>
+          <text x="116" y="252" font-family="JetBrains Mono" font-size="9" letter-spacing="0.6" fill="#6b6b63">payments · payouts · incentives · safety · communication · notifications</text>
+          <text x="116" y="266" font-family="JetBrains Mono" font-size="9" letter-spacing="0.6" fill="#6b6b63">compliance · content · maps · admin</text>
+          <text x="116" y="280" font-family="JetBrains Mono" font-size="9" letter-spacing="0.6" fill="#9b9a90">+ workers (BullMQ) · websocket gateway (Socket.io) · webhooks</text>
 
-          <!-- to persistence -->
+          <!-- backend → persistence connectors -->
           <g stroke="#cdc9b8" stroke-width="1" fill="none">
-            <line x1="240" y1="222" x2="240" y2="252"/>
-            <line x1="440" y1="222" x2="440" y2="252"/>
-            <line x1="640" y1="222" x2="640" y2="252"/>
+            <line x1="240" y1="282" x2="240" y2="312"/>
+            <line x1="440" y1="282" x2="440" y2="312"/>
+            <line x1="640" y1="282" x2="640" y2="312"/>
           </g>
 
           <!-- persistence -->
-          <rect x="160" y="252" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
-          <text x="178" y="276" font-family="Newsreader" font-size="15" fill="#1c1c1a">postgres</text>
-          <text x="178" y="291" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">single schema · postgis</text>
+          <rect x="160" y="312" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+          <text x="178" y="336" font-family="Newsreader" font-size="15" fill="#1c1c1a">postgres</text>
+          <text x="178" y="351" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">single schema · postgis</text>
 
-          <rect x="360" y="252" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
-          <text x="378" y="276" font-family="Newsreader" font-size="15" fill="#1c1c1a">redis</text>
-          <text x="378" y="291" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">geo · queue · pubsub</text>
+          <rect x="360" y="312" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+          <text x="378" y="336" font-family="Newsreader" font-size="15" fill="#1c1c1a">redis</text>
+          <text x="378" y="351" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">geo · queue · pubsub</text>
 
-          <rect x="560" y="252" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
-          <text x="578" y="276" font-family="Newsreader" font-size="15" fill="#1c1c1a">object store</text>
-          <text x="578" y="291" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">documents · receipts</text>
+          <rect x="560" y="312" width="160" height="48" rx="5" fill="#fbfaf5" stroke="#e2dfd2"/>
+          <text x="578" y="336" font-family="Newsreader" font-size="15" fill="#1c1c1a">gcs</text>
+          <text x="578" y="351" font-family="JetBrains Mono" font-size="8.5" letter-spacing="0.8" fill="#9b9a90">documents · receipts · certs</text>
         </svg>
       </div>
     </section>
@@ -669,20 +690,21 @@
     <!-- 02 — MODULES -->
     <section id="modules">
       <p class="chap">Chapter 02 · Bounded contexts</p>
-      <h2>A dozen <em>small worlds</em>.</h2>
+      <h2>Eighteen <em>small worlds</em>.</h2>
       <p class="lead">
         Each module owns its tables and exposes a single service — the
         source of truth for that domain. Audience routes
         (<code>api/rider/</code>, <code>api/driver/</code>,
-        <code>api/admin/</code>) call into these services. Pills below
-        show which audiences <em>use</em> each module.
+        <code>api/driver-web/</code>, <code>api/admin/</code>) call into
+        these services. Pills below show which audiences <em>use</em>
+        each module.
       </p>
 
       <div class="modgrid">
         <div class="mod">
           <h3 class="mod-name">identity</h3>
-          <p class="mod-desc">Users, OTP, JWT, refresh tokens.</p>
-          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill a">admin</span></div>
+          <p class="mod-desc">Users, roles, Auth0 sub mapping. Auth0 owns OTP and refresh.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill d">driver-web</span><span class="pill a">admin</span></div>
         </div>
         <div class="mod">
           <h3 class="mod-name">riders</h3>
@@ -691,52 +713,82 @@
         </div>
         <div class="mod">
           <h3 class="mod-name">drivers</h3>
-          <p class="mod-desc">Profile, vehicles, documents, online status.</p>
+          <p class="mod-desc">Profile, vehicles, online status, eligibility view.</p>
           <div class="pills"><span class="pill d">driver</span><span class="pill a">admin</span></div>
         </div>
         <div class="mod">
+          <h3 class="mod-name">onboarding</h3>
+          <p class="mod-desc">Resumable application state, document uploads, vehicle-change tickets.</p>
+          <div class="pills"><span class="pill d">driver-web</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
           <h3 class="mod-name">trips</h3>
-          <p class="mod-desc">Lifecycle state machine + event log.</p>
+          <p class="mod-desc">Lifecycle state machine, append-only event log, cancel + no-show.</p>
           <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill a">admin</span></div>
         </div>
         <div class="mod">
           <h3 class="mod-name">dispatch</h3>
-          <p class="mod-desc">Match riders to drivers via offer queue.</p>
+          <p class="mod-desc">Match riders to drivers via persisted offers + Redis ZSET queue.</p>
           <div class="pills"><span class="pill a">queue</span></div>
         </div>
         <div class="mod">
           <h3 class="mod-name">tracking</h3>
-          <p class="mod-desc">WebSocket gateway, Redis GEO writes.</p>
+          <p class="mod-desc">WebSocket gateway, Redis GEO writes, geofence events.</p>
           <div class="pills"><span class="pill a">ws</span></div>
         </div>
         <div class="mod">
           <h3 class="mod-name">pricing</h3>
-          <p class="mod-desc">Fare quotes, surge, breakdown.</p>
-          <div class="pills"><span class="pill r">rider</span></div>
+          <p class="mod-desc">Fare quotes, line-item fares (commissionable flag), surge zones + config.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span></div>
         </div>
         <div class="mod">
           <h3 class="mod-name">payments</h3>
-          <p class="mod-desc">Intents, captures, refunds, payouts.</p>
+          <p class="mod-desc">Intents, captures, refunds — Stripe + TNG + GrabPay + Google Pay.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">payouts</h3>
+          <p class="mod-desc">Driver bank accounts (encrypted), weekly Mon–Sun bins, early cashout.</p>
+          <div class="pills"><span class="pill d">driver</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">incentives</h3>
+          <p class="mod-desc">Daily/weekly campaigns, referrals, activation bonuses, ratings rollup.</p>
           <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill a">admin</span></div>
         </div>
         <div class="mod">
-          <h3 class="mod-name">ratings</h3>
-          <p class="mod-desc">Bidirectional post-trip ratings.</p>
+          <h3 class="mod-name">safety</h3>
+          <p class="mod-desc">SOS, emergency contacts, trip-share tokens, incident reports, strikes.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill a">public</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">communication</h3>
+          <p class="mod-desc">In-app chat, masked-number voice proxy, post-trip channels, support tickets &amp; appeals.</p>
           <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span></div>
         </div>
         <div class="mod">
           <h3 class="mod-name">notifications</h3>
-          <p class="mod-desc">Push, SMS, email — pluggable providers.</p>
-          <div class="pills"><span class="pill a">worker</span></div>
+          <p class="mod-desc">FCM/SMS/email outbox, in-app inbox, device tokens, broadcasts.</p>
+          <div class="pills"><span class="pill a">worker</span><span class="pill a">admin</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">compliance</h3>
+          <p class="mod-desc">PDPA consent + audit + SAR, EVP per-vehicle (APAD/LPKP), PSV, insurance.</p>
+          <div class="pills"><span class="pill a">admin</span><span class="pill a">worker</span></div>
+        </div>
+        <div class="mod">
+          <h3 class="mod-name">content</h3>
+          <p class="mod-desc">Versioned, locale-tagged copy: T&amp;C, broadcasts, help, cancel reasons.</p>
+          <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span><span class="pill d">driver-web</span><span class="pill a">admin</span></div>
         </div>
         <div class="mod">
           <h3 class="mod-name">maps</h3>
-          <p class="mod-desc">Google Maps proxy: places, directions.</p>
+          <p class="mod-desc">Google Maps proxy: places, directions, geocoding.</p>
           <div class="pills"><span class="pill r">rider</span><span class="pill d">driver</span></div>
         </div>
         <div class="mod">
           <h3 class="mod-name">admin</h3>
-          <p class="mod-desc">Cross-module ops, audit, force-cancel.</p>
+          <p class="mod-desc">Cross-module ops, broadcast composer, PDPA tools, force-cancel.</p>
           <div class="pills"><span class="pill a">admin</span></div>
         </div>
       </div>
@@ -749,78 +801,110 @@
       <p class="lead">
         Two trees that meet at the service layer.
         <code>api/</code> is shaped by who is calling — rider, driver,
-        admin — so each frontend team finds their endpoints in one folder.
-        <code>modules/</code> is shaped by what the system does, with one
-        source of truth per domain.
+        driver-web, admin — so each frontend team finds their endpoints in
+        one folder. <code>modules/</code> is shaped by what the system does,
+        with one source of truth per domain.
       </p>
 
       <div class="code-card">
         <div class="code-head">
-          <span>ehailing-backend / src</span>
-          <span>ts · esm</span>
+          <span>apps/backend / src</span>
+          <span>ts · esm · fastify</span>
         </div>
-<pre class="code"><span class="b">ehailing-backend/</span>
+<pre class="code"><span class="b">apps/backend/</span>
 ├─ <span class="b">src/</span>
-│  ├─ server.ts                    <span class="c"># process bootstrap</span>
-│  ├─ app.ts                       <span class="c"># route mounting + middleware</span>
+│  ├─ server.ts                       <span class="c"># API process bootstrap</span>
+│  ├─ worker.ts                       <span class="c"># BullMQ worker process bootstrap</span>
+│  ├─ app.ts                          <span class="c"># Fastify route mounting + middleware</span>
 │  │
-│  ├─ <span class="k">config/</span>     env · db · redis · logger
+│  ├─ <span class="k">config/</span>     env · db · redis · logger · auth0
 │  │
-│  ├─ <span class="k">api/</span>                          <span class="c"># === API SURFACE — by audience ===</span>
+│  ├─ <span class="k">api/</span>                             <span class="c"># === API SURFACE — by audience ===</span>
 │  │  ├─ <span class="b">rider/</span>
-│  │  │   ├─ index.ts              <span class="c"># mounts all rider routes</span>
-│  │  │   ├─ auth.routes.ts        <span class="c"># /auth/otp, /me</span>
-│  │  │   ├─ profile.routes.ts     <span class="c"># /saved-places, /payment-methods</span>
-│  │  │   ├─ trips.routes.ts       <span class="c"># POST /trips, /cancel</span>
-│  │  │   ├─ pricing.routes.ts     <span class="c"># POST /quotes</span>
-│  │  │   ├─ maps.routes.ts        <span class="c"># /places, /directions</span>
+│  │  │   ├─ index.ts                 <span class="c"># mounts all rider routes</span>
+│  │  │   ├─ auth.routes.ts           <span class="c"># /me, post-Auth0 session bootstrap</span>
+│  │  │   ├─ profile.routes.ts        <span class="c"># /saved-places, /recent-places, /payment-methods</span>
+│  │  │   ├─ trips.routes.ts          <span class="c"># POST /trips, /cancel, /pin, /lost-item</span>
+│  │  │   ├─ pricing.routes.ts        <span class="c"># POST /quotes</span>
+│  │  │   ├─ maps.routes.ts           <span class="c"># /places, /directions</span>
 │  │  │   ├─ ratings.routes.ts
-│  │  │   └─ dto/                  <span class="c"># rider-shaped req/res types</span>
+│  │  │   ├─ safety.routes.ts         <span class="c"># /sos, /emergency-contacts, /trip-share</span>
+│  │  │   ├─ chat.routes.ts           <span class="c"># /trips/:id/messages, /voice-token</span>
+│  │  │   ├─ notifications.routes.ts  <span class="c"># GET inbox, mark-read, /device-tokens</span>
+│  │  │   └─ dto/                     <span class="c"># rider-shaped req/res types</span>
 │  │  │
 │  │  ├─ <span class="b">driver/</span>
 │  │  │   ├─ index.ts
 │  │  │   ├─ auth.routes.ts
-│  │  │   ├─ profile.routes.ts     <span class="c"># /vehicles, /documents</span>
-│  │  │   ├─ status.routes.ts      <span class="c"># /online, /offline</span>
-│  │  │   ├─ trips.routes.ts       <span class="c"># /accept, /arrive, /pickup, /complete</span>
-│  │  │   ├─ earnings.routes.ts    <span class="c"># /payouts, /history</span>
+│  │  │   ├─ profile.routes.ts        <span class="c"># /vehicles, /vehicles/:id/active, /bank-account</span>
+│  │  │   ├─ status.routes.ts         <span class="c"># /online, /offline, /radius</span>
+│  │  │   ├─ trips.routes.ts          <span class="c"># /accept, /decline, /arrive, /pickup, /complete</span>
+│  │  │   ├─ earnings.routes.ts       <span class="c"># /payouts, /early-cashout, /history</span>
+│  │  │   ├─ incentives.routes.ts     <span class="c"># GET active campaigns + per-driver progress</span>
 │  │  │   ├─ ratings.routes.ts
-│  │  │   └─ dto/                  <span class="c"># driver-shaped types</span>
+│  │  │   ├─ safety.routes.ts         <span class="c"># /sos, /incident-reports</span>
+│  │  │   ├─ chat.routes.ts
+│  │  │   ├─ notifications.routes.ts  <span class="c"># inbox (EVP, doc-expiry, suspension), /device-tokens</span>
+│  │  │   ├─ support.routes.ts        <span class="c"># /tickets · appeals · deactivation · vehicle-change</span>
+│  │  │   └─ dto/
+│  │  │
+│  │  ├─ <span class="b">driver-web/</span>                    <span class="c"># onboarding portal — HTML had missed this</span>
+│  │  │   ├─ index.ts
+│  │  │   ├─ account.routes.ts        <span class="c"># /account (name, email, password)</span>
+│  │  │   ├─ agreement.routes.ts      <span class="c"># /agreement/accept (scrolled flag)</span>
+│  │  │   ├─ application.routes.ts    <span class="c"># GET — resume state</span>
+│  │  │   ├─ documents.routes.ts      <span class="c"># multipart kind=nric_*, cdl, psv_d, … · /:id/resubmit</span>
+│  │  │   ├─ vehicles.routes.ts       <span class="c"># add, /:id/documents</span>
+│  │  │   ├─ notifications.routes.ts  <span class="c"># in-portal inbox (doc approved, EVP submitted, …)</span>
+│  │  │   ├─ status.routes.ts         <span class="c"># post-submit polling</span>
+│  │  │   └─ dto/
 │  │  │
 │  │  ├─ <span class="b">admin/</span>
 │  │  │   ├─ index.ts
-│  │  │   ├─ auth.routes.ts        <span class="c"># password / SSO</span>
-│  │  │   ├─ users.routes.ts       <span class="c"># search, suspend</span>
-│  │  │   ├─ drivers.routes.ts     <span class="c"># approve, doc review</span>
-│  │  │   ├─ trips.routes.ts       <span class="c"># force-cancel, audit</span>
-│  │  │   ├─ payments.routes.ts    <span class="c"># refunds</span>
+│  │  │   ├─ auth.routes.ts           <span class="c"># password / Google Workspace SSO</span>
+│  │  │   ├─ users.routes.ts          <span class="c"># search, suspend, strikes</span>
+│  │  │   ├─ drivers.routes.ts        <span class="c"># approve, doc review, EVP submit</span>
+│  │  │   ├─ trips.routes.ts          <span class="c"># force-cancel, audit</span>
+│  │  │   ├─ payments.routes.ts       <span class="c"># refunds</span>
+│  │  │   ├─ payouts.routes.ts        <span class="c"># weekly close, override</span>
+│  │  │   ├─ broadcasts.routes.ts     <span class="c"># compose, schedule, segment</span>
+│  │  │   ├─ pdpa.routes.ts           <span class="c"># SAR export, erasure, retention</span>
 │  │  │   ├─ metrics.routes.ts
 │  │  │   └─ dto/
 │  │  │
-│  │  ├─ webhooks/  stripe.routes.ts   <span class="c"># no auth, signature-verified</span>
-│  │  └─ ws/        gateway.ts         <span class="c"># jwt-auth on connect</span>
+│  │  ├─ webhooks/  stripe · tng · grabpay · auth0     <span class="c"># signature-verified</span>
+│  │  ├─ public/    trip-share · cancel-reasons · content · tnc
+│  │  └─ ws/        gateway.ts · namespaces/ {rider, driver, public}
 │  │
-│  ├─ <span class="k">modules/</span>                     <span class="c"># === DOMAIN — by bounded context ===</span>
-│  │  ├─ identity/      service · repo · types
-│  │  ├─ riders/        service · repo
-│  │  ├─ drivers/       service · status · repo
-│  │  ├─ trips/         service · state · events · repo · types
-│  │  ├─ dispatch/      service · matcher · queue
-│  │  ├─ tracking/      service · geo
-│  │  ├─ pricing/       service · rules
-│  │  ├─ payments/      service · webhook · providers/stripe.ts
-│  │  ├─ ratings/       service
-│  │  ├─ notifications/ service · providers/{ fcm, twilio }.ts
-│  │  └─ maps/          service · cache · google.client
+│  ├─ <span class="k">modules/</span>                        <span class="c"># === DOMAIN — by bounded context ===</span>
+│  │  ├─ identity/        service · repo · types        <span class="c"># users · roles · external_identities</span>
+│  │  ├─ riders/          service · repo
+│  │  ├─ drivers/         service · status · repo · eligibility
+│  │  ├─ onboarding/      service · state · documents · reviews
+│  │  ├─ trips/           service · state · events · repo · types
+│  │  ├─ dispatch/        service · matcher · offers · queue
+│  │  ├─ tracking/        service · geo · geofence
+│  │  ├─ pricing/         service · fare-lines · surge.config
+│  │  ├─ payments/        service · webhook · providers/{stripe, tng, grabpay, gpay}.ts
+│  │  ├─ payouts/         service · bank · cashout
+│  │  ├─ incentives/      service · referrals · bonuses
+│  │  ├─ safety/          service · sos · share · contacts · incidents
+│  │  ├─ communication/   service · chat · voice-proxy
+│  │  ├─ notifications/   service · outbox · broadcasts · providers/{fcm, sms, email}.ts
+│  │  ├─ compliance/      service · consent · audit · sar · evp · psv · insurance
+│  │  ├─ content/         service · versions · locales
+│  │  ├─ maps/            service · cache · google.client
+│  │  └─ admin/           service · cross-module ops
 │  │
-│  ├─ <span class="k">http/</span>       middleware/ { auth · requireRole · rateLimit · errorHandler }
-│  ├─ <span class="k">jobs/</span>       worker · dispatch.worker · notifications.worker · payouts.worker
-│  ├─ <span class="k">events/</span>     bus.ts
-│  ├─ <span class="k">db/</span>         migrations · seeds · schema
-│  └─ <span class="k">shared/</span>     errors · geo · ids · time
+│  ├─ <span class="k">http/</span>       middleware/ { auth (Auth0 JWKS) · requireRole · rateLimit · errorHandler · idempotencyKey }
+│  ├─ <span class="k">jobs/</span>       dispatch · notifications · payouts · evp-psv-expiry · retention-purge · audit-hash · document-ocr · surge-recompute
+│  ├─ <span class="k">events/</span>     bus.ts                                <span class="c"># in-process; modules emit, workers/WS subscribe</span>
+│  ├─ <span class="k">db/</span>         migrations · seeds · schema · triggers <span class="c"># append-only on audit_log + trip_events</span>
+│  ├─ <span class="k">external/</span>   auth0 · googleMaps · stripe · tng · grabpay · fcm · gcs
+│  └─ <span class="k">shared/</span>     errors · geo · ids · time (Asia/KL) · money (cents)
 │
-├─ tests/         integration · unit
-├─ docker-compose.yml              <span class="c"># postgres · redis</span>
+├─ tests/                            integration · unit
+├─ docker-compose.yml                <span class="c"># postgres + postgis · redis · minio (gcs-local)</span>
 ├─ Dockerfile
 └─ package.json
 </pre>
@@ -832,10 +916,19 @@
           <span>src/app.ts</span>
           <span>ts</span>
         </div>
-<pre class="code">app.use(<span class="k">'/api/v1/rider'</span>,  jwtAuth, requireRole(<span class="k">'rider'</span>),  riderRoutes);
-app.use(<span class="k">'/api/v1/driver'</span>, jwtAuth, requireRole(<span class="k">'driver'</span>), driverRoutes);
-app.use(<span class="k">'/api/v1/admin'</span>,  sessionAuth, requireRole(<span class="k">'admin'</span>), adminRoutes);
-app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="c">// signature-verified, no auth</span>
+<pre class="code">app.register(auth0Verify);                                                 <span class="c">// JWKS-cached, role from claim</span>
+
+app.register(riderRoutes,     { prefix: <span class="k">'/api/v1/rider'</span>,      preHandler: requireRole(<span class="k">'rider'</span>) });
+app.register(driverRoutes,    { prefix: <span class="k">'/api/v1/driver'</span>,     preHandler: requireRole(<span class="k">'driver'</span>) });
+app.register(driverWebRoutes, { prefix: <span class="k">'/api/v1/driver-web'</span>, preHandler: requireRole(<span class="k">'driver'</span>) });
+app.register(adminRoutes,     { prefix: <span class="k">'/api/v1/admin'</span>,      preHandler: requireAdminRole() });
+
+app.register(webhookRoutes,   { prefix: <span class="k">'/api/webhooks'</span> });   <span class="c">// signature-verified, no auth</span>
+app.register(publicRoutes,    { prefix: <span class="k">'/api/public'</span> });     <span class="c">// trip-share, content, cancel reasons</span>
+
+io.of(<span class="k">'/ws/rider'</span>).use(socketAuth(<span class="k">'rider'</span>));
+io.of(<span class="k">'/ws/driver'</span>).use(socketAuth(<span class="k">'driver'</span>));
+io.of(<span class="k">'/ws/public/:share_token'</span>).use(shareTokenAuth());                  <span class="c">// no app required</span>
 </pre>
       </div>
 
@@ -845,19 +938,21 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
           <span>POST /api/v1/rider/trips</span>
           <span>flow</span>
         </div>
-<pre class="code"><span class="b">middleware</span>      jwtAuth · requireRole(<span class="k">'rider'</span>)
+<pre class="code"><span class="b">middleware</span>      auth0Verify · requireRole(<span class="k">'rider'</span>)
    ↓
-<span class="b">api/rider/trips.routes.ts</span>          <span class="c"># parse + zod-validate input</span>
+<span class="b">api/rider/trips.routes.ts</span>             <span class="c"># parse + zod-validate input</span>
    ↓
-<span class="b">modules/trips/trips.service</span>.requestTrip()    <span class="c"># single source of truth</span>
-   ├─ modules/pricing.service.quoteFor(...)        <span class="c"># cross-module via service</span>
-   ├─ modules/trips/trips.state.guard(<span class="k">'requested'</span>) <span class="c"># state machine</span>
-   ├─ modules/trips/trips.repo.insert(...)         <span class="c"># private to module</span>
-   └─ modules/trips/trips.events.emit(<span class="k">'requested'</span>) <span class="c"># → bus → dispatch worker</span>
+<span class="b">modules/trips/trips.service</span>.requestTrip()       <span class="c"># single source of truth</span>
+   ├─ modules/pricing.service.quoteFor(...)           <span class="c"># cross-module via service (line items)</span>
+   ├─ modules/compliance.service.assertEvpAndPsvOk()  <span class="c"># lockout if expired</span>
+   ├─ modules/trips/trips.state.guard(<span class="k">'requested'</span>)    <span class="c"># state machine</span>
+   ├─ modules/trips/trips.repo.insert(...)            <span class="c"># private to module</span>
+   ├─ modules/compliance.insurance.issueCert(trip)    <span class="c"># per-trip PA cert (signed URL)</span>
+   └─ modules/trips/trips.events.emit(<span class="k">'requested'</span>)    <span class="c"># → bus → dispatch.worker → trip_offers + WS</span>
    ↓
-<span class="b">api/rider/dto/trip.dto</span>.toRiderResponse(trip)   <span class="c"># audience-specific shape</span>
+<span class="b">api/rider/dto/trip.dto</span>.toRiderResponse(trip)      <span class="c"># audience-specific shape</span>
    ↓
-<span class="b">res.json</span>(...)
+<span class="b">reply.send</span>(...)
 </pre>
       </div>
     </section>
@@ -868,24 +963,27 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
       <h2>One schema, <em>many</em> bounded contexts.</h2>
       <p class="lead">
         Tables grouped by ownership. Money in integer cents, geometry in
-        <code>GEOGRAPHY(POINT, 4326)</code>, every state change written
-        to an append-only event log. <span style="color:var(--accent)">★</span>
-        primary key · <span style="color:var(--leaf)">↗</span> foreign key.
+        <code>GEOGRAPHY(POINT, 4326)</code>, every state change written to an
+        append-only event log. Auth0 owns OTP and refresh tokens — the backend
+        keeps only an <code>external_identities</code> mapping.
+        <span style="color:var(--accent)">★</span> primary key ·
+        <span style="color:var(--leaf)">↗</span> foreign key.
       </p>
 
       <div class="group">
         <div class="group-head">
           <h3>identity <em>·</em> who they are</h3>
-          <span class="group-meta">4 tables</span>
+          <span class="group-meta">3 tables · Auth0 in front</span>
         </div>
         <div class="tbls">
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">users</span><span class="ct">8 cols</span></div>
+            <div class="tbl-h"><span class="nm">users</span><span class="ct">7 cols</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
               <li><span class="name">phone</span><span class="typ">text · uniq</span></li>
               <li><span class="name">email</span><span class="typ">text</span></li>
               <li><span class="name">full_name</span><span class="typ">text</span></li>
+              <li><span class="name">locale</span><span class="typ">en · ms · zh · ta</span></li>
               <li><span class="name">status</span><span class="typ">enum</span></li>
             </ul>
           </div>
@@ -893,25 +991,16 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
             <div class="tbl-h"><span class="nm">user_roles</span><span class="ct">2 cols</span></div>
             <ul>
               <li><span class="name pk fk">user_id</span><span class="typ">→ users</span></li>
-              <li><span class="name pk">role</span><span class="typ">rider · driver · admin</span></li>
+              <li><span class="name pk">role</span><span class="typ">rider · driver · admin_*</span></li>
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">auth_otp_codes</span><span class="ct">5 cols</span></div>
+            <div class="tbl-h"><span class="nm">external_identities</span><span class="ct">4 cols · Auth0 sub map</span></div>
             <ul>
-              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
-              <li><span class="name">phone</span><span class="typ">text</span></li>
-              <li><span class="name">code_hash</span><span class="typ">text</span></li>
-              <li><span class="name">expires_at</span><span class="typ">timestamptz</span></li>
-            </ul>
-          </div>
-          <div class="tbl">
-            <div class="tbl-h"><span class="nm">refresh_tokens</span><span class="ct">6 cols</span></div>
-            <ul>
-              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
-              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">token_hash</span><span class="typ">text</span></li>
-              <li><span class="name">device_id</span><span class="typ">text</span></li>
+              <li><span class="name pk fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name pk">provider</span><span class="typ">auth0</span></li>
+              <li><span class="name">provider_sub</span><span class="typ">text · uniq</span></li>
+              <li><span class="name">linked_at</span><span class="typ">timestamptz</span></li>
             </ul>
           </div>
         </div>
@@ -920,7 +1009,7 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
       <div class="group">
         <div class="group-head">
           <h3>riders <em>·</em> who is hailing</h3>
-          <span class="group-meta">2 tables</span>
+          <span class="group-meta">4 tables</span>
         </div>
         <div class="tbls">
           <div class="tbl">
@@ -937,8 +1026,27 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
               <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">label</span><span class="typ">home · work</span></li>
+              <li><span class="name">label</span><span class="typ">home · work · custom</span></li>
               <li><span class="name">location</span><span class="typ">point</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">recent_places</span><span class="ct">5 cols · LRU per rider</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">label · address</span><span class="typ">text</span></li>
+              <li><span class="name">location</span><span class="typ">point</span></li>
+              <li><span class="name">last_used_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">payment_methods</span><span class="ct">10 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">kind</span><span class="typ">card · tng · grabpay · gpay</span></li>
+              <li><span class="name">brand · last4</span><span class="typ">text</span></li>
             </ul>
           </div>
         </div>
@@ -947,34 +1055,35 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
       <div class="group">
         <div class="group-head">
           <h3>drivers <em>·</em> who is driving</h3>
-          <span class="group-meta">4 tables</span>
+          <span class="group-meta">5 tables</span>
         </div>
         <div class="tbls">
           <div class="tbl">
             <div class="tbl-h"><span class="nm">driver_profiles</span><span class="ct">9 cols</span></div>
             <ul>
               <li><span class="name pk fk">user_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">license_number</span><span class="typ">text · uniq</span></li>
               <li><span class="name">approval_status</span><span class="typ">enum</span></li>
               <li><span class="name">availability</span><span class="typ">offline · online · on_trip</span></li>
+              <li><span class="name">rating_avg · count</span><span class="typ">numeric · int</span></li>
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">vehicles</span><span class="ct">8 cols</span></div>
+            <div class="tbl-h"><span class="nm">vehicles</span><span class="ct">12 cols</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
               <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
               <li><span class="name">plate_number</span><span class="typ">text · uniq</span></li>
-              <li><span class="name">vehicle_class</span><span class="typ">standard · premium · xl</span></li>
+              <li><span class="name">make · model · year · colour</span><span class="typ">text · int</span></li>
+              <li><span class="name">category</span><span class="typ">go · comfort · xl · premium · bike</span></li>
+              <li><span class="name">is_active</span><span class="typ">bool</span></li>
+              <li><span class="name">puspakom · road_tax · insurance_expiry</span><span class="typ">date</span></li>
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">driver_documents</span><span class="ct">8 cols</span></div>
+            <div class="tbl-h"><span class="nm">driver_active_vehicle</span><span class="ct">2 cols</span></div>
             <ul>
-              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
-              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">kind</span><span class="typ">license · insurance · …</span></li>
-              <li><span class="name">status</span><span class="typ">pending · approved · rejected</span></li>
+              <li><span class="name pk fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name fk">vehicle_id</span><span class="typ">→ vehicles</span></li>
             </ul>
           </div>
           <div class="tbl">
@@ -986,13 +1095,81 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
               <li><span class="name">recorded_at</span><span class="typ">timestamptz</span></li>
             </ul>
           </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">driver_radius_settings</span><span class="ct">3 cols</span></div>
+            <ul>
+              <li><span class="name pk fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">max_radius_km</span><span class="typ">numeric</span></li>
+              <li><span class="name">categories</span><span class="typ">text[]</span></li>
+            </ul>
+          </div>
+        </div>
+        <p style="margin-top:0.6rem;font-family:var(--mono);font-size:0.7rem;color:var(--ink-4);letter-spacing:0.06em;">+ <span class="b">driver_eligibility_view</span> — materialized · joined from drivers × evp × psv × radius (refreshed by expiry worker)</p>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>onboarding <em>·</em> getting on the platform</h3>
+          <span class="group-meta">5 tables · resumable</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">driver_applications</span><span class="ct">9 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">state</span><span class="typ">phone_entered → activated</span></li>
+              <li><span class="name">submitted_at · approved_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">application_steps</span><span class="ct">7 cols · audit</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
+              <li><span class="name fk">application_id</span><span class="typ">↗</span></li>
+              <li><span class="name">step_key</span><span class="typ">text</span></li>
+              <li><span class="name">entered · completed_at</span><span class="typ">timestamptz</span></li>
+              <li><span class="name">client_ip · user_agent</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">documents</span><span class="ct">10 cols · polymorphic owner</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">owner_id</span><span class="typ">→ users · vehicles</span></li>
+              <li><span class="name">owner_kind</span><span class="typ">driver · vehicle</span></li>
+              <li><span class="name">kind</span><span class="typ">nric_* · cdl · psv_d · car_grant · road_tax · puspakom · insurance · …</span></li>
+              <li><span class="name">gcs_path</span><span class="typ">text</span></li>
+              <li><span class="name">ocr_payload</span><span class="typ">jsonb</span></li>
+              <li><span class="name">expiry_date</span><span class="typ">date</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">document_reviews</span><span class="ct">7 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">document_id</span><span class="typ">→ documents</span></li>
+              <li><span class="name">status</span><span class="typ">pending · approved · rejected</span></li>
+              <li><span class="name fk">reviewer_id</span><span class="typ">→ admin</span></li>
+              <li><span class="name">reason · liveness_score</span><span class="typ">text · numeric</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">vehicle_change_requests</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">reason</span><span class="typ">text</span></li>
+              <li><span class="name">status</span><span class="typ">pending · approved · denied</span></li>
+            </ul>
+          </div>
         </div>
       </div>
 
       <div class="group">
         <div class="group-head">
           <h3>trips <em>·</em> the core domain</h3>
-          <span class="group-meta">4 tables · the heart</span>
+          <span class="group-meta">5 tables · the heart</span>
         </div>
         <div class="tbls">
           <div class="tbl">
@@ -1007,34 +1184,46 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">trips</span><span class="ct">23 cols</span></div>
+            <div class="tbl-h"><span class="nm">fare_lines</span><span class="ct">5 cols · line items</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
+              <li><span class="name fk">trip_id · quote_id</span><span class="typ">↗</span></li>
+              <li><span class="name">kind</span><span class="typ">base · distance · time · surge · toll · airport · tip</span></li>
+              <li><span class="name">amount_cents</span><span class="typ">int</span></li>
+              <li><span class="name">commissionable</span><span class="typ">bool</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">trips</span><span class="ct">25 cols</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
               <li><span class="name fk">rider_id · driver_id</span><span class="typ">→ users</span></li>
               <li><span class="name fk">vehicle_id · fare_quote_id</span><span class="typ">↗</span></li>
               <li><span class="name">status</span><span class="typ">requested → completed</span></li>
+              <li><span class="name">scheduled_at</span><span class="typ">timestamptz · advance booking</span></li>
               <li><span class="name">pickup · dropoff</span><span class="typ">point</span></li>
-              <li><span class="name">final_fare_cents</span><span class="typ">int</span></li>
+              <li><span class="name">final_fare_cents · tip_cents</span><span class="typ">int</span></li>
               <li><span class="name">route_polyline</span><span class="typ">text</span></li>
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">trip_events</span><span class="ct">5 cols · append-only</span></div>
+            <div class="tbl-h"><span class="nm">trip_events</span><span class="ct">6 cols · append-only · prev_hash</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
               <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
               <li><span class="name">event_type</span><span class="typ">accepted · arrived · …</span></li>
               <li><span class="name fk">actor_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">payload</span><span class="typ">jsonb</span></li>
+              <li><span class="name">payload · prev_hash</span><span class="typ">jsonb · text</span></li>
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">trip_offers</span><span class="ct">7 cols</span></div>
+            <div class="tbl-h"><span class="nm">trip_offers</span><span class="ct">8 cols · persisted</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
-              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
-              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">status</span><span class="typ">pending · accepted · expired</span></li>
+              <li><span class="name fk">trip_id · driver_id</span><span class="typ">↗</span></li>
+              <li><span class="name">status</span><span class="typ">pending → terminal</span></li>
+              <li><span class="name">outcome</span><span class="typ">accepted · declined · timeout · outside_radius · superseded</span></li>
+              <li><span class="name">offered_at · resolved_at</span><span class="typ">timestamptz</span></li>
             </ul>
           </div>
         </div>
@@ -1042,26 +1231,72 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
 
       <div class="group">
         <div class="group-head">
-          <h3>payments <em>·</em> the money</h3>
-          <span class="group-meta">4 tables · cents only</span>
+          <h3>trips <em>·</em> around the edges</h3>
+          <span class="group-meta">5 tables · cancel · safety · audit</span>
         </div>
         <div class="tbls">
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">payment_methods</span><span class="ct">10 cols</span></div>
+            <div class="tbl-h"><span class="nm">cancellations</span><span class="ct">6 cols</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
-              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">kind</span><span class="typ">card · wallet · cash</span></li>
-              <li><span class="name">brand · last4</span><span class="typ">text</span></li>
+              <li><span class="name fk">trip_id · actor_id</span><span class="typ">↗</span></li>
+              <li><span class="name">reason_code</span><span class="typ">text · localized</span></li>
+              <li><span class="name">fee_cents</span><span class="typ">int</span></li>
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">payments</span><span class="ct">11 cols</span></div>
+            <div class="tbl-h"><span class="nm">no_show_fees</span><span class="ct">5 cols</span></div>
+            <ul>
+              <li><span class="name pk fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name">driver_arrived_at</span><span class="typ">timestamptz</span></li>
+              <li><span class="name">fee_charged_at</span><span class="typ">timestamptz</span></li>
+              <li><span class="name">amount_cents</span><span class="typ">int</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">pickup_arrival_events</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
+              <li><span class="name fk">trip_id · driver_id</span><span class="typ">↗</span></li>
+              <li><span class="name">location</span><span class="typ">point</span></li>
+              <li><span class="name">geofence_pass</span><span class="typ">bool</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">trip_pins</span><span class="ct">4 cols</span></div>
+            <ul>
+              <li><span class="name pk fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name">pin</span><span class="typ">char(4)</span></li>
+              <li><span class="name">issued_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">lost_item_reports</span><span class="ct">6 cols</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
-              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name fk">trip_id · rider_id</span><span class="typ">↗</span></li>
+              <li><span class="name">description</span><span class="typ">text</span></li>
+              <li><span class="name">status</span><span class="typ">open · resolved</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>payments &amp; payouts <em>·</em> the money</h3>
+          <span class="group-meta">5 tables · cents only · MYR</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">payments</span><span class="ct">12 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">trip_id · payment_method_id</span><span class="typ">↗</span></li>
               <li><span class="name">amount_cents</span><span class="typ">int</span></li>
-              <li><span class="name">status</span><span class="typ">pending · captured · refunded</span></li>
+              <li><span class="name">provider</span><span class="typ">stripe · tng · grabpay · gpay</span></li>
+              <li><span class="name">status</span><span class="typ">pending · authorizing · captured · refunded</span></li>
+              <li><span class="name">redirect_url</span><span class="typ">text</span></li>
             </ul>
           </div>
           <div class="tbl">
@@ -1074,13 +1309,33 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">driver_payouts</span><span class="ct">11 cols</span></div>
+            <div class="tbl-h"><span class="nm">driver_bank_accounts</span><span class="ct">7 cols · encrypted</span></div>
+            <ul>
+              <li><span class="name pk fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">bank_code</span><span class="typ">text</span></li>
+              <li><span class="name">masked_account_no</span><span class="typ">text</span></li>
+              <li><span class="name">encrypted_blob</span><span class="typ">bytea</span></li>
+              <li><span class="name">verified_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">driver_payouts</span><span class="ct">12 cols · ISO Mon-Sun</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
               <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">period_start · end</span><span class="typ">date</span></li>
+              <li><span class="name">year_iso · week_iso</span><span class="typ">int</span></li>
+              <li><span class="name">period_start · end</span><span class="typ">date · Asia/KL</span></li>
               <li><span class="name">net_cents</span><span class="typ">int</span></li>
               <li><span class="name">status</span><span class="typ">pending · paid · failed</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">early_cashout_requests</span><span class="ct">6 cols · 1×/day</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">amount_cents</span><span class="typ">int</span></li>
+              <li><span class="name">status</span><span class="typ">pending · paid · denied</span></li>
             </ul>
           </div>
         </div>
@@ -1088,10 +1343,83 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
 
       <div class="group">
         <div class="group-head">
-          <h3>ratings &amp; ops <em>·</em> after, around, above</h3>
-          <span class="group-meta">4 tables</span>
+          <h3>pricing &amp; incentives <em>·</em> the levers</h3>
+          <span class="group-meta">9 tables</span>
         </div>
         <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">pricing_config</span><span class="ct">k/v</span></div>
+            <ul>
+              <li><span class="name pk">key</span><span class="typ">text</span></li>
+              <li><span class="name">value</span><span class="typ">jsonb</span></li>
+              <li><span class="name">updated_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">surge_config</span><span class="ct">v0.1 · single row</span></div>
+            <ul>
+              <li><span class="name">multiplier</span><span class="typ">numeric</span></li>
+              <li><span class="name">window_start · end</span><span class="typ">time · KL</span></li>
+              <li><span class="name">zone_label</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">surge_zones</span><span class="ct">6 cols · driver overlay</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name">label</span><span class="typ">text · KLCC, Bukit Bintang, …</span></li>
+              <li><span class="name">polygon</span><span class="typ">geography(POLYGON, 4326)</span></li>
+              <li><span class="name">multiplier</span><span class="typ">numeric</span></li>
+              <li><span class="name">active_from · until</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">referral_codes</span><span class="ct">5 cols</span></div>
+            <ul>
+              <li><span class="name pk">code</span><span class="typ">text</span></li>
+              <li><span class="name fk">owner_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">reward_cents</span><span class="typ">int</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">referrals</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">referrer · referee</span><span class="typ">→ users</span></li>
+              <li><span class="name">status</span><span class="typ">pending · earned · expired</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">activation_bonuses</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">trips_target · trips_done</span><span class="typ">int</span></li>
+              <li><span class="name">amount_cents · status</span><span class="typ">int · enum</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">incentive_campaigns</span><span class="ct">9 cols · daily/weekly</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name">title · description</span><span class="typ">text · localized</span></li>
+              <li><span class="name">rule_kind</span><span class="typ">trips_window · streak · peak_hours</span></li>
+              <li><span class="name">rule_payload</span><span class="typ">jsonb · target, window, hours, …</span></li>
+              <li><span class="name">bonus_cents</span><span class="typ">int</span></li>
+              <li><span class="name">starts_at · ends_at</span><span class="typ">timestamptz</span></li>
+              <li><span class="name">badge_color</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">driver_incentive_progress</span><span class="ct">6 cols · per-driver × campaign</span></div>
+            <ul>
+              <li><span class="name pk fk">campaign_id</span><span class="typ">→ incentive_campaigns</span></li>
+              <li><span class="name pk fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">progress_count</span><span class="typ">int · trips/streak/etc.</span></li>
+              <li><span class="name">completed_at</span><span class="typ">timestamptz</span></li>
+              <li><span class="name">paid_payout_id</span><span class="typ">↗ driver_payouts</span></li>
+            </ul>
+          </div>
           <div class="tbl">
             <div class="tbl-h"><span class="nm">ratings</span><span class="ct">6 cols</span></div>
             <ul>
@@ -1099,6 +1427,189 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
               <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
               <li><span class="name fk">rater · ratee</span><span class="typ">→ users</span></li>
               <li><span class="name">score</span><span class="typ">1..5</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>safety &amp; communication <em>·</em> after, around, between</h3>
+          <span class="group-meta">8 tables</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">emergency_contacts</span><span class="ct">5 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">name · phone · relation</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">sos_events</span><span class="ct">6 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">trip_id · user_id</span><span class="typ">↗</span></li>
+              <li><span class="name">location</span><span class="typ">point</span></li>
+              <li><span class="name">resolved_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">trip_share_tokens</span><span class="ct">5 cols · public</span></div>
+            <ul>
+              <li><span class="name pk">token</span><span class="typ">text</span></li>
+              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name">expires_at</span><span class="typ">timestamptz</span></li>
+              <li><span class="name">revoked_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">incident_reports</span><span class="ct">7 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">reporter · target</span><span class="typ">→ users</span></li>
+              <li><span class="name fk">trip_id</span><span class="typ">↗</span></li>
+              <li><span class="name">reason · evidence</span><span class="typ">text · jsonb</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">user_strikes</span><span class="ct">5 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">kind · severity</span><span class="typ">enum</span></li>
+              <li><span class="name">decays_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">trip_messages</span><span class="ct">5 cols · in-app chat</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
+              <li><span class="name fk">trip_id · sender_id</span><span class="typ">↗</span></li>
+              <li><span class="name">body</span><span class="typ">text</span></li>
+              <li><span class="name">sent_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">voice_proxy_sessions</span><span class="ct">6 cols · masked-call</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name">proxy_number</span><span class="typ">text</span></li>
+              <li><span class="name">expires_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">support_tickets</span><span class="ct">8 cols · appeals · deactivation</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">kind</span><span class="typ">appeal · deactivation · evp_change · vehicle_change · other</span></li>
+              <li><span class="name fk">ref_id</span><span class="typ">↗ trips · vehicles · user_strikes</span></li>
+              <li><span class="name">body · attachments</span><span class="typ">text · jsonb</span></li>
+              <li><span class="name">status</span><span class="typ">open · in_review · resolved · denied</span></li>
+              <li><span class="name fk">handled_by</span><span class="typ">→ admin</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>compliance <em>·</em> the paper trail</h3>
+          <span class="group-meta">6 tables · PDPA · APAD</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">consent_log</span><span class="ct">8 cols · append-only</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
+              <li><span class="name fk">user_id · content_version_id</span><span class="typ">↗</span></li>
+              <li><span class="name">consent_type</span><span class="typ">tnc · agreement · marketing · …</span></li>
+              <li><span class="name">scrolled_to_bottom</span><span class="typ">bool</span></li>
+              <li><span class="name">client_ip · user_agent</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">audit_log</span><span class="ct">7 cols · append-only · prev_hash</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
+              <li><span class="name fk">actor_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">action</span><span class="typ">driver.approve · refund.issue · …</span></li>
+              <li><span class="name">target_type · id</span><span class="typ">text</span></li>
+              <li><span class="name">payload · prev_hash</span><span class="typ">jsonb · text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">data_subject_requests</span><span class="ct">6 cols · SAR + erasure</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">kind</span><span class="typ">access · erasure · correction</span></li>
+              <li><span class="name">status</span><span class="typ">received · processing · fulfilled</span></li>
+              <li><span class="name">export_gcs_path</span><span class="typ">text</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">evp_records</span><span class="ct">9 cols · per-vehicle</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">vehicle_id · driver_id</span><span class="typ">↗</span></li>
+              <li><span class="name">authority</span><span class="typ">apad · lpkp</span></li>
+              <li><span class="name">region · application_no</span><span class="typ">text</span></li>
+              <li><span class="name">status · expiry_date</span><span class="typ">enum · date</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">psv_records</span><span class="ct">5 cols · per-driver</span></div>
+            <ul>
+              <li><span class="name pk fk">driver_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">licence_no</span><span class="typ">text · uniq</span></li>
+              <li><span class="name">expiry_date</span><span class="typ">date</span></li>
+              <li><span class="name">status</span><span class="typ">valid · expired · revoked</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">insurance_certificates</span><span class="ct">7 cols · per-trip PA</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">trip_id</span><span class="typ">→ trips</span></li>
+              <li><span class="name">cert_number</span><span class="typ">text · uniq</span></li>
+              <li><span class="name">insurer · gcs_path</span><span class="typ">text</span></li>
+              <li><span class="name">issued_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-head">
+          <h3>notifications &amp; content <em>·</em> reaching everyone</h3>
+          <span class="group-meta">7 tables · 4 locales</span>
+        </div>
+        <div class="tbls">
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">notification_outbox</span><span class="ct">8 cols</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">channel</span><span class="typ">push · sms · email</span></li>
+              <li><span class="name">template_key · locale</span><span class="typ">text</span></li>
+              <li><span class="name">payload · status</span><span class="typ">jsonb · enum</span></li>
+              <li><span class="name">attempt_count</span><span class="typ">int</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">notification_inbox</span><span class="ct">8 cols · in-app</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">category</span><span class="typ">trip · evp · doc_expiry · payout · suspension · incentive</span></li>
+              <li><span class="name">title · body</span><span class="typ">text · localized</span></li>
+              <li><span class="name">deeplink</span><span class="typ">text · /(driver)/notifications · /receipt/:id</span></li>
+              <li><span class="name fk">ref_id</span><span class="typ">↗ trips · documents · payouts</span></li>
+              <li><span class="name">created_at · read_at</span><span class="typ">timestamptz</span></li>
             </ul>
           </div>
           <div class="tbl">
@@ -1111,21 +1622,41 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">notifications</span><span class="ct">7 cols</span></div>
+            <div class="tbl-h"><span class="nm">broadcast_messages</span><span class="ct">8 cols</span></div>
             <ul>
               <li><span class="name pk">id</span><span class="typ">uuid</span></li>
-              <li><span class="name fk">user_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">channel</span><span class="typ">push · sms · email</span></li>
-              <li><span class="name">payload</span><span class="typ">jsonb</span></li>
+              <li><span class="name fk">composed_by</span><span class="typ">→ admin</span></li>
+              <li><span class="name">template_key</span><span class="typ">text</span></li>
+              <li><span class="name">segment_filter</span><span class="typ">jsonb · city · role · …</span></li>
+              <li><span class="name">scheduled_at · sent_at</span><span class="typ">timestamptz</span></li>
             </ul>
           </div>
           <div class="tbl">
-            <div class="tbl-h"><span class="nm">admin_audit_log</span><span class="ct">6 cols</span></div>
+            <div class="tbl-h"><span class="nm">broadcast_recipients</span><span class="ct">4 cols</span></div>
             <ul>
-              <li><span class="name pk">id</span><span class="typ">bigserial</span></li>
-              <li><span class="name fk">admin_id</span><span class="typ">→ users</span></li>
-              <li><span class="name">action</span><span class="typ">driver.approve · …</span></li>
-              <li><span class="name">target_type · id</span><span class="typ">text</span></li>
+              <li><span class="name pk fk">broadcast_id</span><span class="typ">↗</span></li>
+              <li><span class="name pk fk">user_id</span><span class="typ">→ users</span></li>
+              <li><span class="name">delivered_at · read_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">content_versions</span><span class="ct">6 cols · localized</span></div>
+            <ul>
+              <li><span class="name pk">id</span><span class="typ">uuid</span></li>
+              <li><span class="name">key</span><span class="typ">text · tnc · agreement · …</span></li>
+              <li><span class="name">locale</span><span class="typ">en · ms · zh · ta</span></li>
+              <li><span class="name">version</span><span class="typ">int</span></li>
+              <li><span class="name">body</span><span class="typ">text</span></li>
+              <li><span class="name">published_at</span><span class="typ">timestamptz</span></li>
+            </ul>
+          </div>
+          <div class="tbl">
+            <div class="tbl-h"><span class="nm">cancellation_reasons</span><span class="ct">4 cols</span></div>
+            <ul>
+              <li><span class="name pk">code</span><span class="typ">text</span></li>
+              <li><span class="name pk">audience</span><span class="typ">rider · driver</span></li>
+              <li><span class="name pk">locale</span><span class="typ">en · ms · zh · ta</span></li>
+              <li><span class="name">label</span><span class="typ">text</span></li>
             </ul>
           </div>
         </div>
@@ -1135,7 +1666,7 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
     <!-- 05 — RULES -->
     <section id="rules">
       <p class="chap">Chapter 05 · House rules</p>
-      <h2>Eight rules to <em>keep</em> the monolith honest.</h2>
+      <h2>Eleven rules to <em>keep</em> the monolith honest.</h2>
       <p class="lead">
         A modular monolith degrades into a regular monolith the day someone
         reaches across a boundary "just this once". These are the fences.
@@ -1153,14 +1684,14 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
           <span class="rule-num">02</span>
           <div>
             <h4>Routes by <em>audience</em>, domain by <em>context</em>.</h4>
-            <p><code>api/{rider,driver,admin}/</code> hold the per-audience surface; <code>modules/</code> hold the domain. Routes are thin and call into services. DTOs live with routes; domain types live with modules.</p>
+            <p><code>api/{rider,driver,driver-web,admin}/</code> hold the per-audience surface; <code>modules/</code> hold the domain. Routes are thin and call into services. DTOs live with routes; domain types live with modules.</p>
           </div>
         </div>
         <div class="rule">
           <span class="rule-num">03</span>
           <div>
-            <h4>Trip state changes go through the <em>state machine</em>.</h4>
-            <p>No raw <code>UPDATE trips SET status</code>. Every transition writes to <code>trip_events</code> — the audit log doubles as a replay source.</p>
+            <h4>State changes go through the <em>state machine</em>.</h4>
+            <p>No raw <code>UPDATE trips SET status</code>, no raw <code>UPDATE driver_applications SET state</code>. Every transition writes to <code>trip_events</code> or <code>application_steps</code>. <code>audit_log</code> and <code>trip_events</code> are append-only — Postgres triggers reject UPDATE/DELETE, and a nightly worker links rows by <code>prev_hash</code>.</p>
           </div>
         </div>
         <div class="rule">
@@ -1180,15 +1711,15 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
         <div class="rule">
           <span class="rule-num">06</span>
           <div>
-            <h4>Money in <em>integer cents</em>, geometry in 4326.</h4>
-            <p><code>amount_cents int</code> · <code>GEOGRAPHY(POINT, 4326)</code>. Floats compound rounding errors; settled.</p>
+            <h4>Money in <em>integer cents</em>, geometry in 4326, time in <em>Asia/Kuala_Lumpur</em>.</h4>
+            <p><code>amount_cents int</code> · <code>GEOGRAPHY(POINT, 4326)</code> · ISO Mon-Sun weekly bins computed in KL local. Floats compound rounding errors; floating timezones break finance.</p>
           </div>
         </div>
         <div class="rule">
           <span class="rule-num">07</span>
           <div>
             <h4>One Postgres database, <em>three roles</em>.</h4>
-            <p><code>app_owner</code> for migrations. <code>app_user</code> at runtime. <code>app_readonly</code> for BI. Auth lives in middleware — the backend is the trust boundary.</p>
+            <p><code>app_owner</code> for migrations. <code>app_user</code> at runtime. <code>app_readonly</code> for BI. The backend is the trust boundary.</p>
           </div>
         </div>
         <div class="rule">
@@ -1196,6 +1727,27 @@ app.use(<span class="k">'/api/webhooks'</span>,  webhookRoutes);   <span class="
           <div>
             <h4>Design for <em>extraction</em>, not separation.</h4>
             <p>Modules look like services from outside (one entrypoint, owned data) so any one — likely <code>tracking</code> first — can be lifted into its own process when it earns it.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">09</span>
+          <div>
+            <h4><em>Auth0</em> owns identity. The backend owns roles and audit.</h4>
+            <p>No <code>auth_otp_codes</code>, no <code>refresh_tokens</code> tables. Frontends carry Auth0 access tokens; the backend verifies via JWKS (cached, pre-warmed) and reads roles from a custom claim. Local users are linked by <code>external_identities (provider, provider_sub)</code> — one local user can carry multiple Auth0 subs.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">10</span>
+          <div>
+            <h4>Compliance is a <em>first-class</em> module.</h4>
+            <p>PDPA consent, audit trail, SAR / erasure, EVP per-vehicle (APAD/LPKP), PSV per-driver, and per-trip PA insurance certificates are modeled now — even where the v0.1 workflow is manual. Don't scaffold them last.</p>
+          </div>
+        </div>
+        <div class="rule">
+          <span class="rule-num">11</span>
+          <div>
+            <h4>Stubs match <em>real</em> shape, or they don't ship.</h4>
+            <p>The v0.1 stub keeps Postgres, Redis, Auth0, Socket.io, and Maps real; payments, dispatch, OCR, surge, notifications, insurance, voice, SOS are stubbed. A stub that lies — returning <code>status='stubbed'</code> synchronously, skipping <code>trip_offers</code> events, hiding the surge badge — is a bug. Frontends should not be able to tell the difference.</p>
           </div>
         </div>
       </div>

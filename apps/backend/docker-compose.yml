@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: teeko-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: teeko
+      POSTGRES_PASSWORD: teeko
+      POSTGRES_DB: teeko
+      TZ: Asia/Kuala_Lumpur
+      PGTZ: Asia/Kuala_Lumpur
+    ports:
+      - "5500:5432"
+    volumes:
+      - teeko-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U teeko -d teeko"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  teeko-pg-data:
+    name: teeko-pg-data
