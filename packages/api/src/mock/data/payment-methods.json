@@ -1,7 +1,0 @@
-[
-  { "id": "pm_001", "kind": "card", "label": "Visa", "last4": "4242", "isDefault": true },
-  { "id": "pm_002", "kind": "tng",  "label": "Touch 'n Go eWallet" },
-  { "id": "pm_003", "kind": "grabpay", "label": "GrabPay" },
-  { "id": "pm_004", "kind": "googlepay", "label": "Google Pay" },
-  { "id": "pm_005", "kind": "cash", "label": "Cash" }
-]

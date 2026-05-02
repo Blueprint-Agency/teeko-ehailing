@@ -1,6 +1,0 @@
-{
-  "baseFareMyr": { "go": 3.0, "comfort": 4.0, "xl": 5.5, "premium": 8.0, "bike": 2.0 },
-  "perKmMyr":   { "go": 1.2, "comfort": 1.6, "xl": 2.0, "premium": 2.8, "bike": 0.9 },
-  "perMinMyr":  { "go": 0.15, "comfort": 0.2, "xl": 0.25, "premium": 0.35, "bike": 0.1 },
-  "etaBaselineMin": { "go": 4, "comfort": 5, "xl": 7, "premium": 8, "bike": 3 }
-}
