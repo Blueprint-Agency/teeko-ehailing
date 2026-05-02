@@ -89,7 +89,7 @@ export async function provisionRider(input: ProvisionInput): Promise<string> {
 
 export async function updateRiderFields(
   userId: string,
-  patch: { fullName?: string; locale?: Locale; email?: string | null },
+  patch: { fullName?: string | null; locale?: Locale; email?: string | null },
 ): Promise<void> {
   await db
     .update(users)

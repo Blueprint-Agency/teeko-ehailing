@@ -133,6 +133,6 @@ export async function applyClerkWebhook(event: {
   }
   await updateRiderFields(row.id, {
     email: event.email ?? null,
-    fullName: event.fullName ?? undefined,
+    fullName: event.fullName ?? null,
   });
 }
