@@ -3,6 +3,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import type { TokenCache } from '@clerk/clerk-expo';
+import { setApiTokenGetter } from '@teeko/api';
 
 export const tokenCache: TokenCache = {
   async getToken(key) {
@@ -29,6 +30,7 @@ let tokenGetter: (() => Promise<string | null>) | null = null;
 
 export function setTokenGetter(fn: () => Promise<string | null>): void {
   tokenGetter = fn;
+  setApiTokenGetter(fn);
 }
 
 export async function getToken(): Promise<string | null> {
