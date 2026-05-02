@@ -42,7 +42,7 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 no-underline">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-teal)]">
-            <span className="font-display text-sm font-bold text-[var(--color-navy)]">T</span>
+            <span className="font-display text-sm font-bold text-white">T</span>
           </div>
           <span
             className={cn(

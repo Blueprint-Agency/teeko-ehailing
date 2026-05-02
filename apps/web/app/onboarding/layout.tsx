@@ -1,13 +1,22 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { useOnboardingStore } from '@/stores/onboardingStore'
 import { OnboardingProgress } from '@/components/driver/OnboardingProgress'
+
+const STEP_MAP: Record<string, number> = {
+  '/onboarding/agreement': 0,
+  '/onboarding/personal-docs': 1,
+  '/onboarding/vehicle-details': 2,
+  '/onboarding/vehicle-docs': 3,
+  '/onboarding/confirmation': 4,
+}
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
-  const { currentStep } = useOnboardingStore()
+  const pathname = usePathname()
+  const currentStep = STEP_MAP[pathname] ?? 0
 
   return (
     <div className="min-h-screen bg-[var(--color-surface)]">
@@ -16,7 +25,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
         <div className="mx-auto flex h-16 max-w-3xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2 no-underline">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-teal)]">
-              <span className="font-display text-xs font-bold text-[var(--color-navy)]">T</span>
+              <span className="font-display text-xs font-bold text-white">T</span>
             </div>
             <span className="font-display text-lg text-[var(--color-navy)]">{t('common.appName')}</span>
           </Link>

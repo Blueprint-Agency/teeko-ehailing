@@ -2,6 +2,9 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import sensible from '@fastify/sensible';
+import multipart from '@fastify/multipart';
+import staticFiles from '@fastify/static';
+import { join } from 'node:path';
 
 import { env } from './config/env';
 import { errorHandler } from './http/middleware/errorHandler';
@@ -27,6 +30,11 @@ export async function buildApp(): Promise<FastifyInstance> {
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(cors, { origin: true, credentials: true });
   await app.register(sensible);
+  await app.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } }); // 10 MB
+  await app.register(staticFiles, {
+    root: join(process.cwd(), 'uploads'),
+    prefix: '/uploads/',
+  });
 
   app.setErrorHandler(errorHandler);
 

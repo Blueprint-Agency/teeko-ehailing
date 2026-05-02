@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { auth0Verify } from '../../http/middleware/auth';
 import { requireRole } from '../../http/middleware/requireRole';
 
+import { routes as auth } from './auth.routes';
 import { routes as account } from './account.routes';
 import { routes as agreement } from './agreement.routes';
 import { routes as application } from './application.routes';
@@ -11,14 +12,20 @@ import { routes as notifications } from './notifications.routes';
 import { routes as status } from './status.routes';
 
 export async function driverWebRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', auth0Verify);
-  app.addHook('preHandler', requireRole('driver'));
+  // Public routes (no auth required)
+  await app.register(auth, { prefix: '/auth' });
 
-  await app.register(account, { prefix: '/account' });
-  await app.register(agreement, { prefix: '/agreement' });
-  await app.register(application, { prefix: '/application' });
-  await app.register(documents, { prefix: '/documents' });
-  await app.register(vehicles, { prefix: '/vehicles' });
-  await app.register(notifications, { prefix: '/notifications' });
-  await app.register(status, { prefix: '/status' });
+  // Protected routes
+  app.register(async (protectedApp) => {
+    protectedApp.addHook('preHandler', auth0Verify);
+    protectedApp.addHook('preHandler', requireRole('driver'));
+
+    await protectedApp.register(account, { prefix: '/account' });
+    await protectedApp.register(agreement, { prefix: '/agreement' });
+    await protectedApp.register(application, { prefix: '/application' });
+    await protectedApp.register(documents, { prefix: '/documents' });
+    await protectedApp.register(vehicles, { prefix: '/vehicles' });
+    await protectedApp.register(notifications, { prefix: '/notifications' });
+    await protectedApp.register(status, { prefix: '/status' });
+  });
 }

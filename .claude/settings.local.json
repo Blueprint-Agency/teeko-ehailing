@@ -20,7 +20,8 @@
       "Bash(vercel project:*)",
       "Bash(vercel deploy:*)",
       "Bash(vercel inspect:*)",
-      "Bash(vercel ls:*)"
+      "Bash(vercel ls:*)",
+      "Bash(pnpm *)"
     ]
   }
 }
