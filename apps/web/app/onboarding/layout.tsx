@@ -16,7 +16,7 @@ const STEP_MAP: Record<string, number> = {
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const currentStep = STEP_MAP[pathname] ?? 0
+  const currentStep = pathname ? STEP_MAP[pathname] ?? 0 : 0
 
   return (
     <div className="min-h-screen bg-[var(--color-surface)]">
