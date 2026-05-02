@@ -18,9 +18,12 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:postgis": "tsx scripts/enable-postgis.ts",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
+    "@clerk/backend": "^3.4.4",
     "@fastify/cors": "^10.0.1",
     "@fastify/helmet": "^12.0.1",
     "@fastify/jwt": "^9.0.1",
@@ -31,12 +34,15 @@
     "pino": "^9.5.0",
     "pino-pretty": "^11.3.0",
     "postgres": "^3.4.5",
+    "svix": "^1.92.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.9.1",
+    "@vitest/coverage-v8": "^4.1.5",
     "drizzle-kit": "^0.28.1",
     "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "vitest": "^4.1.5"
   }
 }
