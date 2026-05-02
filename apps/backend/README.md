@@ -141,6 +141,39 @@ Public routes (`/api/public/*`, `/healthz`, `/`) need no auth.
 
 ---
 
+## Clerk (Phase 1 rider auth)
+
+Rider auth uses Clerk. Required env vars (see `src/config/env.ts`):
+
+- `CLERK_SECRET_KEY` — backend secret key from Clerk dashboard
+- `CLERK_WEBHOOK_SIGNING_SECRET` — Svix signing secret for the `/api/webhooks/clerk` endpoint
+- `CLERK_PUBLISHABLE_KEY` (optional) — only needed if you want the SDK to embed it
+
+### Local webhook reachability
+
+Clerk delivers webhooks over the public internet. For local dev, expose the
+backend with ngrok (or cloudflared) and register the URL in the Clerk
+dashboard under Webhooks → Add endpoint:
+
+```bash
+ngrok http 5000
+# then in Clerk dashboard: <ngrok-url>/api/webhooks/clerk
+# subscribe to: user.updated, user.deleted
+```
+
+Test the JIT path with a Clerk session JWT:
+
+```bash
+curl -i -H "Authorization: Bearer $CLERK_JWT" \
+  http://localhost:5000/api/v1/rider/auth/me
+```
+
+`user.created` events from Clerk are intentionally a no-op on this endpoint —
+JIT provisioning (in `src/modules/identity/service.ts:getOrProvisionRiderMe`)
+creates the row on the first authenticated `/me` call.
+
+---
+
 ## Project layout
 
 ```
