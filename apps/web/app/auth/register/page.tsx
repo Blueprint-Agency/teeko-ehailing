@@ -6,19 +6,15 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { UserPlus, Eye, EyeOff } from 'lucide-react'
+import { UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { registerSchema, type RegisterFormData } from '@teeko/shared/schemas/auth'
-import { useWebAuthStore } from '@/stores/authStore'
-import mockProfile from '@/data/mock-driver-profile.json'
-import type { DriverProfile } from '@teeko/shared/types'
+import { api } from '@/lib/api'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { login } = useWebAuthStore()
-  const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormData>({
@@ -29,9 +25,20 @@ export default function RegisterPage() {
 
   const onSubmit = async (data: RegisterFormData) => {
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    login({ ...mockProfile, fullName: data.fullName, phone: data.phone } as DriverProfile)
-    router.push('/onboarding/agreement')
+    try {
+      const { devOtp } = await api.sendRegisterOtp(data.phone as string)
+      sessionStorage.setItem('teeko_pending_reg', JSON.stringify({
+        phone: data.phone,
+        fullName: data.fullName,
+      }))
+      const params = new URLSearchParams({ phone: data.phone as string, mode: 'register' })
+      if (devOtp) params.set('otp', devOtp)
+      router.push(`/auth/verify?${params.toString()}`)
+    } catch (error: any) {
+      alert(error.message || 'Failed to send OTP')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const BENEFITS = [
@@ -49,7 +56,7 @@ export default function RegisterPage() {
         <div className="relative flex flex-1 flex-col justify-between p-10">
           <Link href="/" className="flex items-center gap-2.5 no-underline">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-teal)]">
-              <span className="font-display text-lg font-bold text-[var(--color-navy)]">T</span>
+              <span className="font-display text-lg font-bold text-white">T</span>
             </div>
             <span className="font-display text-2xl text-white">{t('common.appName')}</span>
           </Link>
@@ -97,24 +104,6 @@ export default function RegisterPage() {
               error={errors.phone?.message}
               {...register('phone')}
             />
-
-            <div className="relative">
-              <Input
-                label={t('auth.register.password')}
-                type={showPass ? 'text' : 'password'}
-                placeholder={t('auth.register.passwordHint')}
-                required
-                error={errors.password?.message}
-                {...register('password')}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPass(!showPass)}
-                className="absolute right-3 top-8 text-[var(--color-muted)] hover:text-[var(--color-text)]"
-              >
-                {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
 
             {/* PDPA consent */}
             <label className="flex cursor-pointer items-start gap-3 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">

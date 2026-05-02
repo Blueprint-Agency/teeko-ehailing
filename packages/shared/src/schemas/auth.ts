@@ -13,11 +13,6 @@ export const otpSchema = z
 export const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100),
   phone: phoneSchema,
-  password: z
-    .string()
-    .min(8, 'Password must be at least 8 characters')
-    .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Must contain at least one number'),
   pdpaConsent: z.boolean().refine((v) => v === true, 'You must consent to data collection'),
 })
 

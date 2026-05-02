@@ -36,7 +36,7 @@ export function OnboardingProgress({ currentStep }: OnboardingProgressProps) {
                   className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold transition-all duration-300',
                     isCompleted
-                      ? 'border-[var(--color-teal)] bg-[var(--color-teal)] text-[var(--color-navy)]'
+                      ? 'border-[var(--color-teal)] bg-[var(--color-teal)] text-white'
                       : isActive
                       ? 'border-[var(--color-teal)] bg-white text-[var(--color-teal)]'
                       : 'border-[var(--color-border-dark)] bg-white text-[var(--color-placeholder)]'

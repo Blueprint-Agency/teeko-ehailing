@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { DocumentState, VehicleDetails } from '@teeko/shared/types'
+import { api } from '@/lib/api'
 
 // Steps: 0=agreement, 1=personal-docs, 2=vehicle-details, 3=vehicle-docs, 4=confirmation
 type OnboardingStep = 0 | 1 | 2 | 3 | 4
@@ -23,8 +24,10 @@ interface OnboardingStore {
   setStep: (step: OnboardingStep) => void
   acceptAgreement: () => void
   updatePersonalDoc: (id: string, updates: Partial<DocumentState>) => void
+  uploadPersonalDoc: (id: string, file: File, driverId: string) => Promise<void>
   setVehicleDetails: (details: VehicleDetails) => void
   updateVehicleDoc: (id: string, updates: Partial<DocumentState>) => void
+  uploadVehicleDoc: (id: string, file: File, driverId: string) => Promise<void>
   reset: () => void
 }
 
@@ -66,6 +69,20 @@ export const useOnboardingStore = create<OnboardingStore>()(
           ),
         })),
 
+      uploadPersonalDoc: async (id, file, driverId) => {
+        set((state) => ({
+          personalDocs: state.personalDocs.map((d) =>
+            d.id === id
+              ? { ...d, status: 'uploaded' as const, fileName: file.name, fileUrl: URL.createObjectURL(file), uploadedAt: new Date().toISOString() }
+              : d
+          ),
+        }))
+        const { url } = await api.uploadDocument(id, file, driverId)
+        set((state) => ({
+          personalDocs: state.personalDocs.map((d) => (d.id === id ? { ...d, fileUrl: url } : d)),
+        }))
+      },
+
       setVehicleDetails: (details) => set({ vehicleDetails: details }),
 
       updateVehicleDoc: (id, updates) =>
@@ -74,6 +91,20 @@ export const useOnboardingStore = create<OnboardingStore>()(
             d.id === id ? { ...d, ...updates } : d
           ),
         })),
+
+      uploadVehicleDoc: async (id, file, driverId) => {
+        set((state) => ({
+          vehicleDocs: state.vehicleDocs.map((d) =>
+            d.id === id
+              ? { ...d, status: 'uploaded' as const, fileName: file.name, fileUrl: URL.createObjectURL(file), uploadedAt: new Date().toISOString() }
+              : d
+          ),
+        }))
+        const { url } = await api.uploadDocument(id, file, driverId)
+        set((state) => ({
+          vehicleDocs: state.vehicleDocs.map((d) => (d.id === id ? { ...d, fileUrl: url } : d)),
+        }))
+      },
 
       reset: () =>
         set({
@@ -85,6 +116,13 @@ export const useOnboardingStore = create<OnboardingStore>()(
           vehicleDocs: initialVehicleDocs,
         }),
     }),
-    { name: 'teeko_onboarding' }
+    {
+      name: 'teeko_onboarding_v2',
+      partialize: (state) => ({
+        agreementAccepted: state.agreementAccepted,
+        agreementTimestamp: state.agreementTimestamp,
+        vehicleDetails: state.vehicleDetails,
+      }),
+    }
   )
 )

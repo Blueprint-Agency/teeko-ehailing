@@ -217,7 +217,7 @@ export default function LandingPage() {
               Returning
             </button>
             {isAuthenticated && (
-              <Link href="/dashboard" className="rounded bg-[var(--color-teal)] px-2 py-1 text-xs font-medium text-[var(--color-navy)]">
+              <Link href="/dashboard" className="rounded bg-[var(--color-teal)] px-2 py-1 text-xs font-medium text-white">
                 → {t('nav.dashboard')}
               </Link>
             )}

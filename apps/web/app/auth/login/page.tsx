@@ -11,6 +11,7 @@ import { ArrowRight, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { phoneSchema } from '@teeko/shared/schemas/auth'
+import { api } from '@/lib/api'
 
 const schema = z.object({ phone: phoneSchema })
 type FormData = z.infer<typeof schema>
@@ -25,9 +26,16 @@ export default function LoginPage() {
 
   const onSubmit = async (data: FormData) => {
     setLoading(true)
-    // Simulate network delay
-    await new Promise((r) => setTimeout(r, 800))
-    router.push(`/auth/verify?phone=${encodeURIComponent(data.phone as string)}`)
+    try {
+      const { devOtp } = await api.loginDriver(data.phone as string)
+      const params = new URLSearchParams({ phone: data.phone as string })
+      if (devOtp) params.set('otp', devOtp)
+      router.push(`/auth/verify?${params.toString()}`)
+    } catch (error: any) {
+      alert(error.message || 'Failed to send OTP')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -38,7 +46,7 @@ export default function LoginPage() {
         <div className="relative flex flex-1 flex-col justify-between p-10">
           <Link href="/" className="flex items-center gap-2.5 no-underline">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--color-teal)]">
-              <span className="font-display text-lg font-bold text-[var(--color-navy)]">T</span>
+              <span className="font-display text-lg font-bold text-white">T</span>
             </div>
             <span className="font-display text-2xl text-white">{t('common.appName')}</span>
           </Link>

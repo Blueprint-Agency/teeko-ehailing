@@ -5,9 +5,9 @@
   /* Brand Palette */
   --color-navy:        #0B1E3D;
   --color-navy-light:  #132848;
-  --color-teal:        #00C896;
-  --color-teal-dark:   #00A87E;
-  --color-teal-light:  #E6FBF5;
+  --color-teal:        #E02020;
+  --color-teal-dark:   #B91C1C;
+  --color-teal-light:  #FEF2F2;
 
   /* Neutrals */
   --color-surface:     #F5F7FA;
@@ -41,7 +41,7 @@
   --shadow-sm:  0 1px 3px 0 rgb(11 30 61 / 0.08), 0 1px 2px -1px rgb(11 30 61 / 0.06);
   --shadow-md:  0 4px 12px -2px rgb(11 30 61 / 0.1), 0 2px 6px -2px rgb(11 30 61 / 0.06);
   --shadow-lg:  0 10px 30px -4px rgb(11 30 61 / 0.12), 0 4px 10px -4px rgb(11 30 61 / 0.06);
-  --shadow-teal: 0 4px 14px 0 rgb(0 200 150 / 0.35);
+  --shadow-teal: 0 4px 14px 0 rgb(224 32 32 / 0.35);
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────── */
@@ -89,8 +89,8 @@ h1, h2, h3 {
 }
 
 @keyframes pulse-teal {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(0 200 150 / 0.4); }
-  50%       { box-shadow: 0 0 0 8px rgb(0 200 150 / 0); }
+  0%, 100% { box-shadow: 0 0 0 0 rgb(224 32 32 / 0.4); }
+  50%       { box-shadow: 0 0 0 8px rgb(224 32 32 / 0); }
 }
 
 .animate-fade-up {
@@ -125,8 +125,8 @@ h1, h2, h3 {
     -45deg,
     transparent,
     transparent 8px,
-    rgb(0 200 150 / 0.06) 8px,
-    rgb(0 200 150 / 0.06) 9px
+    rgb(224 32 32 / 0.06) 8px,
+    rgb(224 32 32 / 0.06) 9px
   );
 }
 

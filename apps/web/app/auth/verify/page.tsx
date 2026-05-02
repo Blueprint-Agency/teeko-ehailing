@@ -9,15 +9,18 @@ import { Button } from '@/components/ui/button'
 import { useWebAuthStore } from '@/stores/authStore'
 import mockProfile from '@/data/mock-driver-profile.json'
 import type { DriverProfile } from '@teeko/shared/types'
+import { api } from '@/lib/api'
 
 function VerifyForm() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
   const phone = searchParams?.get('phone') ?? ''
+  const isRegister = searchParams?.get('mode') === 'register'
+  const devOtp = searchParams?.get('otp') ?? ''
   const { login } = useWebAuthStore()
 
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [otp, setOtp] = useState(() => devOtp.length === 6 ? devOtp.split('') : ['', '', '', '', '', ''])
   const [countdown, setCountdown] = useState(30)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -45,15 +48,42 @@ function VerifyForm() {
     }
   }
 
+  const handleResend = async () => {
+    setCountdown(30)
+    setOtp(['', '', '', '', '', ''])
+    const resend = isRegister ? api.sendRegisterOtp(phone) : api.loginDriver(phone)
+    const result = await resend.catch(() => ({} as { devOtp?: string }))
+    if (result?.devOtp) {
+      const params = new URLSearchParams(searchParams?.toString() ?? '')
+      params.set('otp', result.devOtp)
+      router.replace(`/auth/verify?${params.toString()}`)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const code = otp.join('')
     if (code.length < 6) { setError(t('auth.verify.enterDigits')); return }
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    // Mock: any 6-digit code works
-    login(mockProfile as DriverProfile)
-    router.push('/auth/register')
+    try {
+      if (isRegister) {
+        const raw = sessionStorage.getItem('teeko_pending_reg')
+        if (!raw) throw new Error('Registration data missing. Please go back and try again.')
+        const { fullName } = JSON.parse(raw)
+        const user = await api.verifyRegister(phone, code, fullName)
+        sessionStorage.removeItem('teeko_pending_reg')
+        login({ ...mockProfile, id: user.id, fullName: user.fullName, phone: user.phone } as DriverProfile)
+        router.push('/onboarding/agreement')
+      } else {
+        const user = await api.verifyOtp(phone, code)
+        login({ ...mockProfile, id: user.id, fullName: user.fullName, phone: user.phone } as DriverProfile)
+        router.push('/dashboard')
+      }
+    } catch (err: any) {
+      setError(err.message || t('auth.verify.enterDigits'))
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -68,7 +98,12 @@ function VerifyForm() {
             {t('auth.verify.subtitle')}{' '}
             <span className="font-semibold text-[var(--color-text)]">{phone}</span>
           </p>
-          <p className="mt-1 text-xs text-[var(--color-muted)]">{t('auth.verify.mockHint')}</p>
+          {devOtp && (
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
+              Your OTP is{' '}
+              <span className="font-mono font-bold tracking-widest text-[var(--color-teal)]">{devOtp}</span>
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="animate-fade-up animate-delay-100">
@@ -105,7 +140,7 @@ function VerifyForm() {
             <span>{t('auth.verify.resendTimer')} {countdown}s</span>
           ) : (
             <button
-              onClick={() => setCountdown(30)}
+              onClick={handleResend}
               className="font-medium text-[var(--color-teal-dark)] hover:underline"
             >
               {t('auth.verify.resendButton')}
