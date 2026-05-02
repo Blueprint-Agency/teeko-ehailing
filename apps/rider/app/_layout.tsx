@@ -113,7 +113,7 @@ export default function RootLayout() {
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="(main)" />
-              <Stack.Screen name="(auth)" options={{ presentation: 'modal', gestureEnabled: true }} />
+              <Stack.Screen name="(auth)" />
             </Stack>
           </SafeAreaProvider>
         </ClerkBridge>

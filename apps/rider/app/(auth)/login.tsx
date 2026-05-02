@@ -30,7 +30,7 @@ export default function LoginScreen() {
       const attempt = await signIn.create({ identifier: email.trim(), password });
       if (attempt.status === 'complete') {
         await setActive({ session: attempt.createdSessionId });
-        router.back();
+        router.replace('/(main)/(tabs)');
       } else {
         pushToast({ kind: 'error', message: 'Login incomplete. Try again.' });
       }

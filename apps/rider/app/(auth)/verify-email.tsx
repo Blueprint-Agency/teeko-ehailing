@@ -29,8 +29,7 @@ export default function VerifyEmailScreen() {
       const attempt = await signUp.attemptEmailAddressVerification({ code: code.trim() });
       if (attempt.status === 'complete') {
         await setActive({ session: attempt.createdSessionId });
-        router.dismissAll?.();
-        router.back();
+        router.replace('/(main)/(tabs)');
       } else {
         setCodeError(t('auth.codeIncorrect'));
       }

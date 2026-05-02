@@ -3,10 +3,13 @@ import { Redirect } from 'expo-router';
 import { View } from 'react-native';
 
 export default function SplashGate() {
-  const { isLoaded } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
 
   if (!isLoaded) {
     return <View className="flex-1 bg-surface" />;
   }
-  return <Redirect href="/(main)/(tabs)" />;
+  if (isSignedIn) {
+    return <Redirect href="/(main)/(tabs)" />;
+  }
+  return <Redirect href="/(auth)/signup" />;
 }

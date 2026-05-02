@@ -36,7 +36,7 @@ export function GoogleButton({ label, disabled }: GoogleButtonProps) {
       const { createdSessionId, setActive } = await startOAuthFlow();
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
-        router.back();
+        router.replace('/(main)/(tabs)');
       }
     } catch {
       pushToast({ kind: 'error', message: 'Google sign-in failed. Try again.' });
