@@ -6,6 +6,13 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   DATABASE_URL: z.string().url(),
+
+  // Clerk (Phase 1 rider auth)
+  CLERK_SECRET_KEY: z.string(),
+  CLERK_PUBLISHABLE_KEY: z.string().optional(),
+  CLERK_WEBHOOK_SIGNING_SECRET: z.string(),
+
+  // Auth0 — unused this phase, kept for forward compatibility
   AUTH0_DOMAIN: z.string().optional(),
   AUTH0_AUDIENCE: z.string().optional(),
   AUTH0_ISSUER: z.string().optional(),
