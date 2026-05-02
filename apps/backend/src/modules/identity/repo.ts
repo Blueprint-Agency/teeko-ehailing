@@ -113,6 +113,7 @@ export async function getRiderProfileBundle(userId: string) {
     .select({
       id: users.id,
       email: users.email,
+      emailVerified: users.emailVerified,
       fullName: users.fullName,
       locale: users.locale,
       status: users.status,

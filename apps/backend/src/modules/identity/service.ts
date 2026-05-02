@@ -4,6 +4,7 @@
 import { logger } from '../../config/logger';
 import { isUniqueViolation } from '../../db/errors';
 import { clerk, type ClerkClaims } from '../../external/clerk';
+import { sendVerificationOtp } from '../auth_otp/service';
 
 import {
   findUserByExternalId,
@@ -18,6 +19,7 @@ export type RiderMeResponse = {
   user: {
     id: string;
     email: string | null;
+    emailVerified: boolean;
     fullName: string | null;
     locale: 'en' | 'ms' | 'zh' | 'ta';
     status: 'active' | 'suspended' | 'deactivated';
@@ -72,9 +74,11 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
     throw new Error('clerk claims missing sub');
   }
   let row: IdentityRow | null = await findUserByExternalId('clerk', claims.sub);
+  let weCreatedTheRow = false;
+  let provisionedProfile: { email: string | undefined; fullName: string | undefined } | null = null;
   if (!row) {
     const profile = await resolveProfileFromClerk(claims);
-    let weCreatedTheRow = false;
+    provisionedProfile = profile;
     try {
       await provisionRider({
         clerkUserId: claims.sub,
@@ -90,14 +94,30 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
     }
     row = await findUserByExternalId('clerk', claims.sub);
     if (!row) throw new Error('provisionRider succeeded but row not found');
-    void weCreatedTheRow; // reserved for future post-signup hooks (e.g., analytics)
   }
   const bundle = await getRiderProfileBundle(row.id);
   if (!bundle) throw new Error('user row exists but profile bundle missing');
+
+  // Auto-fire the first verification OTP only when WE just created the row
+  // and we have an email. Fire-and-forget; failures are logged.
+  if (weCreatedTheRow && provisionedProfile?.email) {
+    const userId = row.id;
+    const email = provisionedProfile.email;
+    const fullName = provisionedProfile.fullName ?? null;
+    void (async () => {
+      try {
+        await sendVerificationOtp({ userId, email, fullName });
+      } catch (err) {
+        logger.warn({ err, userId }, 'auto-send OTP failed');
+      }
+    })();
+  }
+
   return {
     user: {
       id: bundle.id,
       email: bundle.email,
+      emailVerified: bundle.emailVerified,
       fullName: bundle.fullName,
       locale: bundle.locale,
       status: bundle.status,

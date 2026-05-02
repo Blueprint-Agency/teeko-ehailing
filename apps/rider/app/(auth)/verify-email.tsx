@@ -1,17 +1,18 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { useUIStore } from '@teeko/api';
+import { ApiError, authApi, useAuthStore, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
-import { useSignUp, useClerk } from '@clerk/clerk-expo';
+import { useClerk } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
   const t = useT();
-  const { signUp, setActive, isLoaded } = useSignUp();
   const clerk = useClerk();
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const rider = useAuthStore((s) => s.rider);
   const pushToast = useUIStore((s) => s.pushToast);
 
   const [code, setCode] = useState('');
@@ -19,24 +20,31 @@ export default function VerifyEmailScreen() {
   const [resending, setResending] = useState(false);
   const [codeError, setCodeError] = useState<string | undefined>();
 
-  const pendingEmail = signUp?.emailAddress ?? null;
+  const pendingEmail = rider?.email ?? null;
 
   const onVerify = async () => {
-    if (!isLoaded || !signUp || !setActive) return;
     setCodeError(undefined);
     setVerifying(true);
     try {
-      const attempt = await signUp.attemptEmailAddressVerification({ code: code.trim() });
-      if (attempt.status === 'complete') {
-        await setActive({ session: attempt.createdSessionId });
-        router.replace('/(main)/(tabs)');
-      } else {
-        setCodeError(t('auth.codeIncorrect'));
-      }
+      await authApi.verifyOtp(code.trim());
+      await fetchProfile();
+      router.replace('/(main)/(tabs)');
     } catch (err) {
-      const errCode = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
-      if (errCode === 'form_code_incorrect' || errCode === 'verification_failed') {
-        setCodeError(t('auth.codeIncorrect'));
+      if (err instanceof ApiError) {
+        try {
+          const body = JSON.parse(err.body) as { error: string };
+          if (body.error === 'incorrect' || body.error === 'no_active_code') {
+            setCodeError(t('auth.codeIncorrect'));
+          } else if (body.error === 'expired') {
+            pushToast({ kind: 'error', message: 'Code expired. Tap resend.' });
+          } else if (body.error === 'too_many_attempts') {
+            pushToast({ kind: 'error', message: 'Too many attempts. Tap resend.' });
+          } else {
+            pushToast({ kind: 'error', message: 'Verification failed. Try again.' });
+          }
+        } catch {
+          pushToast({ kind: 'error', message: 'Verification failed. Try again.' });
+        }
       } else {
         pushToast({ kind: 'error', message: 'Verification failed. Try again.' });
       }
@@ -46,11 +54,25 @@ export default function VerifyEmailScreen() {
   };
 
   const onResend = async () => {
-    if (!isLoaded || !signUp) return;
     setResending(true);
     try {
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      await authApi.sendOtp();
       pushToast({ kind: 'info', message: t('auth.resendToast') });
+    } catch (err) {
+      if (err instanceof ApiError) {
+        try {
+          const body = JSON.parse(err.body) as { error: string; retryInSeconds?: number };
+          if (body.error === 'rate_limited') {
+            pushToast({ kind: 'info', message: `Try again in ${body.retryInSeconds ?? 60}s` });
+          } else {
+            pushToast({ kind: 'error', message: 'Could not resend code.' });
+          }
+        } catch {
+          pushToast({ kind: 'error', message: 'Could not resend code.' });
+        }
+      } else {
+        pushToast({ kind: 'error', message: 'Could not resend code.' });
+      }
     } finally {
       setResending(false);
     }

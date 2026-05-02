@@ -12,7 +12,7 @@ import { GoogleButton } from '../../components/GoogleButton';
 export default function SignupScreen() {
   const router = useRouter();
   const t = useT();
-  const { signUp, isLoaded } = useSignUp();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const pushToast = useUIStore((s) => s.pushToast);
 
   const [name, setName] = useState('');
@@ -23,18 +23,28 @@ export default function SignupScreen() {
   const [passwordError, setPasswordError] = useState<string | undefined>();
 
   const submit = async () => {
-    if (!isLoaded || !signUp) return;
+    if (!isLoaded || !signUp || !setActive) return;
     setEmailError(undefined);
     setPasswordError(undefined);
     setSubmitting(true);
     try {
-      await signUp.create({
+      const attempt = await signUp.create({
         emailAddress: email.trim(),
         password,
         firstName: name.trim() || undefined,
       });
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-      router.replace('/(auth)/verify-email');
+      // Clerk dashboard must be configured to NOT require email verification.
+      // With that off, the create attempt completes immediately and gives us a session.
+      if (attempt.status === 'complete' && attempt.createdSessionId) {
+        await setActive({ session: attempt.createdSessionId });
+        router.replace('/(auth)/verify-email');
+      } else {
+        // Clerk still wants verification — dashboard isn't configured. Surface a clear error.
+        pushToast({
+          kind: 'error',
+          message: 'Sign-up needs Clerk dashboard config (verification: none).',
+        });
+      }
     } catch (err) {
       const code = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
       if (code === 'form_identifier_exists' || code === 'form_param_format_invalid') {

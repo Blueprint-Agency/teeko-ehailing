@@ -1,5 +1,5 @@
 // client/auth.ts
-// Wraps GET /api/v1/rider/auth/me and PATCH /me.
+// Wraps GET /api/v1/rider/auth/me, PATCH /me, POST /send-otp, POST /verify-otp.
 import type { Locale, Rider } from '@teeko/shared';
 
 import { api } from './_fetch';
@@ -8,6 +8,7 @@ type RiderMeResponse = {
   user: {
     id: string;
     email: string | null;
+    emailVerified: boolean;
     fullName: string | null;
     locale: Locale;
     status: 'active' | 'suspended' | 'deactivated';
@@ -26,7 +27,7 @@ function toRider(res: RiderMeResponse): Rider {
     email: res.user.email ?? undefined,
     rating: res.riderProfile.ratingAvg ?? 0,
     languagePref: res.user.locale,
-    verified: true, // Clerk verifies email at signup
+    verified: res.user.emailVerified,
     signupDate: undefined,
   };
 }
@@ -40,5 +41,19 @@ export async function updateMe(patch: { fullName?: string; locale?: Locale }): P
   await api<{ ok: true }>('/api/v1/rider/auth/me', {
     method: 'PATCH',
     body: JSON.stringify(patch),
+  });
+}
+
+export async function sendOtp(): Promise<void> {
+  await api<{ ok: true }>('/api/v1/rider/auth/send-otp', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function verifyOtp(code: string): Promise<{ ok: true }> {
+  return api<{ ok: true }>('/api/v1/rider/auth/verify-otp', {
+    method: 'POST',
+    body: JSON.stringify({ code }),
   });
 }

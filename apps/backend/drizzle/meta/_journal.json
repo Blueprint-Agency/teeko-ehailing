@@ -15,6 +15,13 @@
       "when": 1777722688807,
       "tag": "0001_keen_triathlon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777739699497,
+      "tag": "0002_lethal_the_renegades",
+      "breakpoints": true
     }
   ]
 }
