@@ -1,6 +1,8 @@
 // modules/identity/service.ts
 // Identity domain orchestration. Routes call into this service; repo stays
 // private to the module.
+import { logger } from '../../config/logger';
+import { isUniqueViolation } from '../../db/errors';
 import { clerk, type ClerkClaims } from '../../external/clerk';
 
 import {
@@ -52,9 +54,11 @@ async function resolveProfileFromClerk(
       email: primaryEmail ?? undefined,
       fullName: fullName || undefined,
     };
-  } catch {
-    // Clerk lookup failed — provision with whatever the JWT had (likely nothing).
-    // The user can fill in via PATCH /me later.
+  } catch (err) {
+    logger.warn(
+      { clerkUserId: claims.sub, err },
+      'clerk admin lookup failed during JIT — provisioning with empty profile',
+    );
     return { email: claimEmail, fullName: claimName || undefined };
   }
 }
@@ -64,14 +68,24 @@ async function resolveProfileFromClerk(
  * Returns the full bundle. Idempotent.
  */
 export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderMeResponse> {
+  if (!claims.sub) {
+    throw new Error('clerk claims missing sub');
+  }
   let row: IdentityRow | null = await findUserByExternalId('clerk', claims.sub);
   if (!row) {
     const profile = await resolveProfileFromClerk(claims);
-    await provisionRider({
-      clerkUserId: claims.sub,
-      email: profile.email,
-      fullName: profile.fullName,
-    });
+    try {
+      await provisionRider({
+        clerkUserId: claims.sub,
+        email: profile.email,
+        fullName: profile.fullName,
+      });
+    } catch (err) {
+      // Concurrent first-/me race: another request just provisioned the same
+      // Clerk user. Loser of the race re-reads the row that the winner created.
+      if (!isUniqueViolation(err)) throw err;
+      logger.debug({ clerkUserId: claims.sub }, 'JIT race lost, re-reading existing row');
+    }
     row = await findUserByExternalId('clerk', claims.sub);
     if (!row) throw new Error('provisionRider succeeded but row not found');
   }
