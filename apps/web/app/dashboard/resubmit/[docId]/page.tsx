@@ -7,6 +7,7 @@ import { ArrowLeft, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DocumentSlot } from '@/components/driver/DocumentSlot'
 import { useApplicationStatusStore } from '@/stores/applicationStatusStore'
+import { useWebAuthStore } from '@/stores/authStore'
 
 interface Props {
   params: Promise<{ docId: string }>
@@ -16,6 +17,7 @@ export default function ResubmitPage({ params }: Props) {
   const { docId } = use(params)
   const router = useRouter()
   const { personalDocs, vehicleDocs, resubmitDoc } = useApplicationStatusStore()
+  const { profile } = useWebAuthStore()
 
   const allDocs = [...personalDocs, ...vehicleDocs]
   const doc = allDocs.find((d) => d.id === docId)
@@ -30,7 +32,8 @@ export default function ResubmitPage({ params }: Props) {
   }
 
   const handleUpload = (id: string, file: File) => {
-    resubmitDoc(id, file)
+    if (!profile) return
+    resubmitDoc(id, file, profile.id)
   }
 
   const isResubmitted = doc.status === 'uploaded' || doc.status === 'under_review'

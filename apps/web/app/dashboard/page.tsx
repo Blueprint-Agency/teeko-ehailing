@@ -45,6 +45,17 @@ export default function DashboardPage() {
 
   const hasRejected = [...personalDocs, ...vehicleDocs].some((d) => d.status === 'rejected')
 
+  if (!status) {
+    return (
+      <div className="min-h-screen">
+        <Header showNav />
+        <main className="mx-auto w-full max-w-4xl px-6 py-10">
+          <p className="text-sm text-[var(--color-muted)]">{t('common.loading')}</p>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen">
       <Header showNav />
@@ -62,9 +73,9 @@ export default function DashboardPage() {
                 : t('dashboard.subtitle')}
             </p>
           </div>
-          {unreadCount > 0 && (
+          {unreadCount > 0 && profile && (
             <button
-              onClick={markAllRead}
+              onClick={() => markAllRead(profile.id)}
               className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3 py-2 text-xs font-medium text-[var(--color-muted)] shadow-[var(--shadow-sm)] hover:text-[var(--color-text)]"
             >
               <Bell className="h-3.5 w-3.5" />

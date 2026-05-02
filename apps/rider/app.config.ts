@@ -59,7 +59,7 @@ const config: ExpoConfig = {
     router: {},
     eas: { projectId: '64dad399-68e0-4def-9640-6c1c718e4416' },
   },
-  owner: 'chriskke',
+  owner: 'teeko-ai',
 };
 
 export default config;
