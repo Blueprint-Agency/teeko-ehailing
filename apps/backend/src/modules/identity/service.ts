@@ -4,9 +4,7 @@
 import { logger } from '../../config/logger';
 import { isUniqueViolation } from '../../db/errors';
 import { clerk, type ClerkClaims } from '../../external/clerk';
-import { sendEmail } from '../../external/resend';
 
-import { welcomeEmail } from './emails';
 import {
   findUserByExternalId,
   provisionRider,
@@ -92,13 +90,7 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
     }
     row = await findUserByExternalId('clerk', claims.sub);
     if (!row) throw new Error('provisionRider succeeded but row not found');
-
-    if (weCreatedTheRow && profile.email) {
-      const { subject, html } = welcomeEmail({ name: profile.fullName ?? null, email: profile.email });
-      sendEmail({ to: profile.email, subject, html }).catch(() => {
-        // sendEmail already logs; this catch is just to silence the unhandled rejection
-      });
-    }
+    void weCreatedTheRow; // reserved for future post-signup hooks (e.g., analytics)
   }
   const bundle = await getRiderProfileBundle(row.id);
   if (!bundle) throw new Error('user row exists but profile bundle missing');
