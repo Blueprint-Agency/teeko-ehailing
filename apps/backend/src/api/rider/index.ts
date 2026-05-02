@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { auth0Verify } from '../../http/middleware/auth';
+import { clerkAuthVerify } from '../../http/middleware/auth';
 import { requireRole } from '../../http/middleware/requireRole';
 
 import { routes as auth } from './auth.routes';
@@ -13,16 +13,22 @@ import { routes as chat } from './chat.routes';
 import { routes as notifications } from './notifications.routes';
 
 export async function riderRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', auth0Verify);
-  app.addHook('preHandler', requireRole('rider'));
+  app.addHook('preHandler', clerkAuthVerify);
 
+  // Auth route runs without requireRole — it JIT-provisions the row that
+  // requireRole will check on every other rider route.
   await app.register(auth);
-  await app.register(profile);
-  await app.register(trips, { prefix: '/trips' });
-  await app.register(pricing, { prefix: '/quotes' });
-  await app.register(maps);
-  await app.register(ratings, { prefix: '/ratings' });
-  await app.register(safety);
-  await app.register(chat);
-  await app.register(notifications, { prefix: '/notifications' });
+
+  // Everything else: scoped sub-instance with requireRole('rider').
+  await app.register(async (scope) => {
+    scope.addHook('preHandler', requireRole('rider'));
+    await scope.register(profile);
+    await scope.register(trips, { prefix: '/trips' });
+    await scope.register(pricing, { prefix: '/quotes' });
+    await scope.register(maps);
+    await scope.register(ratings, { prefix: '/ratings' });
+    await scope.register(safety);
+    await scope.register(chat);
+    await scope.register(notifications, { prefix: '/notifications' });
+  });
 }
