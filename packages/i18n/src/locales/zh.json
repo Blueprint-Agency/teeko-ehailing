@@ -9,6 +9,13 @@
     "tryAgain": "重试",
     "done": "完成"
   },
+  "notImplemented": {
+    "home": { "title": "主页即将推出", "body": "我们正在开发预订流程。敬请期待。" },
+    "rides": { "title": "行程历史即将推出", "body": "完成首次行程后将在此处显示。" },
+    "trips": { "title": "行程流程即将推出", "body": "调度与跟踪功能正在开发中。" },
+    "payments": { "title": "支付即将推出", "body": "支付集成上线后即可添加银行卡或电子钱包。" },
+    "search": { "title": "搜索即将推出", "body": "地点搜索将与预订流程一同上线。" }
+  },
   "auth": {
     "signupTitle": "创建您的 Teeko 账户",
     "signupSubtitle": "使用电子邮件注册或继续使用 Google。",

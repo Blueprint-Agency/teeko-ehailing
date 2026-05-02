@@ -9,6 +9,28 @@
     "tryAgain": "Try again",
     "done": "Done"
   },
+  "notImplemented": {
+    "home": {
+      "title": "Home is coming soon",
+      "body": "We're building the booking flow next. Check back soon."
+    },
+    "rides": {
+      "title": "Ride history coming soon",
+      "body": "Once you take your first trip, it'll show up here."
+    },
+    "trips": {
+      "title": "Trip flow coming soon",
+      "body": "We're wiring up dispatch and tracking next."
+    },
+    "payments": {
+      "title": "Payments coming soon",
+      "body": "Add a card or e-wallet once we launch payment integration."
+    },
+    "search": {
+      "title": "Search coming soon",
+      "body": "Place search lights up alongside the booking flow."
+    }
+  },
   "auth": {
     "signupTitle": "Create your Teeko account",
     "signupSubtitle": "Sign up with email or continue with Google.",

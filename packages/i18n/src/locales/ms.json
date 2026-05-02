@@ -9,6 +9,13 @@
     "tryAgain": "Cuba lagi",
     "done": "Selesai"
   },
+  "notImplemented": {
+    "home": { "title": "Halaman utama akan datang", "body": "Aliran tempahan sedang dibangunkan. Datang semula nanti." },
+    "rides": { "title": "Sejarah perjalanan akan datang", "body": "Selepas perjalanan pertama anda, ia akan muncul di sini." },
+    "trips": { "title": "Aliran perjalanan akan datang", "body": "Kami sedang menyambung penghantaran dan penjejakan." },
+    "payments": { "title": "Pembayaran akan datang", "body": "Tambah kad atau e-wallet apabila integrasi pembayaran dilancarkan." },
+    "search": { "title": "Carian akan datang", "body": "Carian tempat akan dibuka bersama aliran tempahan." }
+  },
   "auth": {
     "signupTitle": "Cipta akaun Teeko anda",
     "signupSubtitle": "Daftar dengan e-mel atau teruskan dengan Google.",
