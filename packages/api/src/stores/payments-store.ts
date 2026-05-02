@@ -1,7 +1,7 @@
 import type { PaymentMethod } from '@teeko/shared';
 import { create } from 'zustand';
 
-import * as paymentsApi from '../mock/handlers/payments';
+import * as paymentsApi from '../client/payments';
 
 export type PaymentsState = {
   methods: PaymentMethod[];

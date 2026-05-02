@@ -9,7 +9,7 @@ import type {
 } from '@teeko/shared';
 import { create } from 'zustand';
 
-import * as tripsApi from '../mock/handlers/trips';
+import * as tripsApi from '../client/trips';
 import { simulateDriverMovement } from '../utils/movement';
 
 type TimerId = ReturnType<typeof setTimeout>;

@@ -1,7 +1,7 @@
 import type { Place } from '@teeko/shared';
 import { create } from 'zustand';
 
-import * as placesApi from '../mock/handlers/places';
+import * as placesApi from '../client/places';
 
 export type PlacesState = {
   recent: Place[];
