@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Keyboard, TouchableWithoutFeedback, View } from 'react-native';
 
-import { useAuthStore, useUIStore } from '@teeko/api';
+import { useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import { Button, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
+import { useSignIn } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 import { GoogleButton } from '../../components/GoogleButton';
@@ -11,8 +12,7 @@ import { GoogleButton } from '../../components/GoogleButton';
 export default function LoginScreen() {
   const router = useRouter();
   const t = useT();
-  const signInWithEmail = useAuthStore((s) => s.signInWithEmail);
-  const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
+  const { signIn, setActive, isLoaded } = useSignIn();
   const pushToast = useUIStore((s) => s.pushToast);
 
   const [email, setEmail] = useState('');
@@ -22,29 +22,27 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState<string | undefined>();
 
   const submit = async () => {
+    if (!isLoaded || !signIn || !setActive) return;
     setEmailError(undefined);
     setPasswordError(undefined);
     setSubmitting(true);
     try {
-      await signInWithEmail(email.trim(), password);
-      router.back();
+      const attempt = await signIn.create({ identifier: email.trim(), password });
+      if (attempt.status === 'complete') {
+        await setActive({ session: attempt.createdSessionId });
+        router.back();
+      } else {
+        pushToast({ kind: 'error', message: 'Login incomplete. Try again.' });
+      }
     } catch (err) {
-      const name = (err as Error).name;
-      if (name === 'EMAIL_INVALID') setEmailError(t('auth.invalidEmail'));
-      else if (name === 'PASSWORD_INVALID') setPasswordError(t('auth.invalidPassword'));
-      else pushToast({ kind: 'error', message: 'Something went wrong. Try again.' });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onGoogle = async () => {
-    setSubmitting(true);
-    try {
-      await signInWithGoogle();
-      router.back();
-    } catch {
-      pushToast({ kind: 'error', message: 'Google sign-in failed. Try again.' });
+      const code = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
+      if (code === 'form_identifier_not_found' || code === 'form_param_format_invalid') {
+        setEmailError(t('auth.invalidEmail'));
+      } else if (code === 'form_password_incorrect') {
+        setPasswordError(t('auth.invalidPassword'));
+      } else {
+        pushToast({ kind: 'error', message: 'Something went wrong. Try again.' });
+      }
     } finally {
       setSubmitting(false);
     }
@@ -111,7 +109,6 @@ export default function LoginScreen() {
             <View className="mt-6">
               <GoogleButton
                 label={t('auth.continueWithGoogle')}
-                onPress={onGoogle}
                 disabled={submitting}
               />
             </View>

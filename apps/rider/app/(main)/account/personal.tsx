@@ -8,18 +8,25 @@ import { useRouter } from 'expo-router';
 export default function PersonalInfoScreen() {
   const router = useRouter();
   const rider = useAuthStore((s) => s.rider);
-  const updateRider = useAuthStore((s) => s.updateRider);
+  const updateProfile = useAuthStore((s) => s.updateProfile);
 
   const [name, setName] = useState(rider?.name ?? '');
-  const [email, setEmail] = useState(rider?.email ?? '');
+  // Email is managed by Clerk and is read-only here. Editing email requires
+  // routing the rider to Clerk's UserProfile flow (TODO post-MVP).
+  const email = rider?.email ?? '';
+  const [saving, setSaving] = useState(false);
 
-  const onSave = () => {
-    updateRider({ name: name.trim(), email: email.trim() || undefined });
-    router.back();
+  const onSave = async () => {
+    setSaving(true);
+    try {
+      await updateProfile({ fullName: name.trim() });
+      router.back();
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const dirty =
-    name.trim() !== (rider?.name ?? '') || email.trim() !== (rider?.email ?? '');
+  const dirty = name.trim() !== (rider?.name ?? '');
 
   return (
     <ScreenContainer edges={['top', 'left', 'right', 'bottom']}>
@@ -38,13 +45,17 @@ export default function PersonalInfoScreen() {
       >
         <View className="mt-4 gap-4">
           <Input label="Full name" value={name} onChangeText={setName} autoCapitalize="words" />
-          <Input
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
+          <View>
+            <Text tone="secondary" className="mb-1 text-xs">
+              Email
+            </Text>
+            <View className="rounded-lg border border-border bg-muted px-4 py-3">
+              <Text>{email || '—'}</Text>
+            </View>
+            <Text tone="faint" className="mt-1 text-xs">
+              Email is managed by your sign-in account.
+            </Text>
+          </View>
           <View>
             <Text tone="secondary" className="mb-1 text-xs">
               Phone
@@ -60,7 +71,12 @@ export default function PersonalInfoScreen() {
       </ScrollView>
 
       <View className="pb-safe pt-2">
-        <Button label="Save changes" onPress={onSave} disabled={!dirty || !name.trim()} />
+        <Button
+          label="Save changes"
+          onPress={onSave}
+          loading={saving}
+          disabled={!dirty || !name.trim()}
+        />
       </View>
     </ScreenContainer>
   );

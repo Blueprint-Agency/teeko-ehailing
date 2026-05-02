@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 
+import { useClerk } from '@clerk/clerk-expo';
 import { useAuthStore, usePlacesStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import type { Locale } from '@teeko/shared';
@@ -22,7 +23,8 @@ export default function AccountTab() {
   const rider = useAuthStore((s) => s.rider);
   const languagePref = useAuthStore((s) => s.languagePref);
   const setLanguage = useAuthStore((s) => s.setLanguage);
-  const logout = useAuthStore((s) => s.logout);
+  const clearProfile = useAuthStore((s) => s.clear);
+  const { signOut } = useClerk();
   const saved = usePlacesStore((s) => s.saved);
   const loadSaved = usePlacesStore((s) => s.loadSaved);
   const languageSheetRef = useRef<BottomSheetHandle>(null);
@@ -33,8 +35,13 @@ export default function AccountTab() {
       {
         text: t('account.logout'),
         style: 'destructive',
-        onPress: () => {
-          logout();
+        onPress: async () => {
+          try {
+            await signOut();
+          } catch {
+            // ignore — best-effort
+          }
+          clearProfile();
           router.replace('/(main)/(tabs)');
         },
       },

@@ -1,49 +1,68 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { useAuthStore, useUIStore } from '@teeko/api';
+import { useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
-import { Button, Icon, Pressable, ScreenContainer, Text } from '@teeko/ui';
+import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
+import { useSignUp, useClerk } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
   const t = useT();
-  const pendingEmail = useAuthStore((s) => s.pendingEmail);
-  const verifyEmail = useAuthStore((s) => s.verifyEmail);
-  const resendVerification = useAuthStore((s) => s.resendVerification);
-  const resetVerification = useAuthStore((s) => s.resetVerification);
+  const { signUp, setActive, isLoaded } = useSignUp();
+  const clerk = useClerk();
   const pushToast = useUIStore((s) => s.pushToast);
 
+  const [code, setCode] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
+  const [codeError, setCodeError] = useState<string | undefined>();
+
+  const pendingEmail = signUp?.emailAddress ?? null;
 
   const onVerify = async () => {
+    if (!isLoaded || !signUp || !setActive) return;
+    setCodeError(undefined);
     setVerifying(true);
     try {
-      await verifyEmail();
-      // Dismiss the entire auth modal stack back to wherever the user was.
-      router.dismissAll?.();
-      router.back();
-    } catch {
-      pushToast({ kind: 'error', message: 'Verification failed. Try again.' });
+      const attempt = await signUp.attemptEmailAddressVerification({ code: code.trim() });
+      if (attempt.status === 'complete') {
+        await setActive({ session: attempt.createdSessionId });
+        router.dismissAll?.();
+        router.back();
+      } else {
+        setCodeError(t('auth.codeIncorrect'));
+      }
+    } catch (err) {
+      const errCode = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
+      if (errCode === 'form_code_incorrect' || errCode === 'verification_failed') {
+        setCodeError(t('auth.codeIncorrect'));
+      } else {
+        pushToast({ kind: 'error', message: 'Verification failed. Try again.' });
+      }
     } finally {
       setVerifying(false);
     }
   };
 
   const onResend = async () => {
+    if (!isLoaded || !signUp) return;
     setResending(true);
     try {
-      await resendVerification();
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       pushToast({ kind: 'info', message: t('auth.resendToast') });
     } finally {
       setResending(false);
     }
   };
 
-  const onClose = () => {
-    resetVerification();
+  const onClose = async () => {
+    try {
+      await clerk.signOut();
+    } catch {
+      // ignore
+    }
     router.replace('/(auth)/login');
   };
 
@@ -66,10 +85,30 @@ export default function VerifyEmailScreen() {
               {t('auth.verifyEmailBody', { email: pendingEmail ?? 'your email' })}
             </Text>
           </View>
+
+          <View className="mt-8">
+            <Input
+              label={t('auth.verifyCodeLabel')}
+              placeholder="123456"
+              keyboardType="number-pad"
+              maxLength={6}
+              value={code}
+              onChangeText={(v) => {
+                setCode(v.replace(/\D/g, ''));
+                if (codeError) setCodeError(undefined);
+              }}
+              error={codeError}
+            />
+          </View>
         </View>
 
         <View className="gap-3">
-          <Button label={t('auth.verifyCta')} onPress={onVerify} loading={verifying} />
+          <Button
+            label={t('auth.verifyCta')}
+            onPress={onVerify}
+            loading={verifying}
+            disabled={code.length !== 6}
+          />
           <Button
             label={t('auth.resend')}
             variant="ghost"

@@ -29,16 +29,8 @@ function detectLocale(): Locale {
 
 function ClerkBridge({ children }: { children: React.ReactNode }) {
   const { getToken: clerkGetToken, isSignedIn } = useAuth();
-  // Until D1 lands, the auth-store doesn't yet expose fetchProfile/clear —
-  // resolve them at runtime so this typechecks today and lights up after D1.
-  const fetchProfile = useAuthStore(
-    (s) =>
-      (s as unknown as { fetchProfile?: () => Promise<void> }).fetchProfile ??
-      (async () => {}),
-  );
-  const clearProfile = useAuthStore(
-    (s) => (s as unknown as { clear?: () => void }).clear ?? (() => {}),
-  );
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const clearProfile = useAuthStore((s) => s.clear);
 
   useEffect(() => {
     setTokenGetter(async () => clerkGetToken());

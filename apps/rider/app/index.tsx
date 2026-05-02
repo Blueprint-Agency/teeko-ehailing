@@ -1,11 +1,11 @@
-import { useAuthStore } from '@teeko/api';
+import { useAuth } from '@clerk/clerk-expo';
 import { Redirect } from 'expo-router';
 import { View } from 'react-native';
 
 export default function SplashGate() {
-  const status = useAuthStore((s) => s.status);
+  const { isLoaded } = useAuth();
 
-  if (status === 'unknown') {
+  if (!isLoaded) {
     return <View className="flex-1 bg-surface" />;
   }
   return <Redirect href="/(main)/(tabs)" />;

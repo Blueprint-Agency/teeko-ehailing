@@ -14,7 +14,7 @@ export {
   setApiTokenGetter,
 } from './client';
 
-export { useAuthStore, type AuthState, type AuthStatus } from './stores/auth-store';
+export { useAuthStore, type AuthState } from './stores/auth-store';
 export { useLocationStore, type LocationState } from './stores/location-store';
 export { usePlacesStore, type PlacesState } from './stores/places-store';
 export { usePaymentsStore, type PaymentsState } from './stores/payments-store';
