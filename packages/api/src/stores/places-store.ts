@@ -10,9 +10,13 @@ export type PlacesState = {
   searching: boolean;
   loadRecent: () => Promise<void>;
   loadSaved: () => Promise<void>;
-  search: (q: string) => Promise<void>;
-  pushRecent: (p: Place) => void;
-  saveHomeOrWork: (category: 'home' | 'work', place: Place) => void;
+  search: (q: string, near?: { lat: number; lng: number }) => Promise<void>;
+  selectPrediction: (placeId: string) => Promise<Place>;
+  pushRecent: (p: Place) => Promise<void>;
+  saveHomeOrWork: (
+    category: 'home' | 'work' | 'custom',
+    place: Place,
+  ) => Promise<void>;
   clearResults: () => void;
 };
 
@@ -21,26 +25,65 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
   saved: [],
   results: [],
   searching: false,
+
   async loadRecent() {
-    set({ recent: await placesApi.recentPlaces() });
+    try {
+      set({ recent: await placesApi.recentPlaces() });
+    } catch (err) {
+      console.warn('[places] loadRecent failed', err);
+      set({ recent: [] });
+    }
   },
+
   async loadSaved() {
-    set({ saved: await placesApi.savedPlaces() });
+    try {
+      set({ saved: await placesApi.savedPlaces() });
+    } catch (err) {
+      console.warn('[places] loadSaved failed', err);
+      set({ saved: [] });
+    }
   },
-  async search(q) {
+
+  async search(q, near) {
     set({ searching: true });
-    const results = await placesApi.searchPlaces(q);
-    set({ results, searching: false });
+    try {
+      const results = await placesApi.searchPlaces(q, near);
+      set({ results, searching: false });
+    } catch (err) {
+      console.warn('[places] search failed', err);
+      set({ results: [], searching: false });
+    }
   },
-  pushRecent(p) {
+
+  async selectPrediction(placeId) {
+    return placesApi.placeDetails(placeId);
+  },
+
+  async pushRecent(p) {
+    // Optimistic local update.
     const next = [p, ...get().recent.filter((r) => r.id !== p.id)].slice(0, 10);
     set({ recent: next });
+    // Server update — fire and log; don't throw.
+    placesApi
+      .pushRecentPlace({ label: p.name, address: p.address, lat: p.lat, lng: p.lng })
+      .catch((err) => console.warn('[places] pushRecent server failed', err));
   },
-  saveHomeOrWork(category, place) {
-    const marked: Place = { ...place, category };
-    const others = get().saved.filter((p) => p.category !== category);
-    set({ saved: [...others, marked] });
+
+  async saveHomeOrWork(category, place) {
+    const saved = await placesApi.upsertSavedPlace({
+      label: category,
+      address: place.address,
+      lat: place.lat,
+      lng: place.lng,
+    });
+    // Replace any existing row of the same category (home/work) and prepend.
+    const others =
+      category === 'custom'
+        ? get().saved
+        : get().saved.filter((p) => p.category !== category);
+    set({ saved: [saved, ...others] });
   },
+
   clearResults() {
     set({ results: [] });
   },
