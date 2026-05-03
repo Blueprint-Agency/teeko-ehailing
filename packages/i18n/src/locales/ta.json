@@ -51,7 +51,12 @@
     "recentPlaces": "சமீபத்திய இடங்கள்",
     "recentEmpty": "உங்கள் சமீபத்திய சேருமிடங்கள் இங்கு காட்டப்படும்.",
     "ridesCardTitle": "பயணங்கள்",
-    "ridesCardSubtitle": "நாம் செல்வோம்"
+    "ridesCardSubtitle": "நாம் செல்வோம்",
+    "home": "வீடு",
+    "work": "பணி",
+    "setHome": "வீட்டை அமை",
+    "setWork": "பணியிடத்தை அமை",
+    "recent": "சமீபத்திய"
   },
   "tabs": {
     "home": "முகப்பு",
