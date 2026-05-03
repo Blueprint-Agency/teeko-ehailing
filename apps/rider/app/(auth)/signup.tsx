@@ -104,44 +104,19 @@ export default function SignupScreen() {
           phoneNumber: attempt.verifications?.phoneNumber?.status,
         },
       });
-      // Clerk dashboard: "Verify at sign-up" must be OFF so create returns
-      // status='complete' immediately and gives us a session.
+      // Clerk dashboard: "Verify at sign-up" must be OFF — we use our own
+      // backend OTP (Gmail SMTP) for email verification, not Clerk's.
       if (attempt.status === 'complete' && attempt.createdSessionId) {
         await setActive({ session: attempt.createdSessionId });
         router.replace('/(auth)/verify-email');
-      } else if (
-        attempt.status === 'missing_requirements' &&
-        attempt.unverifiedFields?.includes('email_address')
-      ) {
-        // Clerk still wants its own email verification. Let it send the OTP
-        // so the user can complete signup; our verify-email screen will
-        // double up using our backend OTP. (Caused by Clerk dashboard:
-        // "Verify at sign-up" still ON, OR another required attribute.)
-        try {
-          await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-          pushToast({
-            kind: 'info',
-            message: 'Check your email for a Clerk verification code (Clerk dashboard requires it).',
-          });
-          router.replace('/(auth)/verify-email');
-        } catch (prepErr) {
-          console.log('[signup] prepareEmailAddressVerification failed', prepErr);
-          pushToast({
-            kind: 'error',
-            message: 'Sign-up needs Clerk to verify the email — failed to send code.',
-          });
-        }
       } else {
-        const missing = [
-          ...(attempt.missingFields ?? []),
-          ...(attempt.unverifiedFields ?? []).map((f) => `verify:${f}`),
-        ];
+        const missing = attempt.missingFields ?? [];
         pushToast({
           kind: 'error',
           message:
             missing.length > 0
-              ? `Clerk needs: ${missing.join(', ')} (check dashboard config)`
-              : `Sign-up incomplete (status: ${attempt.status}).`,
+              ? `Sign-up needs: ${missing.join(', ')} (check Clerk dashboard — email verification must be OFF)`
+              : `Sign-up incomplete (status: ${attempt.status}). Disable email verification in Clerk.`,
         });
       }
     } catch (err) {

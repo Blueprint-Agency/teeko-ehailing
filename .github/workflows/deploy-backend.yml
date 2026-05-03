@@ -1,0 +1,65 @@
+name: BE Deploy
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'apps/backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    if: github.ref_name == 'staging'
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push BE image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/backend
+          push: true
+          tags: |
+            blueprintagency/ehailing-be:staging
+            blueprintagency/ehailing-be:staging-${{ github.sha }}
+
+      - name: Deploy to VPS3
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ vars.VPS3_HOST }}
+          username: deploy
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p /root/stacks/ehailing
+            {
+              echo "NODE_ENV=production"
+              echo "PORT=${{ vars.PORT }}"
+              echo "LOG_LEVEL=${{ vars.LOG_LEVEL }}"
+              echo "TZ=Asia/Kuala_Lumpur"
+              echo "DATABASE_URL=${{ secrets.DATABASE_URL }}"
+              echo "AUTH0_DOMAIN=${{ vars.AUTH0_DOMAIN }}"
+              echo "AUTH0_AUDIENCE=${{ vars.AUTH0_AUDIENCE }}"
+              echo "AUTH0_ISSUER=${{ vars.AUTH0_ISSUER }}"
+              echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}"
+              echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}"
+              echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
+              echo "TNG_API_KEY=${{ secrets.TNG_API_KEY }}"
+              echo "GRABPAY_API_KEY=${{ secrets.GRABPAY_API_KEY }}"
+              echo "FCM_SERVER_KEY=${{ secrets.FCM_SERVER_KEY }}"
+              echo "GCS_BUCKET=${{ vars.GCS_BUCKET }}"
+            } > /root/stacks/ehailing/.env.ehailing-be
+            chmod 600 /root/stacks/ehailing/.env.ehailing-be
+            docker pull blueprintagency/ehailing-be:staging
+            cd /root/stacks/ehailing
+            docker compose up -d --no-deps ehailing-be
+            docker image prune -f

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { ApiError, authApi, useAuthStore, useUIStore } from '@teeko/api';
@@ -21,6 +21,16 @@ export default function VerifyEmailScreen() {
   const [codeError, setCodeError] = useState<string | undefined>();
 
   const pendingEmail = rider?.email ?? null;
+  const autoSentRef = useRef(false);
+
+  useEffect(() => {
+    if (autoSentRef.current) return;
+    if (!rider?.email) return;
+    autoSentRef.current = true;
+    authApi.sendOtp().catch(() => {
+      // Silent — user can tap "Resend" if they didn't receive it.
+    });
+  }, [rider?.email]);
 
   const onVerify = async () => {
     setCodeError(undefined);

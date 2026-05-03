@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { useAuthStore } from '@teeko/api';
+import { useUser } from '@clerk/clerk-expo';
+import { useAuthStore, useUIStore } from '@teeko/api';
 import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
@@ -9,24 +10,48 @@ export default function PersonalInfoScreen() {
   const router = useRouter();
   const rider = useAuthStore((s) => s.rider);
   const updateProfile = useAuthStore((s) => s.updateProfile);
+  const pushToast = useUIStore((s) => s.pushToast);
+  const { user, isLoaded } = useUser();
+
+  const initialPhone =
+    user?.primaryPhoneNumber?.phoneNumber ??
+    (typeof user?.unsafeMetadata?.phone === 'string' ? (user.unsafeMetadata.phone as string) : '') ??
+    rider?.phone ??
+    '';
 
   const [name, setName] = useState(rider?.name ?? '');
-  // Email is managed by Clerk and is read-only here. Editing email requires
-  // routing the rider to Clerk's UserProfile flow (TODO post-MVP).
+  const [phone, setPhone] = useState(initialPhone);
   const email = rider?.email ?? '';
   const [saving, setSaving] = useState(false);
+
+  const dirtyName = name.trim() !== (rider?.name ?? '');
+  const dirtyPhone = phone.trim() !== initialPhone;
+  const canSave = (dirtyName || dirtyPhone) && !!name.trim();
 
   const onSave = async () => {
     setSaving(true);
     try {
-      await updateProfile({ fullName: name.trim() });
+      if (dirtyName) {
+        await updateProfile({ fullName: name.trim() });
+      }
+      if (dirtyPhone && isLoaded && user) {
+        const cleaned = phone.trim();
+        await user.update({
+          unsafeMetadata: { ...(user.unsafeMetadata ?? {}), phone: cleaned },
+        });
+      }
       router.back();
+    } catch (err) {
+      const message = (err as { errors?: Array<{ message?: string }> })
+        .errors?.[0]?.message;
+      pushToast({
+        kind: 'error',
+        message: message ? `Save failed: ${message}` : 'Could not save changes.',
+      });
     } finally {
       setSaving(false);
     }
   };
-
-  const dirty = name.trim() !== (rider?.name ?? '');
 
   return (
     <ScreenContainer edges={['top', 'left', 'right', 'bottom']}>
@@ -56,17 +81,14 @@ export default function PersonalInfoScreen() {
               Email is managed by your sign-in account.
             </Text>
           </View>
-          <View>
-            <Text tone="secondary" className="mb-1 text-xs">
-              Phone
-            </Text>
-            <View className="rounded-lg border border-border bg-muted px-4 py-3">
-              <Text>{rider?.phone ?? '—'}</Text>
-            </View>
-            <Text tone="faint" className="mt-1 text-xs">
-              Phone number can't be changed.
-            </Text>
-          </View>
+          <Input
+            label="Phone"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            placeholder="+60 12 345 6789"
+          />
         </View>
       </ScrollView>
 
@@ -75,7 +97,7 @@ export default function PersonalInfoScreen() {
           label="Save changes"
           onPress={onSave}
           loading={saving}
-          disabled={!dirty || !name.trim()}
+          disabled={!canSave}
         />
       </View>
     </ScreenContainer>
