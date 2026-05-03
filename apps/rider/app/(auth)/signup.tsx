@@ -3,11 +3,33 @@ import { Keyboard, ScrollView, TouchableWithoutFeedback, View } from 'react-nati
 
 import { useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
-import { Button, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
+import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useSignUp } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 import { GoogleButton } from '../../components/GoogleButton';
+
+const PASSWORD_MIN = 8;
+
+function PasswordToggle({
+  visible,
+  onToggle,
+}: {
+  visible: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onToggle}
+      haptic="selection"
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={visible ? 'Hide password' : 'Show password'}
+    >
+      <Icon name={visible ? 'visibility-off' : 'visibility'} size={20} color="#4B5563" />
+    </Pressable>
+  );
+}
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -18,14 +40,40 @@ export default function SignupScreen() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [confirmError, setConfirmError] = useState<string | undefined>();
+
+  const passwordsMatch = password.length > 0 && password === confirmPassword;
+  const canSubmit =
+    !!name.trim() &&
+    !!email.trim() &&
+    password.length >= PASSWORD_MIN &&
+    passwordsMatch &&
+    !submitting;
 
   const submit = async () => {
-    if (!isLoaded || !signUp || !setActive) return;
     setEmailError(undefined);
     setPasswordError(undefined);
+    setConfirmError(undefined);
+
+    if (!isLoaded || !signUp || !setActive) {
+      pushToast({ kind: 'info', message: 'Still loading — please try again in a moment.' });
+      return;
+    }
+    if (password.length < PASSWORD_MIN) {
+      setPasswordError(`Password must be at least ${PASSWORD_MIN} characters`);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setConfirmError("Passwords don't match");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const attempt = await signUp.create({
@@ -33,26 +81,39 @@ export default function SignupScreen() {
         password,
         firstName: name.trim() || undefined,
       });
-      // Clerk dashboard must be configured to NOT require email verification.
-      // With that off, the create attempt completes immediately and gives us a session.
+      // Clerk dashboard: "Verify at sign-up" must be OFF so create returns
+      // status='complete' immediately and gives us a session.
       if (attempt.status === 'complete' && attempt.createdSessionId) {
         await setActive({ session: attempt.createdSessionId });
         router.replace('/(auth)/verify-email');
       } else {
-        // Clerk still wants verification — dashboard isn't configured. Surface a clear error.
         pushToast({
           kind: 'error',
-          message: 'Sign-up needs Clerk dashboard config (verification: none).',
+          message:
+            'Sign-up incomplete. Disable "Verify at sign-up" in the Clerk dashboard.',
         });
       }
     } catch (err) {
-      const code = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
-      if (code === 'form_identifier_exists' || code === 'form_param_format_invalid') {
+      const code = (err as { errors?: Array<{ code?: string; message?: string }> })
+        .errors?.[0]?.code;
+      const message = (err as { errors?: Array<{ message?: string }> })
+        .errors?.[0]?.message;
+      if (code === 'form_identifier_exists') {
+        setEmailError('An account with this email already exists');
+      } else if (code === 'form_param_format_invalid') {
         setEmailError(t('auth.invalidEmail'));
-      } else if (code === 'form_password_pwned' || code === 'form_password_length_too_short') {
-        setPasswordError(t('auth.invalidPassword'));
+      } else if (
+        code === 'form_password_pwned' ||
+        code === 'form_password_length_too_short' ||
+        code === 'form_password_size_in_bytes_exceeded' ||
+        code === 'form_password_validation_failed'
+      ) {
+        setPasswordError(message ?? t('auth.invalidPassword'));
       } else {
-        pushToast({ kind: 'error', message: 'Sign-up failed. Try again.' });
+        pushToast({
+          kind: 'error',
+          message: message ? `Sign-up failed: ${message}` : 'Sign-up failed. Try again.',
+        });
       }
     } finally {
       setSubmitting(false);
@@ -63,7 +124,11 @@ export default function SignupScreen() {
     <ScreenContainer>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <ScrollView
-          contentContainerStyle={{ paddingVertical: 24, flexGrow: 1, justifyContent: 'space-between' }}
+          contentContainerStyle={{
+            paddingVertical: 24,
+            flexGrow: 1,
+            justifyContent: 'space-between',
+          }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -99,16 +164,44 @@ export default function SignupScreen() {
               />
               <Input
                 label={t('auth.passwordLabel')}
-                placeholder="At least 6 characters"
-                secureTextEntry
+                placeholder={`At least ${PASSWORD_MIN} characters`}
+                secureTextEntry={!showPassword}
                 autoCapitalize="none"
                 autoComplete="password-new"
+                textContentType="newPassword"
                 value={password}
                 onChangeText={(v) => {
                   setPassword(v);
                   if (passwordError) setPasswordError(undefined);
+                  if (confirmError && v === confirmPassword) setConfirmError(undefined);
                 }}
                 error={passwordError}
+                trailingAdornment={
+                  <PasswordToggle
+                    visible={showPassword}
+                    onToggle={() => setShowPassword((v) => !v)}
+                  />
+                }
+              />
+              <Input
+                label="Confirm password"
+                placeholder="Re-enter your password"
+                secureTextEntry={!showConfirm}
+                autoCapitalize="none"
+                autoComplete="password-new"
+                textContentType="newPassword"
+                value={confirmPassword}
+                onChangeText={(v) => {
+                  setConfirmPassword(v);
+                  if (confirmError && v === password) setConfirmError(undefined);
+                }}
+                error={confirmError}
+                trailingAdornment={
+                  <PasswordToggle
+                    visible={showConfirm}
+                    onToggle={() => setShowConfirm((v) => !v)}
+                  />
+                }
               />
             </View>
 
@@ -117,7 +210,7 @@ export default function SignupScreen() {
                 label={t('auth.signupCta')}
                 onPress={submit}
                 loading={submitting}
-                disabled={!name.trim() || !email || !password}
+                disabled={!canSubmit}
               />
             </View>
 

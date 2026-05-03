@@ -11,6 +11,8 @@ export interface InputProps extends Omit<TextInputProps, 'className'> {
   leadingIcon?: IconName;
   /** Arbitrary leading adornment (e.g. a `+60` country-code chip). Overrides leadingIcon. */
   leadingAdornment?: ReactNode;
+  /** Arbitrary trailing adornment (e.g. a show/hide-password eye button). */
+  trailingAdornment?: ReactNode;
   className?: string;
   /** Applied to the inner TextInput. */
   inputClassName?: string;
@@ -22,6 +24,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
     error,
     leadingIcon,
     leadingAdornment,
+    trailingAdornment,
     className,
     inputClassName,
     placeholderTextColor = '#9CA3AF',
@@ -54,6 +57,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           placeholderTextColor={placeholderTextColor}
           className={cn('flex-1 text-base font-body text-ink-primary', inputClassName)}
         />
+        {trailingAdornment ? <View className="ml-3">{trailingAdornment}</View> : null}
       </View>
       {hasError ? (
         <Text tone="danger" className="mt-1 text-xs">
