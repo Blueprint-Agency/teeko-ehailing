@@ -93,17 +93,55 @@ export default function SignupScreen() {
         password,
         firstName: name.trim() || undefined,
       });
-      console.log('[signup] signUp.create returned', { status: attempt.status, hasSession: !!attempt.createdSessionId });
+      console.log('[signup] signUp.create returned', {
+        status: attempt.status,
+        hasSession: !!attempt.createdSessionId,
+        requiredFields: attempt.requiredFields,
+        missingFields: attempt.missingFields,
+        unverifiedFields: attempt.unverifiedFields,
+        verifications: {
+          emailAddress: attempt.verifications?.emailAddress?.status,
+          phoneNumber: attempt.verifications?.phoneNumber?.status,
+        },
+      });
       // Clerk dashboard: "Verify at sign-up" must be OFF so create returns
       // status='complete' immediately and gives us a session.
       if (attempt.status === 'complete' && attempt.createdSessionId) {
         await setActive({ session: attempt.createdSessionId });
         router.replace('/(auth)/verify-email');
+      } else if (
+        attempt.status === 'missing_requirements' &&
+        attempt.unverifiedFields?.includes('email_address')
+      ) {
+        // Clerk still wants its own email verification. Let it send the OTP
+        // so the user can complete signup; our verify-email screen will
+        // double up using our backend OTP. (Caused by Clerk dashboard:
+        // "Verify at sign-up" still ON, OR another required attribute.)
+        try {
+          await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+          pushToast({
+            kind: 'info',
+            message: 'Check your email for a Clerk verification code (Clerk dashboard requires it).',
+          });
+          router.replace('/(auth)/verify-email');
+        } catch (prepErr) {
+          console.log('[signup] prepareEmailAddressVerification failed', prepErr);
+          pushToast({
+            kind: 'error',
+            message: 'Sign-up needs Clerk to verify the email — failed to send code.',
+          });
+        }
       } else {
+        const missing = [
+          ...(attempt.missingFields ?? []),
+          ...(attempt.unverifiedFields ?? []).map((f) => `verify:${f}`),
+        ];
         pushToast({
           kind: 'error',
           message:
-            'Sign-up incomplete. Disable "Verify at sign-up" in the Clerk dashboard.',
+            missing.length > 0
+              ? `Clerk needs: ${missing.join(', ')} (check dashboard config)`
+              : `Sign-up incomplete (status: ${attempt.status}).`,
         });
       }
     } catch (err) {
