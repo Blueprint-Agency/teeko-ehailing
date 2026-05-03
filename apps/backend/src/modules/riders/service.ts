@@ -1,7 +1,19 @@
 // modules/riders/service.ts
 // Saved + recent places orchestration. Routes call into this; the repo stays
 // private to the module. Maps stored rows to the wire Place shape.
-import type { Place, PlaceCategory } from '@teeko/shared';
+
+// Wire shape for places — mirrors @teeko/shared Place but defined locally so
+// the backend has no monorepo package dependency.
+export type PlaceCategory = 'home' | 'work' | 'saved' | 'recent' | 'search';
+
+export type Place = {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  category: PlaceCategory;
+};
 
 import {
   deleteSavedPlaceForUser,
