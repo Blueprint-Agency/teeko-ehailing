@@ -2,7 +2,7 @@ import { createHash, randomInt } from 'node:crypto';
 
 import { logger } from '../../config/logger';
 import { clerk } from '../../external/clerk';
-import { sendEmail } from '../../external/resend';
+import { sendEmail, EmailDeliveryError } from '../../external/resend';
 
 import { verificationEmail } from './emails';
 import {
@@ -29,7 +29,8 @@ function hashCode(code: string): string {
 export type SendOtpResult =
   | { status: 'sent' }
   | { status: 'rate_limited'; retryInSeconds: number }
-  | { status: 'no_email' };
+  | { status: 'no_email' }
+  | { status: 'delivery_failed'; providerMessage: string; providerStatusCode: number };
 
 export async function sendVerificationOtp(input: {
   userId: string;
@@ -60,16 +61,25 @@ export async function sendVerificationOtp(input: {
     expiresAt,
   });
 
-  const { subject, html } = verificationEmail({
-    name: input.fullName,
-    code,
-  });
-  // Fire-and-forget; failures are logged inside sendEmail.
-  sendEmail({ to: input.email, subject, html }).catch(() => {
-    /* logged inside sendEmail */
-  });
+  const { subject, html } = verificationEmail({ name: input.fullName, code });
 
-  return { status: 'sent' };
+  try {
+    await sendEmail({ to: input.email, subject, html });
+    return { status: 'sent' };
+  } catch (err) {
+    if (err instanceof EmailDeliveryError) {
+      logger.error(
+        { userId: input.userId, to: input.email, statusCode: err.statusCode, providerMessage: err.message },
+        'OTP email delivery failed — code is in DB but never reached the user',
+      );
+      return {
+        status: 'delivery_failed',
+        providerMessage: err.message,
+        providerStatusCode: err.statusCode,
+      };
+    }
+    throw err;
+  }
 }
 
 export type VerifyOtpResult =

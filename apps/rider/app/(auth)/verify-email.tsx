@@ -64,6 +64,16 @@ export default function VerifyEmailScreen() {
           const body = JSON.parse(err.body) as { error: string; retryInSeconds?: number };
           if (body.error === 'rate_limited') {
             pushToast({ kind: 'info', message: `Try again in ${body.retryInSeconds ?? 60}s` });
+          } else if (body.error === 'email_delivery_failed') {
+            const provider = body as { providerMessage?: string };
+            pushToast({
+              kind: 'error',
+              message: provider.providerMessage
+                ? `Email failed: ${provider.providerMessage}`
+                : 'Email failed to send.',
+            });
+          } else if (body.error === 'no_email_on_account') {
+            pushToast({ kind: 'error', message: 'No email on this account.' });
           } else {
             pushToast({ kind: 'error', message: 'Could not resend code.' });
           }

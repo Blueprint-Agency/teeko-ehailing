@@ -55,6 +55,13 @@ export async function routes(app: FastifyInstance) {
     if (result.status === 'no_email') {
       return reply.code(400).send({ error: 'no_email_on_account' });
     }
+    if (result.status === 'delivery_failed') {
+      return reply.code(503).send({
+        error: 'email_delivery_failed',
+        providerStatusCode: result.providerStatusCode,
+        providerMessage: result.providerMessage,
+      });
+    }
     return { ok: true };
   });
 
