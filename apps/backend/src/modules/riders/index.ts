@@ -1,1 +1,2 @@
-export * from './service';
+export { ridersService } from './service';
+export type { SavedPlaceInput, RecentPlaceInput } from './service';

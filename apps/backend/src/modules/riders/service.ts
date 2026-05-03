@@ -1,8 +1,78 @@
 // modules/riders/service.ts
-// Profile, saved + recent places, payment methods.
-// Single source of truth for the riders domain.
-// Routes call into this service; repos stay private to the module.
+// Saved + recent places orchestration. Routes call into this; the repo stays
+// private to the module. Maps stored rows to the wire Place shape.
+import type { Place, PlaceCategory } from '@teeko/shared';
+
+import {
+  deleteSavedPlaceForUser,
+  listRecentPlacesForUser,
+  listSavedPlacesForUser,
+  pushRecentPlaceForUser,
+  upsertSavedPlace as repoUpsertSavedPlace,
+  type SavedLabel,
+  type StoredPlace,
+} from './repo';
+
+function savedToPlace(row: StoredPlace): Place {
+  const category: PlaceCategory =
+    row.label === 'home' ? 'home' : row.label === 'work' ? 'work' : 'saved';
+  return {
+    id: row.id,
+    name: row.address, // saved rows store only address; reuse as display name
+    address: row.address,
+    lat: row.lat,
+    lng: row.lng,
+    category,
+  };
+}
+
+function recentToPlace(row: StoredPlace): Place {
+  return {
+    id: row.id,
+    name: row.label,
+    address: row.address,
+    lat: row.lat,
+    lng: row.lng,
+    category: 'recent',
+  };
+}
+
+export type SavedPlaceInput = {
+  label: SavedLabel;
+  address: string;
+  lat: number;
+  lng: number;
+};
+
+export type RecentPlaceInput = {
+  label: string;
+  address: string;
+  lat: number;
+  lng: number;
+};
 
 export const ridersService = {
-  todo: 'Profile, saved + recent places, payment methods.',
+  async listSavedPlaces(userId: string): Promise<Place[]> {
+    const rows = await listSavedPlacesForUser(userId);
+    return rows.map(savedToPlace);
+  },
+
+  async upsertSavedPlace(userId: string, input: SavedPlaceInput): Promise<Place> {
+    const row = await repoUpsertSavedPlace({ userId, ...input });
+    return savedToPlace(row);
+  },
+
+  async deleteSavedPlace(userId: string, id: string): Promise<void> {
+    await deleteSavedPlaceForUser(userId, id);
+  },
+
+  async listRecentPlaces(userId: string, limit = 10): Promise<Place[]> {
+    const rows = await listRecentPlacesForUser(userId, limit);
+    return rows.map(recentToPlace);
+  },
+
+  async pushRecentPlace(userId: string, input: RecentPlaceInput): Promise<Place> {
+    const row = await pushRecentPlaceForUser({ userId, ...input });
+    return recentToPlace(row);
+  },
 };
