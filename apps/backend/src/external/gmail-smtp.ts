@@ -30,10 +30,10 @@ let transporter: Transporter | null = null;
 
 function getTransporter(): Transporter {
   if (transporter) return transporter;
+  // `service: 'gmail'` is nodemailer's shorthand for Gmail's official SMTP
+  // settings: host=smtp.gmail.com, port=465, secure=true.
   transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 465,
-    secure: true,
+    service: 'gmail',
     auth: {
       user: env.GMAIL_USER,
       pass: env.GMAIL_APP_PASSWORD,
