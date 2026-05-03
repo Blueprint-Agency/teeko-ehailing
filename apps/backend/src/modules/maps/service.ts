@@ -13,7 +13,7 @@ const DEFAULT_BIAS_RADIUS_M = 50_000;
 // ---------------------------------------------------------------------------
 
 export class MapsError extends Error {
-  readonly name = 'MapsError';
+  override readonly name = 'MapsError';
   constructor(
     message: string,
     public readonly statusCode: number,
