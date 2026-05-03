@@ -22,6 +22,9 @@ const schema = z.object({
   AUTH0_DOMAIN: z.string().optional(),
   AUTH0_AUDIENCE: z.string().optional(),
   AUTH0_ISSUER: z.string().optional(),
+
+  // Google Maps (server-side proxy — never exposed to mobile clients)
+  GOOGLE_MAPS_API_KEY: z.string().min(20),
 });
 
 export const env = schema.parse(process.env);
