@@ -48,21 +48,28 @@ export default function SignupScreen() {
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [confirmError, setConfirmError] = useState<string | undefined>();
 
-  const passwordsMatch = password.length > 0 && password === confirmPassword;
-  const canSubmit =
-    !!name.trim() &&
-    !!email.trim() &&
-    password.length >= PASSWORD_MIN &&
-    passwordsMatch &&
-    !submitting;
-
   const submit = async () => {
+    // Verbose log so we can see in the dev console that the tap registered.
+    // Remove once signup is reliable.
+    console.log('[signup] submit tapped', {
+      hasName: !!name.trim(),
+      hasEmail: !!email.trim(),
+      passwordLen: password.length,
+      confirmLen: confirmPassword.length,
+      passwordsMatch: password === confirmPassword,
+      isLoaded,
+    });
+
     setEmailError(undefined);
     setPasswordError(undefined);
     setConfirmError(undefined);
 
-    if (!isLoaded || !signUp || !setActive) {
-      pushToast({ kind: 'info', message: 'Still loading — please try again in a moment.' });
+    if (!name.trim()) {
+      pushToast({ kind: 'error', message: 'Name is required' });
+      return;
+    }
+    if (!email.trim()) {
+      setEmailError('Email is required');
       return;
     }
     if (password.length < PASSWORD_MIN) {
@@ -73,14 +80,20 @@ export default function SignupScreen() {
       setConfirmError("Passwords don't match");
       return;
     }
+    if (!isLoaded || !signUp || !setActive) {
+      pushToast({ kind: 'info', message: 'Still loading — please try again in a moment.' });
+      return;
+    }
 
     setSubmitting(true);
+    console.log('[signup] calling signUp.create');
     try {
       const attempt = await signUp.create({
         emailAddress: email.trim(),
         password,
         firstName: name.trim() || undefined,
       });
+      console.log('[signup] signUp.create returned', { status: attempt.status, hasSession: !!attempt.createdSessionId });
       // Clerk dashboard: "Verify at sign-up" must be OFF so create returns
       // status='complete' immediately and gives us a session.
       if (attempt.status === 'complete' && attempt.createdSessionId) {
@@ -94,6 +107,7 @@ export default function SignupScreen() {
         });
       }
     } catch (err) {
+      console.log('[signup] signUp.create threw', err);
       const code = (err as { errors?: Array<{ code?: string; message?: string }> })
         .errors?.[0]?.code;
       const message = (err as { errors?: Array<{ message?: string }> })
@@ -210,7 +224,7 @@ export default function SignupScreen() {
                 label={t('auth.signupCta')}
                 onPress={submit}
                 loading={submitting}
-                disabled={!canSubmit}
+                disabled={submitting}
               />
             </View>
 
