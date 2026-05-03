@@ -12,8 +12,10 @@ const schema = z.object({
   CLERK_PUBLISHABLE_KEY: z.string().optional(),
   CLERK_WEBHOOK_SIGNING_SECRET: z.string(),
 
-  // Resend (transactional email)
-  RESEND_API_KEY: z.string(),
+  // Email — Gmail SMTP (active provider). Resend kept optional for future flip-back.
+  GMAIL_USER: z.string().email(),
+  GMAIL_APP_PASSWORD: z.string().min(16),
+  RESEND_API_KEY: z.string().optional(),
   RESEND_FROM_EMAIL: z.string().email().default('onboarding@resend.dev'),
 
   // Auth0 — unused this phase, kept for forward compatibility

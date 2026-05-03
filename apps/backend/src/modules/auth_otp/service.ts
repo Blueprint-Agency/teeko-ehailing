@@ -2,7 +2,7 @@ import { createHash, randomInt } from 'node:crypto';
 
 import { logger } from '../../config/logger';
 import { clerk } from '../../external/clerk';
-import { sendEmail, EmailDeliveryError } from '../../external/resend';
+import { sendEmail, EmailDeliveryError } from '../../external/gmail-smtp';
 
 import { verificationEmail } from './emails';
 import {
