@@ -37,6 +37,14 @@ export type MapsPrediction = {
   address: string;
 };
 
+export type MapsPlaceDetails = {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+};
+
 // ---------------------------------------------------------------------------
 // Internal HTTP helper
 // ---------------------------------------------------------------------------
@@ -108,5 +116,30 @@ export const mapsService = {
     return out;
   },
 
-  // placeDetails added in Task 3
+  async placeDetails(placeId: string): Promise<MapsPlaceDetails> {
+    const json = (await callGoogle(`/places/${encodeURIComponent(placeId)}`, {
+      method: 'GET',
+      fieldMask: 'id,displayName,formattedAddress,location',
+    })) as {
+      id?: string;
+      displayName?: { text?: string };
+      formattedAddress?: string;
+      location?: { latitude?: number; longitude?: number };
+    };
+    if (
+      !json.id ||
+      !json.location ||
+      typeof json.location.latitude !== 'number' ||
+      typeof json.location.longitude !== 'number'
+    ) {
+      throw new MapsError('google places details missing required fields', 502);
+    }
+    return {
+      id: json.id,
+      name: json.displayName?.text ?? '',
+      address: json.formattedAddress ?? '',
+      lat: json.location.latitude,
+      lng: json.location.longitude,
+    };
+  },
 };

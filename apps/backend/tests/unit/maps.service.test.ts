@@ -64,3 +64,50 @@ describe('mapsService.autocomplete', () => {
     });
   });
 });
+
+describe('mapsService.placeDetails', () => {
+  it('resolves a placeId to lat/lng + canonical address', async () => {
+    const googleResponse = {
+      id: 'ChIJabc',
+      displayName: { text: 'Suria KLCC' },
+      formattedAddress: 'Kuala Lumpur City Centre, 50088 Kuala Lumpur, Malaysia',
+      location: { latitude: 3.1581, longitude: 101.7117 },
+    };
+    globalThis.fetch = vi.fn(async () =>
+      new Response(JSON.stringify(googleResponse), { status: 200 }),
+    ) as unknown as typeof fetch;
+
+    const out = await mapsService.placeDetails('ChIJabc');
+
+    expect(out).toEqual({
+      id: 'ChIJabc',
+      name: 'Suria KLCC',
+      address: 'Kuala Lumpur City Centre, 50088 Kuala Lumpur, Malaysia',
+      lat: 3.1581,
+      lng: 101.7117,
+    });
+  });
+
+  it('sends the correct field mask', async () => {
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          id: 'x',
+          displayName: { text: 'x' },
+          formattedAddress: 'x',
+          location: { latitude: 0, longitude: 0 },
+        }),
+        { status: 200 },
+      ),
+    ) as unknown as typeof fetch;
+    globalThis.fetch = fetchMock;
+
+    await mapsService.placeDetails('ChIJabc');
+
+    const call = (fetchMock as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const headers = call[1].headers as Record<string, string>;
+    expect(headers['X-Goog-FieldMask']).toBe(
+      'id,displayName,formattedAddress,location',
+    );
+  });
+});
