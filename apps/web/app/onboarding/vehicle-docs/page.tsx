@@ -5,21 +5,18 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DocumentSlot } from '@/components/driver/DocumentSlot'
 import { useOnboardingStore } from '@/stores/onboardingStore'
+import { useWebAuthStore } from '@/stores/authStore'
 
 export default function VehicleDocsPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { vehicleDocs, updateVehicleDoc, setStep } = useOnboardingStore()
+  const { vehicleDocs, uploadVehicleDoc, setStep } = useOnboardingStore()
+  const driverId = useWebAuthStore((s) => s.profile?.id ?? '')
 
   const allUploaded = vehicleDocs.every((d) => d.status !== 'empty')
 
   const handleUpload = (docId: string, file: File) => {
-    updateVehicleDoc(docId, {
-      status: 'uploaded',
-      fileName: file.name,
-      fileUrl: URL.createObjectURL(file),
-      uploadedAt: new Date().toISOString(),
-    })
+    uploadVehicleDoc(docId, file, driverId).catch(console.error)
   }
 
   const handleSubmit = () => {

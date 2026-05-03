@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { Bell, Download, RefreshCcw, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -39,9 +40,13 @@ function DocRow({ doc }: { doc: DocumentState }) {
 
 export default function DashboardPage() {
   const { t, i18n } = useTranslation()
-  const { status, personalDocs, vehicleDocs, notifications, unreadCount, markAllRead } =
+  const { status, personalDocs, vehicleDocs, notifications, unreadCount, fetchAll, markAllRead } =
     useApplicationStatusStore()
   const { profile } = useWebAuthStore()
+
+  useEffect(() => {
+    if (profile?.id) fetchAll(profile.id)
+  }, [profile?.id])
 
   const hasRejected = [...personalDocs, ...vehicleDocs].some((d) => d.status === 'rejected')
 

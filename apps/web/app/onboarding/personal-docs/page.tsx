@@ -6,21 +6,18 @@ import { Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DocumentSlot } from '@/components/driver/DocumentSlot'
 import { useOnboardingStore } from '@/stores/onboardingStore'
+import { useWebAuthStore } from '@/stores/authStore'
 
 export default function PersonalDocsPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { personalDocs, updatePersonalDoc, setStep } = useOnboardingStore()
+  const { personalDocs, uploadPersonalDoc, setStep } = useOnboardingStore()
+  const driverId = useWebAuthStore((s) => s.profile?.id ?? '')
 
   const allUploaded = personalDocs.every((d) => d.status !== 'empty')
 
   const handleUpload = (docId: string, file: File) => {
-    updatePersonalDoc(docId, {
-      status: 'uploaded',
-      fileName: file.name,
-      fileUrl: URL.createObjectURL(file),
-      uploadedAt: new Date().toISOString(),
-    })
+    uploadPersonalDoc(docId, file, driverId).catch(console.error)
   }
 
   const handleNext = () => {

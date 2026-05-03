@@ -50,4 +50,71 @@ export const api = {
       method: 'POST',
       headers: devHeaders(id),
     }).then((r) => r.json()),
+
+  uploadDocument: async (kind: string, file: File, driverId: string) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(`${PREFIX}/documents/${kind}/upload`, {
+      method: 'POST',
+      headers: { 'X-Teeko-User': driverId, 'X-Teeko-Role': 'driver' },
+      body: formData,
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}))
+      throw new Error(error.error || `POST /documents/${kind}/upload → ${res.status}`)
+    }
+    return res.json() as Promise<{ url: string }>
+  },
+
+  loginDriver: async (phone: string) => {
+    const res = await fetch(`${PREFIX}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}))
+      throw new Error(error.error || `POST /auth/login → ${res.status}`)
+    }
+    return res.json() as Promise<{ message: string; devOtp?: string }>
+  },
+
+  verifyOtp: async (phone: string, code: string) => {
+    const res = await fetch(`${PREFIX}/auth/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, code }),
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}))
+      throw new Error(error.error || `POST /auth/verify → ${res.status}`)
+    }
+    return res.json() as Promise<{ id: string; phone: string; fullName: string; locale: string }>
+  },
+
+  sendRegisterOtp: async (phone: string) => {
+    const res = await fetch(`${PREFIX}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone }),
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}))
+      throw new Error(error.error || `POST /auth/register → ${res.status}`)
+    }
+    return res.json() as Promise<{ message: string; devOtp?: string }>
+  },
+
+  verifyRegister: async (phone: string, code: string, fullName: string) => {
+    const res = await fetch(`${PREFIX}/auth/register/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, code, fullName }),
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}))
+      throw new Error(error.error || `POST /auth/register/verify → ${res.status}`)
+    }
+    return res.json() as Promise<{ id: string; phone: string; fullName: string }>
+  },
 }
