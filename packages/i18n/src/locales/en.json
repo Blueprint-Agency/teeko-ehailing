@@ -103,7 +103,8 @@
     "logoutConfirmBody": "You can continue browsing as a guest. Sign in again anytime to book.",
     "signIn": "Log in",
     "signUp": "Sign up",
-    "guestCta": "Sign in to save places and track rides."
+    "guestCta": "Sign in to save places and track rides.",
+    "addPlace": "Add place"
   },
   "trip": {
     "cancelTitle": "Cancel this trip?",

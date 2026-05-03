@@ -88,7 +88,8 @@
     "logoutConfirmBody": "您可以继续以访客身份浏览。随时登录即可预订。",
     "signIn": "登录",
     "signUp": "注册",
-    "guestCta": "登录以保存地点并追踪行程。"
+    "guestCta": "登录以保存地点并追踪行程。",
+    "addPlace": "添加地点"
   },
   "trip": {
     "cancelTitle": "取消此行程？",

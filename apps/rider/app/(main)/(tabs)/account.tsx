@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
 
 import { useClerk } from '@clerk/clerk-expo';
-import { useAuthStore, usePlacesStore } from '@teeko/api';
+import { useAuthStore, usePlacesStore, useTripStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import type { Locale } from '@teeko/shared';
 import { type BottomSheetHandle, Icon, ListRow, Pressable, ScreenContainer, Text } from '@teeko/ui';
@@ -54,6 +54,25 @@ export default function AccountTab() {
 
   const home = saved.find((p) => p.category === 'home');
   const work = saved.find((p) => p.category === 'work');
+  const customPlaces = saved.filter((p) => p.category === 'saved');
+  const setDestination = useTripStore((s) => s.setDestination);
+
+  const onShortcutPress = (
+    place: typeof home,
+    intent: 'saveHome' | 'saveWork',
+  ) => {
+    if (place) {
+      setDestination(place);
+      router.push('/(main)/confirm-destination');
+    } else {
+      router.push({ pathname: '/(main)/search', params: { intent } });
+    }
+  };
+
+  const onCustomPress = (place: NonNullable<typeof home>) => {
+    setDestination(place);
+    router.push('/(main)/confirm-destination');
+  };
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
@@ -138,16 +157,30 @@ export default function AccountTab() {
             leadingIcon="home"
             title={home?.address ? t('account.home') : t('account.enterHome')}
             subtitle={home?.address}
-            onPress={() =>
-              router.push({ pathname: '/(main)/search', params: { intent: 'saveHome' } })
-            }
+            onPress={() => onShortcutPress(home, 'saveHome')}
           />
           <ListRow
             leadingIcon="work"
             title={work?.address ? t('account.work') : t('account.enterWork')}
             subtitle={work?.address}
+            onPress={() => onShortcutPress(work, 'saveWork')}
+          />
+          {customPlaces.map((p) => (
+            <ListRow
+              key={p.id}
+              leadingIcon="place"
+              title={p.address}
+              onPress={() => onCustomPress(p)}
+            />
+          ))}
+          <ListRow
+            leadingIcon="add-location"
+            title={t('account.addPlace')}
             onPress={() =>
-              router.push({ pathname: '/(main)/search', params: { intent: 'saveWork' } })
+              router.push({
+                pathname: '/(main)/search',
+                params: { intent: 'saveCustom' },
+              })
             }
             noDivider
           />
