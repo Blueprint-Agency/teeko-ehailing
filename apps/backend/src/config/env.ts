@@ -25,6 +25,16 @@ const schema = z.object({
 
   // Google Maps (server-side proxy — never exposed to mobile clients)
   GOOGLE_MAPS_API_KEY: z.string().min(20),
+
+  // Storage adapter: 'r2' | 'gcs' | unset (local)
+  STORAGE: z.enum(['r2', 'gcs', 'local']).optional(),
+
+  // Cloudflare R2 (active storage for driver-web documents)
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET: z.string().optional(),
+  R2_PUBLIC_URL: z.string().url().optional(),
 });
 
 export const env = schema.parse(process.env);
