@@ -38,14 +38,15 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f2d4ef07-f09f-472f-a4e0-e1df0ea26a0a"
+        "projectId": "8acb4edf-77f7-4efb-811b-6fee9ea368b3"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/f2d4ef07-f09f-472f-a4e0-e1df0ea26a0a"
-    }
+      "url": "https://u.expo.dev/8acb4edf-77f7-4efb-811b-6fee9ea368b3"
+    },
+    "owner": "teeko-ai"
   }
 }
