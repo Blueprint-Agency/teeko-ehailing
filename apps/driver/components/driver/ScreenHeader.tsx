@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { useColors } from '../../constants/colors';
 
 interface Props {
@@ -16,7 +17,7 @@ export default function ScreenHeader({ title, onBack, right }: Props) {
     <View style={styles.header}>
       {onBack ? (
         <TouchableOpacity style={styles.back} onPress={onBack} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
-          <Text style={styles.backArrow}>←</Text>
+          <ChevronLeft size={24} color={colors.accent} strokeWidth={1.75} />
         </TouchableOpacity>
       ) : (
         <View style={styles.back} />
@@ -39,11 +40,6 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   back: {
     width: 36,
-  },
-  backArrow: {
-    color: colors.accent,
-    fontSize: 22,
-    fontWeight: '600',
   },
   title: {
     flex: 1,

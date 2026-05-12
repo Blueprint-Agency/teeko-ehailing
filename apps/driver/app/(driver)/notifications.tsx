@@ -3,18 +3,20 @@ import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { CheckCircle, AlertTriangle, Target, Wallet, Ban } from 'lucide-react-native';
 import ScreenHeader from '../../components/driver/ScreenHeader';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import notifs from '../../data/mock-notifications-driver.json';
 
-const TYPE_ICON: Record<string, string> = {
-  approval: '✅',
-  doc_expiry: '⚠️',
-  incentive: '🎯',
-  payment: '💰',
-  suspension: '🚫',
+type LucideIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+const TYPE_ICON: Record<string, LucideIcon> = {
+  approval: CheckCircle,
+  doc_expiry: AlertTriangle,
+  incentive: Target,
+  payment: Wallet,
+  suspension: Ban,
 };
 
 function useTimeAgo() {
@@ -54,6 +56,7 @@ export default function NotificationsScreen() {
         {notifs.map((n) => {
           const isRead = read.includes(n.id);
           const typeColor = TYPE_COLOR[n.type];
+          const IconComponent = TYPE_ICON[n.type];
           return (
             <TouchableOpacity
               key={n.id}
@@ -62,7 +65,7 @@ export default function NotificationsScreen() {
               activeOpacity={0.8}
             >
               <View style={[styles.iconBox, { backgroundColor: typeColor + '18' }]}>
-                <Text style={styles.iconText}>{TYPE_ICON[n.type]}</Text>
+                <IconComponent size={20} color={typeColor} strokeWidth={1.75} />
               </View>
               <View style={styles.content}>
                 <View style={styles.titleRow}>
@@ -100,7 +103,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginRight: 12, flexShrink: 0,
   },
-  iconText: { fontSize: 20 },
+  iconText: {},
   content: { flex: 1 },
   titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 },
   title: { color: colors.text, fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },

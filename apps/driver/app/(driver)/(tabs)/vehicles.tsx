@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Car, Plus } from 'lucide-react-native';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
@@ -45,7 +46,7 @@ export default function VehiclesScreen() {
         title={t('driver.myVehiclesTitle')}
         right={
           <TouchableOpacity onPress={() => Alert.alert('Add Vehicle', 'Vehicle registration coming soon.')}>
-            <Text style={styles.addBtn}>＋</Text>
+            <Plus size={22} color={colors.accent} strokeWidth={2} />
           </TouchableOpacity>
         }
       />
@@ -61,7 +62,7 @@ export default function VehiclesScreen() {
 
             <View style={styles.vehicleHeader}>
               <View style={styles.vehicleIcon}>
-                <Text style={styles.vehicleIconText}>🚗</Text>
+                <Car size={26} color={colors.accent} strokeWidth={1.75} />
               </View>
               <View style={styles.vehicleInfo}>
                 <Text style={styles.vehicleName}>{v.year} {v.make} {v.model}</Text>
@@ -98,7 +99,7 @@ export default function VehiclesScreen() {
 const createStyles = (colors: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { padding: 16, paddingBottom: 40 },
-  addBtn: { color: colors.accent, fontSize: 24, fontWeight: '700' },
+  addBtn: {},
 
   card: {
     backgroundColor: colors.surface,
@@ -126,7 +127,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     marginRight: 14,
   },
-  vehicleIconText: { fontSize: 26 },
+  vehicleIconText: {},
   vehicleInfo: {},
   vehicleName: { color: colors.text, fontSize: 16, fontWeight: '700' },
   vehiclePlate: {

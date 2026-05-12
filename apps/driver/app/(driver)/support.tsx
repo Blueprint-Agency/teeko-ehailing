@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
   StatusBar, ScrollView, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Send } from 'lucide-react-native';
 import ScreenHeader from '../../components/driver/ScreenHeader';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
@@ -87,7 +88,7 @@ export default function SupportScreen() {
               multiline
             />
             <TouchableOpacity style={styles.sendBtn}>
-              <Text style={styles.sendIcon}>➤</Text>
+              <Send size={18} color="#000" strokeWidth={2} />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -189,7 +190,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
   },
-  sendIcon: { color: '#000', fontSize: 18, fontWeight: '700' },
+  sendIcon: {},
 
   formScroll: { padding: 16, paddingBottom: 40 },
   formLabel: { color: colors.textSec, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8, marginTop: 16 },

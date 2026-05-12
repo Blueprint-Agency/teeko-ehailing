@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { FileText, Check, Plus, Camera } from 'lucide-react-native';
 import { useColors } from '../../constants/colors';
 
 interface Props {
@@ -29,19 +30,19 @@ export default function DocumentSlot({ label, required, hint }: Props) {
         {filled ? (
           <View style={styles.filled}>
             <View style={styles.thumbnail}>
-              <Text style={styles.thumbnailIcon}>📄</Text>
+              <FileText size={20} color={colors.textSec} strokeWidth={1.75} />
             </View>
             <View style={styles.filledInfo}>
               <Text style={styles.filledText}>Document uploaded</Text>
               <Text style={styles.retake}>Tap to retake</Text>
             </View>
             <View style={styles.checkBadge}>
-              <Text style={styles.checkText}>✓</Text>
+              <Check size={14} color="#000" strokeWidth={2.5} />
             </View>
           </View>
         ) : (
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>＋</Text>
+            <Camera size={24} color={colors.textMut} strokeWidth={1.75} style={styles.emptyIconView} />
             <Text style={styles.emptyText}>Take Photo</Text>
             <Text style={styles.emptyOr}>or choose from gallery</Text>
           </View>
@@ -75,7 +76,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     justifyContent: 'center',
     minHeight: 80,
   },
-  emptyIcon: { fontSize: 24, color: colors.textMut, marginBottom: 4 },
+  emptyIconView: { marginBottom: 4 },
   emptyText: { color: colors.textSec, fontSize: 14, fontWeight: '600' },
   emptyOr: { color: colors.textMut, fontSize: 12, marginTop: 2 },
   filled: {
@@ -91,7 +92,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  thumbnailIcon: { fontSize: 20 },
+  thumbnailIcon: {},
   filledInfo: { flex: 1, marginLeft: 12 },
   filledText: { color: colors.text, fontSize: 13, fontWeight: '600' },
   retake: { color: colors.textSec, fontSize: 12, marginTop: 2 },
@@ -103,5 +104,5 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  checkText: { color: '#000', fontWeight: '700', fontSize: 14 },
+  checkText: {},
 });

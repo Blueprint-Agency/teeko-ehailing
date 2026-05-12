@@ -128,6 +128,9 @@ importers:
       expo-updates:
         specifier: ~29.0.16
         version: 29.0.16(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0))(react@19.1.0)
+      lucide-react-native:
+        specifier: ^0.468.0
+        version: 0.468.0(react-native-svg@15.12.1(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0))(react@19.1.0)
       react:
         specifier: 19.1.0
         version: 19.1.0
@@ -9847,7 +9850,7 @@ snapshots:
       metro-babel-transformer: 0.83.3
       metro-cache: 0.83.3
       metro-cache-key: 0.83.3
-      metro-config: 0.83.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      metro-config: 0.83.3(bufferutil@4.1.0)
       metro-core: 0.83.3
       metro-file-map: 0.83.3
       metro-minify-terser: 0.83.3
@@ -9856,7 +9859,7 @@ snapshots:
       metro-source-map: 0.83.3
       metro-symbolicate: 0.83.3
       metro-transform-plugins: 0.83.3
-      metro-transform-worker: 0.83.3(bufferutil@4.1.0)
+      metro-transform-worker: 0.83.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -13074,7 +13077,7 @@ snapshots:
 
   expo-haptics@15.0.8(expo@54.0.33):
     dependencies:
-      expo: 54.0.33(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(bufferutil@4.1.0)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      expo: 54.0.33(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(bufferutil@4.1.0)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
 
   expo-image@3.0.11(expo@54.0.33)(react-native-web@0.21.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0):
     dependencies:
@@ -13113,7 +13116,7 @@ snapshots:
 
   expo-localization@17.0.8(expo@54.0.33)(react@19.1.0):
     dependencies:
-      expo: 54.0.33(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(bufferutil@4.1.0)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0)(utf-8-validate@6.0.6))(react@19.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
+      expo: 54.0.33(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(bufferutil@4.1.0)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@react-native/metro-config@0.85.1(@babel/core@7.29.0)(bufferutil@4.1.0))(@types/react@19.1.10)(bufferutil@4.1.0)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
       react: 19.1.0
       rtl-detect: 1.1.2
 
@@ -14543,21 +14546,6 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  metro-config@0.83.3(bufferutil@4.1.0)(utf-8-validate@6.0.6):
-    dependencies:
-      connect: 3.7.0
-      flow-enums-runtime: 0.0.6
-      jest-validate: 29.7.0
-      metro: 0.83.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
-      metro-cache: 0.83.3
-      metro-core: 0.83.3
-      metro-runtime: 0.83.3
-      yaml: 2.8.3
-    transitivePeerDependencies:
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-
   metro-config@0.83.6(bufferutil@4.1.0):
     dependencies:
       connect: 3.7.0
@@ -14819,6 +14807,26 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  metro-transform-worker@0.83.3(bufferutil@4.1.0)(utf-8-validate@6.0.6):
+    dependencies:
+      '@babel/core': 7.29.0
+      '@babel/generator': 7.29.1
+      '@babel/parser': 7.29.2
+      '@babel/types': 7.29.0
+      flow-enums-runtime: 0.0.6
+      metro: 0.83.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      metro-babel-transformer: 0.83.3
+      metro-cache: 0.83.3
+      metro-cache-key: 0.83.3
+      metro-minify-terser: 0.83.3
+      metro-source-map: 0.83.3
+      metro-transform-plugins: 0.83.3
+      nullthrows: 1.1.1
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+
   metro-transform-worker@0.83.6(bufferutil@4.1.0):
     dependencies:
       '@babel/core': 7.29.0
@@ -14952,7 +14960,7 @@ snapshots:
       metro-babel-transformer: 0.83.3
       metro-cache: 0.83.3
       metro-cache-key: 0.83.3
-      metro-config: 0.83.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      metro-config: 0.83.3(bufferutil@4.1.0)
       metro-core: 0.83.3
       metro-file-map: 0.83.3
       metro-resolver: 0.83.3
@@ -14960,7 +14968,7 @@ snapshots:
       metro-source-map: 0.83.3
       metro-symbolicate: 0.83.3
       metro-transform-plugins: 0.83.3
-      metro-transform-worker: 0.83.3(bufferutil@4.1.0)
+      metro-transform-worker: 0.83.3(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       mime-types: 2.1.35
       nullthrows: 1.1.1
       serialize-error: 2.1.0

@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Phone, Check } from 'lucide-react-native';
 import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
@@ -57,7 +58,7 @@ export default function TripScreen() {
               i < phaseIndex && styles.stepDotDone,
               i === phaseIndex && styles.stepDotActive,
             ]}>
-              {i < phaseIndex && <Text style={styles.stepCheck}>✓</Text>}
+              {i < phaseIndex && <Check size={12} color="#000" strokeWidth={2.5} />}
               {i === phaseIndex && <View style={styles.stepActiveDot} />}
             </View>
             {i < PHASES.length - 1 && (
@@ -82,7 +83,7 @@ export default function TripScreen() {
             <Text style={styles.riderMeta}>★ {request.riderRating} · {request.rideType}</Text>
           </View>
           <TouchableOpacity style={styles.callBtn} onPress={() => Alert.alert('Call', 'Calling rider...')}>
-            <Text style={styles.callIcon}>📞</Text>
+            <Phone size={18} color={colors.text} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
 
@@ -159,7 +160,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   stepDotDone: { backgroundColor: colors.accent, borderColor: colors.accent },
   stepDotActive: { borderColor: colors.accent },
   stepActiveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.accent },
-  stepCheck: { color: '#000', fontSize: 12, fontWeight: '800' },
+  stepCheck: {},
   stepLine: { flex: 1, height: 2, backgroundColor: colors.border, marginHorizontal: 4 },
   stepLineDone: { backgroundColor: colors.accent },
   phaseLabel: {
@@ -191,7 +192,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderColor: colors.border,
   },
-  callIcon: { fontSize: 20 },
+  callIcon: {},
 
   routeCard: {
     backgroundColor: colors.surfaceHigh,
