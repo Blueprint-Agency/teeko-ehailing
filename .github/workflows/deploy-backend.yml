@@ -41,25 +41,44 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             mkdir -p /root/stacks/ehailing
+            # Backend env. DATABASE_URL is assembled from the same DB_* secrets that
+            # configure the Postgres container — single source of truth.
+            # db-ehailing is only reachable inside ehailing-network, never exposed.
             {
               echo "NODE_ENV=production"
               echo "PORT=${{ vars.PORT }}"
               echo "LOG_LEVEL=${{ vars.LOG_LEVEL }}"
               echo "TZ=Asia/Kuala_Lumpur"
-              echo "DATABASE_URL=${{ secrets.DATABASE_URL }}"
-              echo "AUTH0_DOMAIN=${{ vars.AUTH0_DOMAIN }}"
-              echo "AUTH0_AUDIENCE=${{ vars.AUTH0_AUDIENCE }}"
-              echo "AUTH0_ISSUER=${{ vars.AUTH0_ISSUER }}"
+              echo "DATABASE_URL=postgres://${{ secrets.DB_USER }}:${{ secrets.DB_PASSWORD }}@db-ehailing:5432/${{ secrets.DB_NAME }}"
+              echo "CLERK_SECRET_KEY=${{ secrets.CLERK_SECRET_KEY }}"
+              echo "CLERK_PUBLISHABLE_KEY=${{ vars.CLERK_PUBLISHABLE_KEY }}"
+              echo "CLERK_WEBHOOK_SIGNING_SECRET=${{ secrets.CLERK_WEBHOOK_SIGNING_SECRET }}"
+              echo "GMAIL_USER=${{ vars.GMAIL_USER }}"
+              echo "GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}"
               echo "GOOGLE_MAPS_API_KEY=${{ secrets.GOOGLE_MAPS_API_KEY }}"
-              echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}"
-              echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
-              echo "TNG_API_KEY=${{ secrets.TNG_API_KEY }}"
-              echo "GRABPAY_API_KEY=${{ secrets.GRABPAY_API_KEY }}"
-              echo "FCM_SERVER_KEY=${{ secrets.FCM_SERVER_KEY }}"
-              echo "GCS_BUCKET=${{ vars.GCS_BUCKET }}"
             } > /root/stacks/ehailing/.env.ehailing-be
             chmod 600 /root/stacks/ehailing/.env.ehailing-be
+            # Postgres creds — same source as DATABASE_URL above
+            {
+              echo "POSTGRES_USER=${{ secrets.DB_USER }}"
+              echo "POSTGRES_PASSWORD=${{ secrets.DB_PASSWORD }}"
+              echo "POSTGRES_DB=${{ secrets.DB_NAME }}"
+            } > /root/stacks/ehailing/.env.ehailing-db
+            chmod 600 /root/stacks/ehailing/.env.ehailing-db
+
             docker pull blueprintagency/ehailing-be:staging
             cd /root/stacks/ehailing
-            docker compose up -d --no-deps ehailing-be
+            docker compose up -d --remove-orphans
+
+            # Wait for backend container to be running, then run DB tasks.
+            # postgis + migrate are idempotent; seed should be written to be idempotent too.
+            for i in $(seq 1 30); do
+              if [ "$(docker inspect -f '{{.State.Running}}' ehailing-be 2>/dev/null)" = "true" ]; then
+                break
+              fi
+              sleep 2
+            done
+
+            docker compose exec -T ehailing-be sh -c "pnpm db:postgis && pnpm db:migrate && pnpm db:seed"
+
             docker image prune -f
