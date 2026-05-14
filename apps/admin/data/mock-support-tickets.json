@@ -1,0 +1,12 @@
+[
+  { "id": "tk1",  "subject": "App crashed during payment",          "raisedBy": "rider",  "userId": "r1",  "status": "open",       "priority": "high",   "category": "technical",    "date": "2026-05-14T08:00:00", "assignedTo": null,  "messages": 1 },
+  { "id": "tk2",  "subject": "Driver refused to cancel trip",        "raisedBy": "rider",  "userId": "r7",  "status": "in_progress","priority": "medium",  "category": "complaint",    "date": "2026-05-13T14:30:00", "assignedTo": "a3",  "messages": 3 },
+  { "id": "tk3",  "subject": "Payout not received this week",        "raisedBy": "driver", "userId": "d4",  "status": "open",       "priority": "high",   "category": "payment",      "date": "2026-05-13T10:00:00", "assignedTo": null,  "messages": 1 },
+  { "id": "tk4",  "subject": "Navigation map glitch in app",         "raisedBy": "driver", "userId": "d6",  "status": "resolved",   "priority": "low",    "category": "technical",    "date": "2026-05-12T09:00:00", "assignedTo": "a3",  "messages": 5 },
+  { "id": "tk5",  "subject": "Wrong fare charged",                   "raisedBy": "rider",  "userId": "r9",  "status": "in_progress","priority": "medium",  "category": "billing",      "date": "2026-05-12T11:00:00", "assignedTo": "a3",  "messages": 2 },
+  { "id": "tk6",  "subject": "Account banned without notice",        "raisedBy": "rider",  "userId": "r4",  "status": "escalated",  "priority": "urgent", "category": "account",      "date": "2026-05-11T16:00:00", "assignedTo": "a1",  "messages": 7 },
+  { "id": "tk7",  "subject": "Driver EVP renewal — documents stuck", "raisedBy": "driver", "userId": "d7",  "status": "open",       "priority": "medium", "category": "documents",    "date": "2026-05-11T13:00:00", "assignedTo": null,  "messages": 1 },
+  { "id": "tk8",  "subject": "Cannot update bank account details",   "raisedBy": "driver", "userId": "d13", "status": "resolved",   "priority": "medium", "category": "payment",      "date": "2026-05-10T08:30:00", "assignedTo": "a3",  "messages": 4 },
+  { "id": "tk9",  "subject": "Promo code not applied",               "raisedBy": "rider",  "userId": "r3",  "status": "resolved",   "priority": "low",    "category": "billing",      "date": "2026-05-10T10:00:00", "assignedTo": "a3",  "messages": 3 },
+  { "id": "tk10", "subject": "Safety concern — aggressive driver",   "raisedBy": "rider",  "userId": "r15", "status": "escalated",  "priority": "urgent", "category": "safety",       "date": "2026-05-08T09:00:00", "assignedTo": "a1",  "messages": 9 }
+]

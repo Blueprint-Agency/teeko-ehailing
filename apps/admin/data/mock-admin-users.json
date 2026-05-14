@@ -1,0 +1,6 @@
+[
+  { "id": "a1", "name": "Amir Razif",     "email": "superadmin@teeko.my", "role": "super_admin", "status": "active",   "lastLogin": "2026-05-14T08:00:00", "createdAt": "2023-01-01" },
+  { "id": "a2", "name": "Nurul Aina",     "email": "ops@teeko.my",        "role": "operations",  "status": "active",   "lastLogin": "2026-05-14T07:45:00", "createdAt": "2023-03-15" },
+  { "id": "a3", "name": "Haziq Zulkifli", "email": "support@teeko.my",    "role": "support",     "status": "active",   "lastLogin": "2026-05-14T09:10:00", "createdAt": "2024-01-10" },
+  { "id": "a4", "name": "Priya Nair",     "email": "finance@teeko.my",    "role": "finance",     "status": "active",   "lastLogin": "2026-05-13T17:30:00", "createdAt": "2023-06-20" }
+]
