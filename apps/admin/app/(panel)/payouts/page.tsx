@@ -15,11 +15,11 @@ export default function PayoutsPage() {
   const columns: GridColDef[] = [
     { field: 'driverName', headerName: 'Driver', flex: 1, minWidth: 160 },
     { field: 'period', headerName: 'Period', width: 180 },
-    { field: 'amount', headerName: 'Amount (RM)', width: 120, type: 'number', valueFormatter: ({ value }) => `RM ${Number(value).toLocaleString()}` },
+    { field: 'amount', headerName: 'Amount (RM)', width: 120, type: 'number', valueFormatter: (value) => `RM ${Number(value).toLocaleString()}` },
     { field: 'bank', headerName: 'Bank', width: 100 },
     { field: 'account', headerName: 'Account', width: 100 },
     { field: 'status', headerName: 'Status', width: 110, renderCell: ({ value }) => <StatusChip status={value} /> },
-    { field: 'processedAt', headerName: 'Processed', width: 160, valueFormatter: ({ value }) => value ? new Date(value as string).toLocaleString() : '—' },
+    { field: 'processedAt', headerName: 'Processed', width: 160, valueFormatter: (value) => value ? new Date(value as string).toLocaleString() : '—' },
     {
       field: 'failReason', headerName: 'Fail Reason', width: 150,
       renderCell: ({ value }) => value ? <Chip label={value} size="small" color="error" /> : null,

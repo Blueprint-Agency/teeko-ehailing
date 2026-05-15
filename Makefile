@@ -20,6 +20,9 @@ build-rider:
 build-driver:
 	pnpm --filter @teeko/driver build
 
+build-admin:
+	pnpm --filter @teeko/admin build
+
 # --- Dev Servers ---
 dev-docs:
 	pnpm --filter @teeko/docs dev
@@ -32,3 +35,6 @@ dev-rider:
 
 dev-driver:
 	pnpm --filter @teeko/driver dev
+
+dev-admin:
+	pnpm --filter @teeko/admin dev
