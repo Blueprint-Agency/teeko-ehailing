@@ -1,0 +1,12 @@
+[
+  { "id": "sz1", "name": "KLCC / Bukit Bintang", "multiplier": 1.5, "active": true,  "color": "#FF5A1F",
+    "polygon": [[3.158, 101.712],[3.162, 101.718],[3.156, 101.722],[3.150, 101.716],[3.152, 101.710]] },
+  { "id": "sz2", "name": "KL Sentral",           "multiplier": 1.2, "active": true,  "color": "#FF8C00",
+    "polygon": [[3.133, 101.683],[3.137, 101.690],[3.130, 101.695],[3.126, 101.688]] },
+  { "id": "sz3", "name": "Bangsar",               "multiplier": 1.3, "active": false, "color": "#FFA500",
+    "polygon": [[3.125, 101.668],[3.130, 101.675],[3.122, 101.680],[3.118, 101.672]] },
+  { "id": "sz4", "name": "Mont Kiara",            "multiplier": 1.0, "active": false, "color": "#FFD700",
+    "polygon": [[3.170, 101.658],[3.175, 101.665],[3.168, 101.670],[3.163, 101.662]] },
+  { "id": "sz5", "name": "Petaling Jaya Central", "multiplier": 1.2, "active": true,  "color": "#FF8C00",
+    "polygon": [[3.108, 101.606],[3.112, 101.613],[3.106, 101.618],[3.101, 101.610]] }
+]

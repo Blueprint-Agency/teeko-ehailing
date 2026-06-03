@@ -1,0 +1,7 @@
+[
+  { "id": "n1", "segment": "all_drivers",   "title": "Hari Raya Bonus!",             "message": "Complete 40+ trips this week and earn RM50 bonus. Valid 28 Apr – 4 May.", "sentAt": "2026-04-27T09:00:00", "sentBy": "a2", "reach": 18 },
+  { "id": "n2", "segment": "all_riders",    "title": "Teeko is now in Shah Alam!",   "message": "We've expanded to Shah Alam. Book a ride now and get 20% off your first trip!", "sentAt": "2026-05-01T10:00:00", "sentBy": "a2", "reach": 15 },
+  { "id": "n3", "segment": "city_kl",       "title": "Service disruption notice",    "message": "Due to road closures at Jalan Ampang on 5 May, expect slightly longer ETAs between 8–10am.", "sentAt": "2026-05-04T18:00:00", "sentBy": "a2", "reach": 22 },
+  { "id": "n4", "segment": "all_drivers",   "title": "Updated Community Guidelines", "message": "We've updated our driver community guidelines. Please review at teeko.my/guidelines.", "sentAt": "2026-05-10T08:00:00", "sentBy": "a1", "reach": 18 },
+  { "id": "n5", "segment": "all_riders",    "title": "New payment method: TNG eWallet","message": "You can now pay with Touch 'n Go eWallet on all Teeko rides.", "sentAt": "2026-05-12T12:00:00", "sentBy": "a2", "reach": 15 }
+]

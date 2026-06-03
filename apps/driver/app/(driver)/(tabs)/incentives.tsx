@@ -2,6 +2,7 @@ import React from 'react';
 import {
   View, Text, StyleSheet, StatusBar, ScrollView,
 } from 'react-native';
+import { Timer } from 'lucide-react-native';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
@@ -44,7 +45,12 @@ export default function IncentivesScreen() {
                 </View>
                 <View style={styles.titleBlock}>
                   <Text style={styles.cardTitle}>{inc.title}</Text>
-                  {!done && <Text style={styles.cardTimer}>⏱ {t('driver.hoursRemaining', { h: hoursLeft })}</Text>}
+                  {!done && (
+                    <View style={styles.cardTimerRow}>
+                      <Timer size={12} color={colors.textSec} strokeWidth={1.75} />
+                      <Text style={styles.cardTimer}> {t('driver.hoursRemaining', { h: hoursLeft })}</Text>
+                    </View>
+                  )}
                 </View>
               </View>
 
@@ -101,6 +107,7 @@ const createStyles = (colors: any) => StyleSheet.create({
   badgeText: { fontWeight: '800', fontSize: 16 },
   titleBlock: { flex: 1 },
   cardTitle: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  cardTimerRow: { flexDirection: 'row', alignItems: 'center' },
   cardTimer: { color: colors.textSec, fontSize: 12 },
 
   cardDesc: { color: colors.textSec, fontSize: 13, lineHeight: 18, marginBottom: 14 },

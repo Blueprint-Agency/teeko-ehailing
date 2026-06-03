@@ -96,7 +96,7 @@ export default function HomeScreen() {
         </View>
 
         <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/(driver)/notifications')}>
-          <Text style={styles.notifIcon}>🔔</Text>
+          <Bell size={22} color={colors.text} strokeWidth={1.75} />
           <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
             <Text style={styles.notifBadgeText}>2</Text>
           </View>
@@ -206,7 +206,6 @@ const styles = StyleSheet.create({
   hudLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 1 },
   hudSub: { fontSize: 11, marginTop: 1 },
   notifBtn: { position: 'relative', width: 40, alignItems: 'flex-end' },
-  notifIcon: { fontSize: 22 },
   notifBadge: {
     position: 'absolute',
     top: -4,

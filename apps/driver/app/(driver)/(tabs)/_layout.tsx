@@ -2,13 +2,16 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Map, Wallet, Target, Car, User } from 'lucide-react-native';
 import { useColors } from '../../../constants/colors';
 import { useT } from '@teeko/i18n';
 
-function TabIcon({ emoji, label, focused, colors }: { emoji: string; label: string; focused: boolean; colors: ReturnType<typeof useColors> }) {
+type LucideIcon = React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
+
+function TabIcon({ Icon, label, focused, colors }: { Icon: LucideIcon; label: string; focused: boolean; colors: ReturnType<typeof useColors> }) {
   return (
     <View style={[styles.tabItem, focused && { backgroundColor: colors.accent + '1A' }]}>
-      <Text style={styles.tabEmoji}>{emoji}</Text>
+      <Icon size={22} color={focused ? colors.accent : colors.textMut} strokeWidth={1.75} />
       <Text style={[styles.tabLabel, { color: focused ? colors.accent : colors.textMut }]}>{label}</Text>
     </View>
   );
@@ -49,31 +52,31 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home/index"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🗺" label={t('driver.tabMap')} focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon Icon={Map} label={t('driver.tabMap')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen
         name="earnings/index"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="💰" label={t('driver.tabEarnings')} focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon Icon={Wallet} label={t('driver.tabEarnings')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen
         name="incentives"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🎯" label={t('driver.tabBonus')} focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon Icon={Target} label={t('driver.tabBonus')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen
         name="vehicles"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🚗" label={t('driver.tabVehicle')} focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon Icon={Car} label={t('driver.tabVehicle')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          tabBarIcon: ({ focused }) => <TabIcon emoji="👤" label={t('driver.tabProfile')} focused={focused} colors={colors} />,
+          tabBarIcon: ({ focused }) => <TabIcon Icon={User} label={t('driver.tabProfile')} focused={focused} colors={colors} />,
         }}
       />
     </Tabs>
@@ -90,6 +93,5 @@ const styles = StyleSheet.create({
     width: '100%',
     minWidth: 64,
   },
-  tabEmoji: { fontSize: 22 },
   tabLabel: { fontSize: 11, marginTop: 4, fontWeight: '700' },
 });

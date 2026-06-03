@@ -117,31 +117,31 @@ export default function ProfileScreen() {
         {/* Settings rows */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('driver.account')}</Text>
-          {[
-            { label: t('driver.personalInfo'), icon: '👤', action: () => Alert.alert(t('driver.personalInfo'), 'Edit personal information') },
-            { label: t('driver.documents'), icon: '📄', action: () => router.push('/(driver)/onboarding/personal-docs') },
-            { label: t('driver.myVehicles'), icon: '🚗', action: () => router.push('/(driver)/(tabs)/vehicles') },
-            { label: t('driver.bankAccount'), icon: '🏦', action: () => Alert.alert(t('driver.bankAccount'), 'Bank account management') },
-          ].map((item) => (
+          {([
+            { label: t('driver.personalInfo'), Icon: User, action: () => Alert.alert(t('driver.personalInfo'), 'Edit personal information') },
+            { label: t('driver.documents'), Icon: FileText, action: () => router.push('/(driver)/onboarding/personal-docs') },
+            { label: t('driver.myVehicles'), Icon: Car, action: () => router.push('/(driver)/(tabs)/vehicles') },
+            { label: t('driver.bankAccount'), Icon: Landmark, action: () => Alert.alert(t('driver.bankAccount'), 'Bank account management') },
+          ] as const).map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
-              <Text style={styles.settingIcon}>{item.icon}</Text>
+              <item.Icon size={18} color={colors.textSec} strokeWidth={1.75} style={styles.settingIconView} />
               <Text style={styles.settingLabel}>{item.label}</Text>
-              <Text style={styles.settingArrow}>›</Text>
+              <ChevronRight size={18} color={colors.textMut} strokeWidth={1.75} />
             </TouchableOpacity>
           ))}
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('driver.support')}</Text>
-          {[
-            { label: t('driver.helpCenter'), icon: '❓', action: () => router.push('/(driver)/support') },
-            { label: t('driver.terms'), icon: '📋', action: () => router.push('/(driver)/onboarding/agreement') },
-            { label: t('driver.privacy'), icon: '🔒', action: () => Alert.alert(t('driver.privacy'), 'Privacy policy') },
-          ].map((item) => (
+          {([
+            { label: t('driver.helpCenter'), Icon: HelpCircle, action: () => router.push('/(driver)/support') },
+            { label: t('driver.terms'), Icon: ClipboardList, action: () => router.push('/(driver)/onboarding/agreement') },
+            { label: t('driver.privacy'), Icon: Lock, action: () => Alert.alert(t('driver.privacy'), 'Privacy policy') },
+          ] as const).map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
-              <Text style={styles.settingIcon}>{item.icon}</Text>
+              <item.Icon size={18} color={colors.textSec} strokeWidth={1.75} style={styles.settingIconView} />
               <Text style={styles.settingLabel}>{item.label}</Text>
-              <Text style={styles.settingArrow}>›</Text>
+              <ChevronRight size={18} color={colors.textMut} strokeWidth={1.75} />
             </TouchableOpacity>
           ))}
         </View>
@@ -215,9 +215,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 12, padding: 14, marginBottom: 8,
     borderWidth: 1, borderColor: colors.border,
   },
-  settingIcon: { fontSize: 18, marginRight: 12 },
+  settingIconView: { marginRight: 12 },
   settingLabel: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '600' },
-  settingArrow: { color: colors.textMut, fontSize: 20 },
 
   logoutBtn: {
     marginHorizontal: 16, marginTop: 4,

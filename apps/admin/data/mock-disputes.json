@@ -1,0 +1,8 @@
+[
+  { "id": "dis1", "tripId": "t4",  "raisedBy": "rider", "raiserId": "r9",  "category": "overcharge",      "status": "open",     "amount": 9.80,  "description": "Driver took longer route, fare higher than estimated.", "date": "2026-05-14T11:45:00", "assignedTo": null },
+  { "id": "dis2", "tripId": "t14", "raisedBy": "rider", "raiserId": "r7",  "category": "misconduct",      "status": "open",     "amount": 0,     "description": "Driver was rude and refused to help with luggage.", "date": "2026-05-12T14:00:00", "assignedTo": "a3" },
+  { "id": "dis3", "tripId": "t18", "raisedBy": "driver","raiserId": "d8",  "category": "no_show",         "status": "resolved", "amount": 5.00,  "description": "Rider did not show up after 10 min wait. Cancellation fee disputed.", "date": "2026-05-10T09:00:00", "assignedTo": "a2", "resolution": "approved_refund" },
+  { "id": "dis4", "tripId": "t7",  "raisedBy": "rider", "raiserId": "r10", "category": "payment",         "status": "escalated","amount": 35.00, "description": "Card charged twice for the same trip.", "date": "2026-05-13T17:00:00", "assignedTo": "a1" },
+  { "id": "dis5", "tripId": "t24", "raisedBy": "rider", "raiserId": "r15", "category": "safety",          "status": "open",     "amount": 0,     "description": "Driver ran red lights multiple times. Felt unsafe.", "date": "2026-05-08T08:30:00", "assignedTo": null },
+  { "id": "dis6", "tripId": "t12", "raisedBy": "driver","raiserId": "d20", "category": "passenger_conduct","status": "resolved", "amount": 0,     "description": "Passenger was verbally abusive during trip.", "date": "2026-05-12T10:00:00", "assignedTo": "a3", "resolution": "warning_issued" }
+]
