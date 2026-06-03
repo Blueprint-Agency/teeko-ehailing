@@ -9,6 +9,7 @@ import { sendVerificationOtp } from '../auth_otp/service';
 import {
   findUserByExternalId,
   provisionRider,
+  provisionDriver,
   updateRiderFields,
   softDeleteUser,
   getRiderProfileBundle,
@@ -125,6 +126,65 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
     riderProfile: {
       ratingAvg: bundle.ratingAvg !== null ? Number(bundle.ratingAvg) : null,
       ratingCount: bundle.ratingCount,
+    },
+  };
+}
+
+export type DriverMeResponse = {
+  user: {
+    id: string;
+    email: string | null;
+    fullName: string | null;
+    status: 'active' | 'suspended' | 'deactivated';
+  };
+  driverProfile: {
+    approvalStatus: string;
+  };
+};
+
+/**
+ * Get-or-create the driver's row. Used by GET /auth/me on the driver API.
+ * Idempotent — safe to call on every app launch.
+ */
+export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<DriverMeResponse> {
+  if (!claims.sub) throw new Error('clerk claims missing sub');
+
+  let row: IdentityRow | null = await findUserByExternalId('clerk', claims.sub);
+  if (!row) {
+    const profile = await resolveProfileFromClerk(claims);
+    try {
+      await provisionDriver({
+        clerkUserId: claims.sub,
+        email: profile.email,
+        fullName: profile.fullName,
+      });
+    } catch (err) {
+      if (!isUniqueViolation(err)) throw err;
+      logger.debug({ clerkUserId: claims.sub }, 'driver JIT race lost, re-reading');
+    }
+    row = await findUserByExternalId('clerk', claims.sub);
+    if (!row) throw new Error('provisionDriver succeeded but row not found');
+  }
+
+  // Fetch driver profile approval status
+  const { db } = await import('../../config/db');
+  const { driverProfiles } = await import('../../db/schema/drivers');
+  const { eq } = await import('drizzle-orm');
+  const [dp] = await db
+    .select({ approvalStatus: driverProfiles.approvalStatus })
+    .from(driverProfiles)
+    .where(eq(driverProfiles.userId, row.id))
+    .limit(1);
+
+  return {
+    user: {
+      id: row.id,
+      email: row.email,
+      fullName: row.fullName,
+      status: row.status,
+    },
+    driverProfile: {
+      approvalStatus: dp?.approvalStatus ?? 'pending',
     },
   };
 }

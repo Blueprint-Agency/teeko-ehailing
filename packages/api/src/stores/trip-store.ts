@@ -9,10 +9,13 @@ import type {
 } from '@teeko/shared';
 import { create } from 'zustand';
 
-import * as tripsApi from '../client/trips';
-import { simulateDriverMovement } from '../utils/movement';
+// Minimal socket interface — avoids adding socket.io-client as a peer dep to @teeko/api
+interface TripSocket {
+  on(event: string, fn: (...args: any[]) => void): void;
+  off(event: string, fn?: (...args: any[]) => void): void;
+}
 
-type TimerId = ReturnType<typeof setTimeout>;
+import * as tripsApi from '../client/trips';
 
 export type TripState = {
   status: TripStatus;
@@ -26,6 +29,7 @@ export type TripState = {
   driver: Driver | null;
   driverPosition: LatLng | null;
   driverHeading: number;
+  driverEtaMin: number | null;
   history: Trip[];
   historyLoading: boolean;
   error: string | null;
@@ -40,24 +44,11 @@ export type TripState = {
   rateTrip: (rating: number, comment?: string) => void;
   loadHistory: () => Promise<void>;
   reset: () => void;
+  applyTripUpdate: (status: TripStatus, driver?: Driver) => void;
+  connectSocket: (socket: TripSocket) => void;
 };
 
-// Timers live outside the store so they don't trigger re-renders.
-const timers = new Set<TimerId>();
-function clearTimers() {
-  timers.forEach((t) => clearTimeout(t));
-  timers.clear();
-}
-function schedule(fn: () => void, ms: number) {
-  const t = setTimeout(() => {
-    timers.delete(t);
-    fn();
-  }, ms);
-  timers.add(t);
-}
-
-// Movement subscription tear-down handle.
-let stopMovement: (() => void) | null = null;
+let activeSocket: TripSocket | null = null;
 
 export const useTripStore = create<TripState>((set, get) => ({
   status: 'idle',
@@ -71,6 +62,7 @@ export const useTripStore = create<TripState>((set, get) => ({
   driver: null,
   driverPosition: null,
   driverHeading: 0,
+  driverEtaMin: null,
   history: [],
   historyLoading: false,
   error: null,
@@ -106,95 +98,37 @@ export const useTripStore = create<TripState>((set, get) => ({
       return;
     }
     set({ status: 'searching', error: null });
-    const trip = await tripsApi.book({
-      pickup,
-      destination,
-      rideType,
-      fare: selectedFare,
-      paymentMethodId,
-      riderId,
-    });
-    set({ trip });
-
     try {
-      const driver = await tripsApi.autoMatch(rideType);
-      // Use the curved approach polyline emitted by book() so the driver tracks
-      // along a road-like curve; fall back to a 2-point line if missing.
-      const approachPolyline =
-        trip.approachPolyline && trip.approachPolyline.length >= 2
-          ? trip.approachPolyline
-          : ([
-              [pickup.lat + 0.008, pickup.lng + 0.008],
-              [pickup.lat, pickup.lng],
-            ] as Array<[number, number]>);
-      const spawn = approachPolyline[0]!;
-      set({
-        driver,
-        status: 'matched',
-        trip: { ...trip, driver, status: 'matched' },
-        driverPosition: { lat: spawn[0], lng: spawn[1] },
+      const trip = await tripsApi.book({
+        pickup,
+        destination,
+        rideType,
+        fare: selectedFare,
+        paymentMethodId,
+        riderId,
       });
-
-      // Animate driver approaching pickup during the 15s matched phase.
-      stopMovement?.();
-      stopMovement = simulateDriverMovement(
-        approachPolyline,
-        15_000,
-        ({ position, heading }) => set({ driverPosition: position, driverHeading: heading }),
-      );
-
-      // Driver arrives to pickup after ~15s in mock-time.
-      schedule(() => {
-        if (get().status !== 'matched') return;
-        stopMovement?.();
-        stopMovement = null;
-        set({ status: 'arrived', driverPosition: { lat: pickup.lat, lng: pickup.lng } });
-
-        // Auto-start trip 5s after arrival.
-        schedule(() => {
-          if (get().status !== 'arrived') return;
-          set({ status: 'in_trip' });
-
-          // Simulate trip movement along polyline (~25s).
-          stopMovement?.();
-          stopMovement = simulateDriverMovement(
-            trip.routePolyline,
-            25_000,
-            ({ position, heading }) => set({ driverPosition: position, driverHeading: heading }),
-            () => {
-              get().completeRide();
-            },
-          );
-        }, 5_000);
-      }, 15_000);
+      set({ trip, status: 'searching' });
+      // Status transitions (matched → arrived → in_trip → completed) are
+      // driven by socket events via applyTripUpdate / connectSocket.
     } catch {
-      set({ status: 'no_drivers' });
+      set({ status: 'no_drivers', error: 'Could not create booking' });
     }
   },
 
   async cancel(reason) {
-    clearTimers();
-    stopMovement?.();
-    stopMovement = null;
     const trip = get().trip;
     if (trip) {
-      try {
-        await tripsApi.cancel(trip.id, reason);
-      } catch {
-        // mock throws a sentinel — ignore.
-      }
+      await tripsApi.cancel(trip.id, reason);
     }
     set({
       status: 'cancelled',
       driver: null,
       driverPosition: null,
+      driverEtaMin: null,
     });
   },
 
   completeRide() {
-    clearTimers();
-    stopMovement?.();
-    stopMovement = null;
     set({ status: 'completed' });
   },
 
@@ -229,10 +163,46 @@ export const useTripStore = create<TripState>((set, get) => ({
     }
   },
 
+  applyTripUpdate(status, driver) {
+    if (status === 'matched' && driver) {
+      set({ status: 'matched', driver, trip: { ...get().trip!, driver, status: 'matched' } });
+    } else if (status === 'arrived') {
+      set({ status: 'arrived' });
+    } else if (status === 'in_trip') {
+      set({ status: 'in_trip' });
+    } else if (status === 'completed') {
+      set({ status: 'completed' });
+    } else if (status === 'cancelled' || status === 'no_drivers') {
+      set({ status: status as TripStatus });
+    }
+  },
+
+  connectSocket(socket) {
+    if (activeSocket) {
+      activeSocket.off('trip.status_update');
+      activeSocket.off('trip.no_drivers');
+      activeSocket.off('driver.location');
+    }
+    activeSocket = socket;
+
+    socket.on('trip.status_update', (data: { status: string; driver?: Driver }) => {
+      get().applyTripUpdate(data.status as TripStatus, data.driver);
+    });
+
+    socket.on('trip.no_drivers', () => {
+      set({ status: 'no_drivers', driver: null, driverPosition: null, driverEtaMin: null });
+    });
+
+    socket.on('driver.location', (data: { lat: number; lng: number; heading?: number; etaMin?: number }) => {
+      set({
+        driverPosition: { lat: data.lat, lng: data.lng },
+        driverHeading: data.heading ?? 0,
+        driverEtaMin: data.etaMin ?? null,
+      });
+    });
+  },
+
   reset() {
-    clearTimers();
-    stopMovement?.();
-    stopMovement = null;
     set({
       status: 'idle',
       pickup: null,

@@ -14,12 +14,23 @@ declare module 'fastify' {
   }
 }
 
+const DEV_TOKEN = 'dev-bypass-token';
+const DEV_USER_ID = process.env.DEV_USER_ID ?? 'dev-driver-001';
+const DEV_ROLE = (process.env.DEV_ROLE ?? 'driver') as 'rider' | 'driver' | 'admin_super' | 'admin_ops' | 'admin_finance';
+
 export async function clerkAuthVerify(req: FastifyRequest, reply: FastifyReply) {
   const header = req.headers.authorization;
   if (!header || !header.toLowerCase().startsWith('bearer ')) {
     return reply.code(401).send({ error: 'unauthorized', message: 'missing bearer token' });
   }
   const token = header.slice(7).trim();
+
+  // Dev bypass — only active in development
+  if (process.env.NODE_ENV !== 'production' && token === DEV_TOKEN) {
+    req.user = { id: DEV_USER_ID, role: DEV_ROLE, clerkUserId: 'dev' };
+    return;
+  }
+
   let claims: ClerkClaims;
   try {
     claims = await verifyClerkToken(token);

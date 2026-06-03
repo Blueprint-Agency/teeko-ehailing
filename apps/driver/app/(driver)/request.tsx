@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import request from '../../data/mock-ride-request.json';
+import { api } from '../../lib/api';
+import { useDriverStore } from '../../store/useDriverStore';
 
 export default function RideRequestScreen() {
   const router = useRouter();
@@ -15,15 +16,22 @@ export default function RideRequestScreen() {
   const { activeTheme } = useTheme();
   const t = useT();
   const styles = createStyles(colors);
-  const [remaining, setRemaining] = useState(request.countdownSeconds);
+  const { pendingOffer, setPendingOffer, setActiveTripId, setActiveTrip } = useDriverStore();
+
+  const countdownSecs = pendingOffer?.countdownSeconds ?? 15;
+  const [remaining, setRemaining] = useState(countdownSecs);
 
   useEffect(() => {
-    if (remaining <= 0) { router.back(); return; }
+    if (remaining <= 0) {
+      setPendingOffer(null);
+      router.back();
+      return;
+    }
     const id = setInterval(() => setRemaining((r) => r - 1), 1000);
     return () => clearInterval(id);
   }, [remaining]);
 
-  const progress = remaining / request.countdownSeconds;
+  const progress = remaining / countdownSecs;
   const circumference = 2 * Math.PI * 30;
   const strokeDash = circumference * progress;
   const urgent = remaining <= 7;
@@ -53,15 +61,12 @@ export default function RideRequestScreen() {
           </View>
 
           <View style={styles.rideInfo}>
-            <Text style={styles.rideType}>{request.rideType}</Text>
+            <Text style={styles.rideType}>{pendingOffer?.category?.toUpperCase() ?? '—'}</Text>
             <View style={styles.fareRow}>
-              <Text style={styles.fare}>RM {request.fare.toFixed(2)}</Text>
-              <Text style={styles.dist}>{request.destination.distance} km</Text>
+              <Text style={styles.fare}>RM {pendingOffer ? (pendingOffer.fareCents / 100).toFixed(2) : '—'}</Text>
             </View>
             <View style={styles.riderRow}>
-              <Text style={styles.riderName}>{request.riderName}</Text>
-              <Text style={styles.riderStar}>★ {request.riderRating}</Text>
-              <Text style={styles.riderTrips}>· {t('driver.riderTrips', { count: request.riderTrips })}</Text>
+              <Text style={styles.riderName}>{pendingOffer?.riderName ?? '—'}</Text>
             </View>
           </View>
         </View>
@@ -73,10 +78,9 @@ export default function RideRequestScreen() {
           <View style={styles.routeRow}>
             <View style={styles.dotPickup} />
             <View style={styles.routeTexts}>
-              <Text style={styles.routeLabel}>{t('driver.pickupEta', { eta: request.pickup.eta })}</Text>
-              <Text style={styles.routePlace}>{request.pickup.label}</Text>
+              <Text style={styles.routeLabel}>{t('driver.pickup')}</Text>
+              <Text style={styles.routePlace}>{pendingOffer?.pickup.address ?? '—'}</Text>
             </View>
-            <Text style={styles.routeDist}>{request.pickup.distance} km</Text>
           </View>
 
           <View style={styles.routeLine} />
@@ -85,9 +89,8 @@ export default function RideRequestScreen() {
             <View style={styles.dotDrop} />
             <View style={styles.routeTexts}>
               <Text style={styles.routeLabel}>{t('driver.dropOff')}</Text>
-              <Text style={styles.routePlace}>{request.destination.label}</Text>
+              <Text style={styles.routePlace}>{pendingOffer?.destination.address ?? '—'}</Text>
             </View>
-            <Text style={styles.routeDist}>{request.destination.distance} km</Text>
           </View>
         </View>
 
@@ -97,7 +100,13 @@ export default function RideRequestScreen() {
         <View style={styles.actions}>
           <TouchableOpacity
             style={styles.declineBtn}
-            onPress={() => router.back()}
+            onPress={async () => {
+              if (pendingOffer) {
+                await api.driver.declineTrip(pendingOffer.tripId).catch(() => null);
+                setPendingOffer(null);
+              }
+              router.back();
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.declineText}>{t('driver.decline')}</Text>
@@ -105,7 +114,20 @@ export default function RideRequestScreen() {
 
           <TouchableOpacity
             style={styles.acceptBtn}
-            onPress={() => router.replace('/(driver)/trip')}
+            onPress={async () => {
+              if (pendingOffer) {
+                try {
+                  await api.driver.acceptTrip(pendingOffer.tripId);
+                  setActiveTripId(pendingOffer.tripId);
+                  setActiveTrip(pendingOffer);
+                  setPendingOffer(null);
+                } catch (err: unknown) {
+                  Alert.alert('Error', err instanceof Error ? err.message : 'Failed to accept trip');
+                  return;
+                }
+              }
+              router.replace('/(driver)/trip');
+            }}
             activeOpacity={0.85}
           >
             <Text style={styles.acceptText}>{t('driver.acceptRide')}</Text>

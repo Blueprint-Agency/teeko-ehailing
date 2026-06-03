@@ -11,6 +11,7 @@ export function TripProgressStrip() {
   const status = useTripStore((s) => s.status);
   const driver = useTripStore((s) => s.driver);
   const trip = useTripStore((s) => s.trip);
+  const driverEtaMin = useTripStore((s) => s.driverEtaMin);
   const driverPosition = useTripStore((s) => s.driverPosition);
   const destination = useTripStore((s) => s.destination);
 
@@ -26,8 +27,8 @@ export function TripProgressStrip() {
     status === 'arrived'
       ? 'Arrived'
       : status === 'in_trip'
-        ? `${trip.fare.etaMin} min left`
-        : `${trip.fare.etaMin} min away`;
+        ? `${driverEtaMin ?? '—'} min left`
+        : `${driverEtaMin ?? '—'} min away`;
 
   const statusLabel =
     status === 'arrived'

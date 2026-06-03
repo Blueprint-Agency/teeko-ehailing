@@ -12,6 +12,7 @@ export {
   api,
   ApiError,
   setApiTokenGetter,
+  setApiUnauthorizedHandler,
 } from './client';
 
 export { useAuthStore, type AuthState } from './stores/auth-store';

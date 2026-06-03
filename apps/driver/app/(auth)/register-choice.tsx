@@ -27,7 +27,7 @@ export default function RegisterChoiceScreen() {
 
         <TouchableOpacity
           style={styles.card}
-          onPress={() => router.push('/(driver)/onboarding/agreement')}
+          onPress={() => router.push('/(auth)/register')}
           activeOpacity={0.85}
         >
           <View style={styles.cardIcon}><Text style={styles.cardIconText}>🚗</Text></View>

@@ -23,8 +23,25 @@ const schema = z.object({
   AUTH0_AUDIENCE: z.string().optional(),
   AUTH0_ISSUER: z.string().optional(),
 
+  // Redis
+  REDIS_URL: z.string().default('redis://localhost:6379'),
+
   // Google Maps (server-side proxy — never exposed to mobile clients)
   GOOGLE_MAPS_API_KEY: z.string().min(20),
+
+  // Commission & fees
+  COMMISSION_RATE: z.coerce.number().default(0.10),
+  CANCELLATION_FEE_CENTS: z.coerce.number().int().default(300),
+
+  // Storage adapter: 'r2' | 'gcs' | unset (local)
+  STORAGE: z.enum(['r2', 'gcs', 'local']).optional(),
+
+  // Cloudflare R2 (active storage for driver-web documents)
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+  R2_BUCKET: z.string().optional(),
+  R2_PUBLIC_URL: z.string().url().optional(),
 });
 
 export const env = schema.parse(process.env);

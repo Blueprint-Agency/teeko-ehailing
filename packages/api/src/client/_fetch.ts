@@ -7,17 +7,24 @@
 // it returns null and requests are sent unauthenticated.
 
 let tokenGetter: () => Promise<string | null> = async () => null;
+let unauthorizedHandler: (() => void) | null = null;
 
 export function setApiTokenGetter(fn: () => Promise<string | null>): void {
   tokenGetter = fn;
 }
 
+export function setApiUnauthorizedHandler(fn: () => void): void {
+  unauthorizedHandler = fn;
+}
+
 export class ApiError extends Error {
   status: number;
+  path: string;
   body: string;
-  constructor(status: number, body: string) {
-    super(`HTTP ${status}: ${body.slice(0, 200)}`);
+  constructor(status: number, path: string, body: string) {
+    super(`HTTP ${status} ${path}: ${body.slice(0, 200)}`);
     this.status = status;
+    this.path = path;
     this.body = body;
   }
 }
@@ -45,7 +52,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`${baseUrl()}${path}`, { ...init, headers });
   if (!res.ok) {
     const body = await res.text();
-    throw new ApiError(res.status, body);
+    if (res.status === 401 && unauthorizedHandler) unauthorizedHandler();
+    throw new ApiError(res.status, path, body);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;

@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/clerk-expo": "^2.19.31",
     "@expo/metro-runtime": "~6.1.2",
     "@teeko/i18n": "workspace:*",
     "@teeko/shared": "workspace:*",
@@ -26,7 +27,9 @@
     "react-native": "0.81.5",
     "react-native-maps": "1.20.1",
     "react-native-safe-area-context": "5.6.2",
-    "react-native-screens": "~4.16.0"
+    "react-native-screens": "~4.16.0",
+    "socket.io-client": "^4.8.3",
+    "zustand": "^5.0.13"
   },
   "devDependencies": {
     "@teeko/config": "workspace:*",

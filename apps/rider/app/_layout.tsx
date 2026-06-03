@@ -10,15 +10,16 @@ import {
 } from '@expo-google-fonts/nunito';
 import { ClerkLoaded, ClerkProvider, useAuth } from '@clerk/clerk-expo';
 import type { Locale } from '@teeko/shared';
-import { useAuthStore, useLocationStore } from '@teeko/api';
+import { useAuthStore, useLocationStore, useTripStore, setApiUnauthorizedHandler } from '@teeko/api';
 import { initI18n, setLocale } from '@teeko/i18n';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as Localization from 'expo-localization';
 import * as Location from 'expo-location';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { setTokenGetter, tokenCache } from '../lib/clerk';
+import { connectSocket, disconnectSocket, getSocket } from '../lib/socket';
 
 const SUPPORTED: Locale[] = ['en', 'ms', 'zh', 'ta'];
 
@@ -27,25 +28,51 @@ function detectLocale(): Locale {
   return (SUPPORTED as string[]).includes(device) ? (device as Locale) : 'en';
 }
 
+function SocketBridge() {
+  const { getToken, isSignedIn } = useAuth();
+  const connectTripSocket = useTripStore((s) => s.connectSocket);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      disconnectSocket();
+      return;
+    }
+    getToken().then((token) => {
+      if (!token) return;
+      const s = connectSocket(token);
+      connectTripSocket(s);
+    }).catch(() => null);
+
+    return () => {
+      disconnectSocket();
+    };
+  }, [isSignedIn]);
+
+  return null;
+}
+
 function ClerkBridge({ children }: { children: React.ReactNode }) {
-  const { getToken: clerkGetToken, isSignedIn } = useAuth();
+  const { getToken: clerkGetToken, isSignedIn, signOut } = useAuth();
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
   const clearProfile = useAuthStore((s) => s.clear);
 
   useEffect(() => {
-    setTokenGetter(async () => clerkGetToken());
-  }, [clerkGetToken]);
+    setApiUnauthorizedHandler(() => {
+      signOut().finally(() => router.replace('/(auth)/login'));
+    });
+  }, [signOut]);
 
   useEffect(() => {
+    // Register token getter first, then fetch profile — both in the same effect
+    // so the getter is guaranteed to be wired before the API call fires.
+    setTokenGetter(async () => clerkGetToken());
+
     if (isSignedIn) {
-      fetchProfile().catch(() => {
-        // Surface a generic toast in the future; for now, silent (rider can retry).
-      });
+      fetchProfile().catch(() => {});
     } else if (isSignedIn === false) {
-      // Defensive: only clear when explicitly signed-out (not on initial undefined).
       clearProfile();
     }
-  }, [isSignedIn, fetchProfile, clearProfile]);
+  }, [isSignedIn, clerkGetToken, fetchProfile, clearProfile]);
 
   return <>{children}</>;
 }
@@ -108,6 +135,7 @@ export default function RootLayout() {
     >
       <ClerkLoaded>
         <ClerkBridge>
+          <SocketBridge />
           <SafeAreaProvider>
             <StatusBar style="dark" />
             <Stack screenOptions={{ headerShown: false }}>

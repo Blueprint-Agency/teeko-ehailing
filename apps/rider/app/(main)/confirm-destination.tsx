@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
+import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 
@@ -15,6 +16,7 @@ export default function ConfirmDestinationScreen() {
   const router = useRouter();
   const destination = useTripStore((s) => s.destination);
   const setDestination = useTripStore((s) => s.setDestination);
+  const setPickup = useTripStore((s) => s.setPickup);
   const currentLatLng = useLocationStore((s) => s.current);
   const mapRef = useRef<MapViewHandle>(null);
 
@@ -25,13 +27,33 @@ export default function ConfirmDestinationScreen() {
     setPinCoord({ lat: region.latitude, lng: region.longitude });
   }, []);
 
-  const confirm = () => {
+  const confirm = async () => {
     if (!destination) {
       router.back();
       return;
     }
+    let pickupAddress = 'Current Location';
+    try {
+      const results = await Location.reverseGeocodeAsync({
+        latitude: currentLatLng.lat,
+        longitude: currentLatLng.lng,
+      });
+      const r = results[0];
+      if (r) {
+        pickupAddress = [r.name, r.street, r.city].filter(Boolean).join(', ');
+      }
+    } catch {
+      // keep fallback
+    }
+    setPickup({
+      id: 'current-location',
+      name: 'My Location',
+      address: pickupAddress,
+      lat: currentLatLng.lat,
+      lng: currentLatLng.lng,
+    });
     setDestination({ ...destination, lat: pinCoord.lat, lng: pinCoord.lng });
-    router.push('/(main)/not-implemented?domain=ride-selection');
+    router.push('/(main)/ride-selection');
   };
 
   const recenter = () => {

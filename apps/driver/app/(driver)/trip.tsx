@@ -7,7 +7,8 @@ import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import request from '../../data/mock-ride-request.json';
+import { api } from '../../lib/api';
+import { useDriverStore } from '../../store/useDriverStore';
 
 const PHASE_KEYS = ['navigating', 'arrived', 'inprogress', 'completed'] as const;
 
@@ -18,6 +19,7 @@ export default function TripScreen() {
   const { activeTheme } = useTheme();
   const t = useT();
   const styles = createStyles(colors);
+  const { activeTripId, setActiveTripId, activeTrip, setActiveTrip } = useDriverStore();
 
   const PHASES = [
     { key: 'navigating', label: t('driver.navigatingToPickup') },
@@ -29,12 +31,42 @@ export default function TripScreen() {
   const phase = PHASES[phaseIndex];
   const isCompleted = phaseIndex === 3;
 
-  const advancePhase = () => {
+  const advancePhase = async () => {
     if (isCompleted) {
+      setActiveTripId(null);
+      setActiveTrip(null);
       router.replace('/(driver)/(tabs)/home');
-    } else {
-      setPhaseIndex((i) => Math.min(i + 1, 3));
+      return;
     }
+    try {
+      if (activeTripId) {
+        if (phaseIndex === 0) await api.driver.arrivedAtPickup(activeTripId);
+        else if (phaseIndex === 1) await api.driver.startTrip(activeTripId);
+        else if (phaseIndex === 2) await api.driver.completeTrip(activeTripId);
+      }
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Action failed');
+      return;
+    }
+    setPhaseIndex((i) => Math.min(i + 1, 3));
+  };
+
+  const handleSOS = async () => {
+    Alert.alert('SOS', 'Emergency services will be contacted.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Confirm SOS',
+        style: 'destructive',
+        onPress: async () => {
+          if (activeTripId) {
+            await api.driver.cancelTrip(activeTripId, 'driver_sos').catch(() => null);
+            setActiveTripId(null);
+            setActiveTrip(null);
+          }
+          router.replace('/(driver)/(tabs)/home');
+        },
+      },
+    ]);
   };
 
   const phaseActionLabel = () => {
@@ -75,11 +107,11 @@ export default function TripScreen() {
       <View style={styles.card}>
         <View style={styles.riderInfo}>
           <View style={styles.riderAvatar}>
-            <Text style={styles.riderAvatarText}>N</Text>
+            <Text style={styles.riderAvatarText}>{activeTrip?.riderName?.[0] ?? '?'}</Text>
           </View>
           <View style={styles.riderDetails}>
-            <Text style={styles.riderName}>{request.riderName}</Text>
-            <Text style={styles.riderMeta}>★ {request.riderRating} · {request.rideType}</Text>
+            <Text style={styles.riderName}>{activeTrip?.riderName ?? '—'}</Text>
+            <Text style={styles.riderMeta}>{activeTrip?.category?.toUpperCase() ?? '—'}</Text>
           </View>
           <TouchableOpacity style={styles.callBtn} onPress={() => Alert.alert('Call', 'Calling rider...')}>
             <Text style={styles.callIcon}>📞</Text>
@@ -89,18 +121,18 @@ export default function TripScreen() {
         <View style={styles.routeCard}>
           <View style={styles.routeRow}>
             <View style={styles.dotPickup} />
-            <Text style={styles.routeText} numberOfLines={1}>{request.pickup.label}</Text>
+            <Text style={styles.routeText} numberOfLines={1}>{activeTrip?.pickup.address ?? '—'}</Text>
           </View>
           <View style={styles.routeConnector} />
           <View style={styles.routeRow}>
             <View style={styles.dotDrop} />
-            <Text style={styles.routeText} numberOfLines={1}>{request.destination.label}</Text>
+            <Text style={styles.routeText} numberOfLines={1}>{activeTrip?.destination.address ?? '—'}</Text>
           </View>
         </View>
 
         <View style={styles.fareRow}>
           <Text style={styles.fareLabel}>{t('driver.estFare')}</Text>
-          <Text style={styles.fareValue}>RM {request.fare.toFixed(2)}</Text>
+          <Text style={styles.fareValue}>RM {activeTrip ? (activeTrip.fareCents / 100).toFixed(2) : '—'}</Text>
         </View>
 
         {/* Navigation buttons */}
@@ -118,7 +150,7 @@ export default function TripScreen() {
         <View style={styles.actionRow}>
           <TouchableOpacity
             style={styles.sosBtn}
-            onPress={() => Alert.alert('SOS', 'Emergency services will be contacted.')}
+            onPress={handleSOS}
           >
             <Text style={styles.sosBtnText}>SOS</Text>
           </TouchableOpacity>

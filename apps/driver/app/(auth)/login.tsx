@@ -1,24 +1,90 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform,
+  StatusBar, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSignIn } from '@clerk/clerk-expo';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
+import { useDriverStore } from '../../store/useDriverStore';
 
 export default function LoginScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
   const t = useT();
-  const [phone, setPhone] = useState('');
+  const { signIn, setActive, isLoaded } = useSignIn();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [emailError, setEmailError] = useState<string | undefined>();
+  const [passwordError, setPasswordError] = useState<string | undefined>();
+  const [mfaStep, setMfaStep] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [otpError, setOtpError] = useState<string | undefined>();
+  const [devToken, setDevToken] = useState(__DEV__ ? 'dev-bypass-token' : '');
+  const [showDev, setShowDev] = useState(false);
+  const setToken = useDriverStore((s) => s.setToken);
 
   const styles = createStyles(colors);
 
-  const handleContinue = () => {
-    router.replace('/(driver)/(tabs)/home');
+  const handleLogin = async () => {
+    if (!isLoaded || !email.trim() || !password) return;
+    setEmailError(undefined);
+    setPasswordError(undefined);
+    setLoading(true);
+    try {
+      const attempt = await signIn.create({ identifier: email.trim(), password });
+      if (attempt.status === 'complete') {
+        await setActive({ session: attempt.createdSessionId });
+        router.replace('/(driver)/(tabs)/home');
+      } else if (attempt.status === 'needs_second_factor') {
+        await signIn.prepareSecondFactor({ strategy: 'email_code' });
+        setMfaStep(true);
+      } else {
+        Alert.alert('Login incomplete', 'Please try again.');
+      }
+    } catch (err: unknown) {
+      const code = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
+      if (code === 'form_identifier_not_found' || code === 'form_param_format_invalid') {
+        setEmailError('Invalid email address.');
+      } else if (code === 'form_password_incorrect') {
+        setPasswordError('Incorrect password.');
+      } else {
+        Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!isLoaded || !otpCode.trim()) return;
+    setOtpError(undefined);
+    setLoading(true);
+    try {
+      const attempt = await signIn.attemptSecondFactor({ strategy: 'email_code', code: otpCode.trim() });
+      if (attempt.status === 'complete') {
+        await setActive({ session: attempt.createdSessionId });
+        router.replace('/(driver)/(tabs)/home');
+      } else {
+        Alert.alert('Verification incomplete', 'Please try again.');
+      }
+    } catch (err: unknown) {
+      const code = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
+      if (code === 'form_code_incorrect' || code === 'verification_failed') {
+        setOtpError('Invalid code. Please try again.');
+      } else if (code === 'verification_expired') {
+        setOtpError('Code expired. Go back and try again.');
+      } else {
+        Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -35,31 +101,80 @@ export default function LoginScreen() {
             <Text style={styles.tagline}>{t('driver.loginTagline')}</Text>
           </View>
 
-          {/* Phone input */}
-          <View style={styles.inputBlock}>
-            <Text style={styles.inputLabel}>{t('driver.phoneNumber')}</Text>
-            <View style={styles.inputRow}>
-              <View style={styles.prefix}>
-                <Text style={styles.prefixText}>🇲🇾 +60</Text>
+          {mfaStep ? (
+            <>
+              <View style={styles.inputBlock}>
+                <Text style={styles.inputLabel}>VERIFICATION CODE</Text>
+                <Text style={styles.inputHint}>A code was sent to your email.</Text>
+                <TextInput
+                  style={[styles.textInput, styles.otpInput]}
+                  placeholder="123456"
+                  placeholderTextColor={colors.textMut}
+                  keyboardType="number-pad"
+                  value={otpCode}
+                  onChangeText={(v) => { setOtpCode(v); if (otpError) setOtpError(undefined); }}
+                  maxLength={6}
+                  autoFocus
+                />
+                {otpError && <Text style={styles.errorText}>{otpError}</Text>}
               </View>
-              <TextInput
-                style={styles.phoneInput}
-                placeholder="12-345 6789"
-                placeholderTextColor={colors.textMut}
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={setPhone}
-              />
-            </View>
-          </View>
 
-          <TouchableOpacity
-            style={styles.continueBtn}
-            onPress={handleContinue}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.continueBtnText}>{t('driver.continue')}</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.continueBtn, loading && { opacity: 0.6 }]}
+                onPress={handleVerifyOtp}
+                activeOpacity={0.85}
+                disabled={loading}
+              >
+                {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.continueBtnText}>Verify</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.registerLink} onPress={() => { setMfaStep(false); setOtpCode(''); }}>
+                <Text style={styles.registerLinkText}>← Back</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <View style={styles.inputBlock}>
+                <Text style={styles.inputLabel}>EMAIL</Text>
+                <TextInput
+                  style={[styles.textInput, emailError && styles.inputError]}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.textMut}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  value={email}
+                  onChangeText={(v) => { setEmail(v); if (emailError) setEmailError(undefined); }}
+                  autoFocus
+                />
+                {emailError && <Text style={styles.errorText}>{emailError}</Text>}
+              </View>
+
+              <View style={styles.inputBlock}>
+                <Text style={styles.inputLabel}>PASSWORD</Text>
+                <TextInput
+                  style={[styles.textInput, passwordError && styles.inputError]}
+                  placeholder="••••••••"
+                  placeholderTextColor={colors.textMut}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  value={password}
+                  onChangeText={(v) => { setPassword(v); if (passwordError) setPasswordError(undefined); }}
+                />
+                {passwordError && <Text style={styles.errorText}>{passwordError}</Text>}
+              </View>
+
+              <TouchableOpacity
+                style={[styles.continueBtn, loading && { opacity: 0.6 }]}
+                onPress={handleLogin}
+                activeOpacity={0.85}
+                disabled={loading || !email || !password}
+              >
+                {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.continueBtnText}>{t('driver.continue')}</Text>}
+              </TouchableOpacity>
+            </>
+          )}
 
           <TouchableOpacity
             style={styles.registerLink}
@@ -70,7 +185,37 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
 
-          <Text style={styles.devNote}>[Mockup] Driver Portal Access</Text>
+          {/* Dev bypass */}
+          <TouchableOpacity onPress={() => setShowDev((v) => !v)} style={styles.devToggle}>
+            <Text style={styles.devToggleText}>{showDev ? '▲ Dev bypass' : '▼ Dev bypass'}</Text>
+          </TouchableOpacity>
+
+          {showDev && (
+            <View style={styles.devBox}>
+              <Text style={styles.devLabel}>Paste Clerk JWT</Text>
+              <TextInput
+                style={styles.devInput}
+                placeholder="eyJ..."
+                placeholderTextColor={colors.textMut}
+                value={devToken}
+                onChangeText={setDevToken}
+                multiline
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                style={styles.devBtn}
+                onPress={() => {
+                  const t = devToken.trim();
+                  if (!t) { Alert.alert('Empty token'); return; }
+                  setToken(t);
+                  router.replace('/(driver)/(tabs)/home');
+                }}
+              >
+                <Text style={styles.devBtnText}>Use token & continue →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </View>
@@ -95,22 +240,17 @@ const createStyles = (colors: any) => StyleSheet.create({
 
   inputBlock: { marginBottom: 16 },
   inputLabel: { color: colors.textSec, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },
-  inputRow: {
-    flexDirection: 'row',
+  inputHint: { color: colors.textMut, fontSize: 13, marginBottom: 8 },
+  textInput: {
+    paddingHorizontal: 16, paddingVertical: 16,
+    color: colors.text, fontSize: 17,
     backgroundColor: colors.surface,
     borderRadius: 14, borderWidth: 1, borderColor: colors.border,
-    overflow: 'hidden',
   },
-  prefix: {
-    paddingHorizontal: 16, paddingVertical: 16,
-    borderRightWidth: 1, borderRightColor: colors.border,
-    backgroundColor: colors.surfaceHigh,
-    justifyContent: 'center',
-  },
-  prefixText: { color: colors.text, fontSize: 15, fontWeight: '600' },
-  phoneInput: {
-    flex: 1, paddingHorizontal: 16, paddingVertical: 16,
-    color: colors.text, fontSize: 17,
+  inputError: { borderColor: '#ef4444' },
+  errorText: { color: '#ef4444', fontSize: 12, marginTop: 4 },
+  otpInput: {
+    letterSpacing: 8, fontSize: 24, fontWeight: '700', textAlign: 'center',
   },
 
   continueBtn: {
@@ -121,9 +261,30 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   continueBtnText: { color: '#000', fontSize: 18, fontWeight: '800' },
 
-  registerLink: { alignItems: 'center', marginBottom: 24 },
+  registerLink: { alignItems: 'center', marginBottom: 12 },
   registerLinkText: { color: colors.textSec, fontSize: 14 },
   registerLinkAccent: { color: colors.accent, fontWeight: '700' },
 
-  devNote: { color: colors.textMut, fontSize: 11, textAlign: 'center' },
+  devToggle: { alignItems: 'center', marginTop: 16, marginBottom: 4 },
+  devToggleText: { color: colors.textMut, fontSize: 11, fontWeight: '600' },
+  devBox: {
+    marginTop: 8, padding: 14, borderRadius: 12,
+    borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderStyle: 'dashed',
+  },
+  devLabel: { color: colors.textMut, fontSize: 11, fontWeight: '700', marginBottom: 8 },
+  devInput: {
+    backgroundColor: colors.surfaceHigh, borderRadius: 8,
+    borderWidth: 1, borderColor: colors.border,
+    padding: 10, color: colors.text, fontSize: 11,
+    minHeight: 60, fontFamily: 'monospace',
+    marginBottom: 10,
+  },
+  devBtn: {
+    backgroundColor: colors.surfaceHigh, borderRadius: 10,
+    borderWidth: 1, borderColor: colors.border,
+    paddingVertical: 10, alignItems: 'center',
+  },
+  devBtnText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
 });

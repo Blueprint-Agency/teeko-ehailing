@@ -1,8 +1,125 @@
-// modules/tracking/service.ts
-// WebSocket gateway, Redis GEO writes, geofence events.
-// Single source of truth for the tracking domain.
-// Routes call into this service; repos stay private to the module.
+import type { Socket } from 'socket.io';
+import { redis } from '../../config/redis';
+import { getDistanceMatrix } from '../../external/googleMaps';
+
+// In-memory socket maps — replaced by Redis adapter in multi-instance prod
+const driverSockets = new Map<string, Socket>();
+const riderSockets = new Map<string, Socket>();
 
 export const trackingService = {
-  todo: 'WebSocket gateway, Redis GEO writes, geofence events.',
+  // ---- socket registry ----
+  registerDriver(driverId: string, socket: Socket) {
+    driverSockets.set(driverId, socket);
+  },
+  registerRider(riderId: string, socket: Socket) {
+    riderSockets.set(riderId, socket);
+  },
+  unregisterDriver(driverId: string) {
+    driverSockets.delete(driverId);
+  },
+  unregisterRider(riderId: string) {
+    riderSockets.delete(riderId);
+  },
+  getDriverSocket(driverId: string): Socket | undefined {
+    return driverSockets.get(driverId);
+  },
+  getRiderSocket(riderId: string): Socket | undefined {
+    return riderSockets.get(riderId);
+  },
+
+  // ---- Redis GEO ----
+  async updateDriverLocation(
+    driverId: string,
+    lat: number,
+    lng: number,
+    heading: number,
+  ): Promise<void> {
+    await redis
+      .pipeline()
+      .hset(`driver:location:${driverId}`, { lat, lng, heading, ts: Date.now() })
+      .expire(`driver:location:${driverId}`, 30)
+      .geoadd('driver:locations', lng, lat, driverId)
+      .exec()
+      .catch(() => null); // Redis optional — degrade gracefully
+  },
+
+  async removeDriverLocation(driverId: string): Promise<void> {
+    await redis
+      .pipeline()
+      .del(`driver:location:${driverId}`)
+      .zrem('driver:locations', driverId)
+      .exec()
+      .catch(() => null);
+  },
+
+  async getDriverLocation(
+    driverId: string,
+  ): Promise<{ lat: number; lng: number; heading: number } | null> {
+    const raw = await redis.hgetall(`driver:location:${driverId}`).catch(() => null);
+    if (!raw || !raw['lat']) return null;
+    return {
+      lat: parseFloat(raw['lat']!),
+      lng: parseFloat(raw['lng']!),
+      heading: parseFloat(raw['heading'] ?? '0'),
+    };
+  },
+
+  /** Returns driver IDs within radiusKm of a point, nearest first.
+   *  Filters out stale entries whose location hash (TTL=30s) has expired. */
+  async nearbyDrivers(
+    lat: number,
+    lng: number,
+    radiusKm: number,
+    limit = 20,
+  ): Promise<string[]> {
+    const results = await redis
+      .georadius('driver:locations', lng, lat, radiusKm, 'km', 'ASC', 'COUNT', limit)
+      .catch(() => [] as string[]);
+
+    const ids = results as string[];
+    const fresh: string[] = [];
+    const stale: string[] = [];
+
+    await Promise.all(
+      ids.map(async (id) => {
+        const exists = await redis.exists(`driver:location:${id}`).catch(() => 1);
+        if (exists) {
+          fresh.push(id);
+        } else {
+          stale.push(id);
+        }
+      }),
+    );
+
+    // Evict stale GEO entries so they don't accumulate
+    if (stale.length) {
+      await redis.zrem('driver:locations', ...stale).catch(() => null);
+    }
+
+    return fresh;
+  },
+
+  /** ETA from driverLocation to pickupCoords in minutes. */
+  async getEtaMinutes(
+    driverLocation: { lat: number; lng: number },
+    pickupCoords: { lat: number; lng: number },
+  ): Promise<number> {
+    try {
+      const r = await getDistanceMatrix(driverLocation, pickupCoords);
+      return Math.max(1, Math.ceil(r.durationSeconds / 60));
+    } catch {
+      return 5; // fallback ETA
+    }
+  },
+
+  // ---- emit helpers ----
+  emitToDriver(driverId: string, event: string, payload: unknown): void {
+    const s = driverSockets.get(driverId);
+    console.log(`[tracking] emitToDriver driverId=${driverId} event=${event} socketFound=${!!s}`);
+    s?.emit(event, payload);
+  },
+
+  emitToRider(riderId: string, event: string, payload: unknown): void {
+    riderSockets.get(riderId)?.emit(event, payload);
+  },
 };

@@ -11,6 +11,7 @@ import {
   type localeEnum,
 } from '../../db/schema/identity';
 import { riderProfiles } from '../../db/schema/riders';
+import { driverProfiles } from '../../db/schema/drivers';
 
 type Locale = (typeof localeEnum)['enumValues'][number];
 type Role = 'rider' | 'driver' | 'admin_super' | 'admin_ops' | 'admin_finance';
@@ -82,6 +83,36 @@ export async function provisionRider(input: ProvisionInput): Promise<string> {
         providerSub: input.clerkUserId,
       });
     await tx.insert(riderProfiles).values({ userId: user.id });
+
+    return user.id;
+  });
+}
+
+/**
+ * Atomic upsert: create user + driver role + clerk external_identity + driver_profile.
+ * Returns the new user id.
+ */
+export async function provisionDriver(input: ProvisionInput): Promise<string> {
+  return await db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({
+        email: input.email ?? null,
+        fullName: input.fullName ?? null,
+        locale: input.locale ?? 'en',
+      })
+      .returning({ id: users.id });
+    if (!user) throw new Error('failed to insert user');
+
+    await tx.insert(userRoles).values({ userId: user.id, role: 'driver' });
+    await tx
+      .insert(externalIdentities)
+      .values({
+        userId: user.id,
+        provider: 'clerk',
+        providerSub: input.clerkUserId,
+      });
+    await tx.insert(driverProfiles).values({ userId: user.id });
 
     return user.id;
   });

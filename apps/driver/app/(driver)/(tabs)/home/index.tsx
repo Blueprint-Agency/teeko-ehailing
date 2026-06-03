@@ -1,22 +1,81 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Bell } from 'lucide-react-native';
+import * as Location from 'expo-location';
 import MapBackground from '../../../../components/driver/MapBackground';
 import { useColors } from '../../../../constants/colors';
 import { useTheme } from '../../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import earnings from '../../../../data/mock-earnings.json';
 import profile from '../../../../data/mock-driver-profile.json';
+import { api } from '../../../../lib/api';
+import { getSocket } from '../../../../lib/socket';
+import { useDriverStore } from '../../../../store/useDriverStore';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [isOnline, setIsOnline] = useState(false);
-  const [radius, setRadius] = useState(5);
   const colors = useColors();
   const { activeTheme } = useTheme();
   const t = useT();
+  const { isOnline, radius, setOnline, setRadius } = useDriverStore();
+  const locationSub = useRef<Location.LocationSubscription | null>(null);
+
+  // trip.request is handled by SocketBridge in _layout.tsx
+
+  const startLocationTracking = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') return;
+
+    // Push current position immediately so dispatch can find this driver right away
+    const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    const { latitude, longitude, heading } = current.coords;
+    api.driver.updateLocation(latitude, longitude, heading ?? 0).catch(() => null);
+    getSocket().emit('driver.location', { lat: latitude, lng: longitude, heading: heading ?? 0 });
+
+    locationSub.current = await Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
+      (loc) => {
+        api.driver.updateLocation(loc.coords.latitude, loc.coords.longitude, loc.coords.heading ?? 0).catch(() => null);
+        getSocket().emit('driver.location', {
+          lat: loc.coords.latitude,
+          lng: loc.coords.longitude,
+          heading: loc.coords.heading ?? 0,
+        });
+      },
+    );
+  };
+
+  const stopLocationTracking = () => {
+    locationSub.current?.remove();
+    locationSub.current = null;
+  };
+
+  const handleToggleOnline = async () => {
+    if (isOnline) {
+      try {
+        await api.driver.goOffline();
+      } catch { /* ignore network errors — still go offline locally */ }
+      stopLocationTracking();
+      setOnline(false);
+    } else {
+      try {
+        await api.driver.goOnline();
+        await startLocationTracking();
+        setOnline(true);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Could not go online';
+        Alert.alert('Error', msg);
+      }
+    }
+  };
+
+  const handleSetRadius = async (r: number) => {
+    setRadius(r);
+    api.driver.setRadius(r).catch(() => null);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -81,10 +140,7 @@ export default function HomeScreen() {
               ? { backgroundColor: colors.surfaceHigh, borderWidth: 1, borderColor: colors.border }
               : { backgroundColor: colors.accent },
           ]}
-          onPress={() => {
-            if (!isOnline) router.push('/(driver)/request');
-            else setIsOnline(false);
-          }}
+          onPress={handleToggleOnline}
           activeOpacity={0.85}
         >
           <Text style={[styles.toggleBtnText, isOnline && { color: colors.textSec }]}>
@@ -104,7 +160,7 @@ export default function HomeScreen() {
                   { borderColor: colors.border, backgroundColor: colors.surface },
                   radius === r && { backgroundColor: colors.accent + '20', borderColor: colors.accent },
                 ]}
-                onPress={() => setRadius(r)}
+                onPress={() => handleSetRadius(r)}
               >
                 <Text style={[styles.radiusChipText, { color: radius === r ? colors.accent : colors.textSec }]}>
                   {r}km

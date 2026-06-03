@@ -11,6 +11,7 @@ import { routes as ratings } from './ratings.routes';
 import { routes as safety } from './safety.routes';
 import { routes as chat } from './chat.routes';
 import { routes as notifications } from './notifications.routes';
+import { routes as payments } from './payments.routes';
 
 export async function riderRoutes(app: FastifyInstance) {
   app.addHook('preHandler', clerkAuthVerify);
@@ -30,5 +31,6 @@ export async function riderRoutes(app: FastifyInstance) {
     await scope.register(safety);
     await scope.register(chat);
     await scope.register(notifications, { prefix: '/notifications' });
+    await scope.register(payments, { prefix: '/payments' });
   });
 }

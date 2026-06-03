@@ -4,6 +4,8 @@ import {
   StatusBar, ScrollView, Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@clerk/clerk-expo';
+import { User, FileText, Car, Landmark, HelpCircle, ClipboardList, Lock, ChevronRight, LogOut } from 'lucide-react-native';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme, ThemeType } from '../../../components/ThemeProvider';
@@ -27,6 +29,7 @@ const THEMES: { code: ThemeType; label: string }[] = [
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
   const colors = useColors();
   const { theme, setTheme, activeTheme } = useTheme();
   const t = useT();
@@ -145,7 +148,7 @@ export default function ProfileScreen() {
 
         <TouchableOpacity
           style={styles.logoutBtn}
-          onPress={() => router.replace('/(auth)/login')}
+          onPress={async () => { await signOut(); router.replace('/(auth)/login'); }}
         >
           <Text style={styles.logoutText}>{t('driver.signOut')}</Text>
         </TouchableOpacity>

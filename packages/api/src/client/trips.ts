@@ -46,11 +46,11 @@ export async function autoMatch(rideType: RideCategory): Promise<Driver> {
   });
 }
 
-export async function cancel(tripId: string, reason?: string): Promise<Trip> {
-  return api<Trip>(
-    `/api/v1/rider/trips/${encodeURIComponent(tripId)}/cancel`,
+export async function cancel(tripId: string, reason?: string): Promise<{ cancelled: boolean; feeCents: number }> {
+  return api(
+    `/api/v1/rider/trips/${encodeURIComponent(tripId)}`,
     {
-      method: 'POST',
+      method: 'DELETE',
       body: JSON.stringify({ reason }),
     },
   );

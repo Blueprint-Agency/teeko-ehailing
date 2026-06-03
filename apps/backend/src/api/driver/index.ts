@@ -16,17 +16,22 @@ import { routes as support } from './support.routes';
 
 export async function driverRoutes(app: FastifyInstance) {
   app.addHook('preHandler', auth0Verify);
-  app.addHook('preHandler', requireRole('driver'));
 
+  // Auth runs without requireRole — it JIT-provisions the row that
+  // requireRole will check on every other driver route.
   await app.register(auth);
-  await app.register(profile);
-  await app.register(status);
-  await app.register(trips, { prefix: '/trips' });
-  await app.register(earnings, { prefix: '/earnings' });
-  await app.register(incentives, { prefix: '/incentives' });
-  await app.register(ratings, { prefix: '/ratings' });
-  await app.register(safety);
-  await app.register(chat);
-  await app.register(notifications, { prefix: '/notifications' });
-  await app.register(support, { prefix: '/support' });
+
+  await app.register(async (scope) => {
+    scope.addHook('preHandler', requireRole('driver'));
+    await scope.register(profile);
+    await scope.register(status, { prefix: '/status' });
+    await scope.register(trips, { prefix: '/trips' });
+    await scope.register(earnings, { prefix: '/earnings' });
+    await scope.register(incentives, { prefix: '/incentives' });
+    await scope.register(ratings, { prefix: '/ratings' });
+    await scope.register(safety);
+    await scope.register(chat);
+    await scope.register(notifications, { prefix: '/notifications' });
+    await scope.register(support, { prefix: '/support' });
+  });
 }
