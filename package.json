@@ -8,6 +8,7 @@
     "lint": "pnpm -r lint",
     "clean": "pnpm -r exec rm -rf node_modules .next .expo dist build && rm -rf node_modules"
   },
+  "packageManager": "pnpm@9.15.9",
   "engines": {
     "node": ">=20",
     "pnpm": ">=9"
