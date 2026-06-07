@@ -1,7 +1,7 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "remote",
+    "appVersionSource": "local",
     "requireCommit": false
   },
   "build": {
@@ -28,7 +28,7 @@
       "extends": "base",
       "distribution": "internal",
       "channel": "preview",
-      "autoIncrement": "version",
+      "autoIncrement": true,
       "android": {
         "buildType": "apk"
       },
@@ -47,7 +47,7 @@
     "production": {
       "extends": "base",
       "channel": "production",
-      "autoIncrement": "version",
+      "autoIncrement": true,
       "android": {
         "buildType": "app-bundle"
       }
