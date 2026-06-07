@@ -8,8 +8,7 @@
       "node": "20.18.0",
       "env": {
         "NPM_CONFIG_PACKAGE_MANAGER_CHECK": "false",
-        "EXPO_NO_TELEMETRY": "1",
-        "GOOGLE_MAPS_API_KEY": "AIzaSyB6sSyTbTItYv5eNFF09ahlOYVFRxT-mi0"
+        "EXPO_NO_TELEMETRY": "1"
       }
     },
     "development": {
@@ -28,6 +27,7 @@
       "extends": "base",
       "distribution": "internal",
       "channel": "preview",
+      "autoIncrement": "version",
       "android": {
         "buildType": "apk"
       },
@@ -46,7 +46,7 @@
     "production": {
       "extends": "base",
       "channel": "production",
-      "autoIncrement": true,
+      "autoIncrement": "version",
       "android": {
         "buildType": "app-bundle"
       }
