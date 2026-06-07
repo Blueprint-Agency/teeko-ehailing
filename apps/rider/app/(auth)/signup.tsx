@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Keyboard, ScrollView, TouchableWithoutFeedback, View } from 'react-native';
 
-import { useUIStore } from '@teeko/api';
+import { useAuthStore, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useSignUp } from '@clerk/clerk-expo';
@@ -36,6 +36,7 @@ export default function SignupScreen() {
   const t = useT();
   const { signUp, setActive, isLoaded } = useSignUp();
   const pushToast = useUIStore((s) => s.pushToast);
+  const fetchProfile = useAuthStore((s) => s.fetchProfile);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -108,6 +109,7 @@ export default function SignupScreen() {
       // backend OTP (Gmail SMTP) for email verification, not Clerk's.
       if (attempt.status === 'complete' && attempt.createdSessionId) {
         await setActive({ session: attempt.createdSessionId });
+        await fetchProfile().catch(() => {});
         router.replace('/(auth)/verify-email');
       } else {
         const missing = attempt.missingFields ?? [];
