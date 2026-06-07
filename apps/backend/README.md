@@ -11,7 +11,7 @@ Schema and architecture are documented in [`docs/public/backend.html`](../../doc
 |------|---------|-------|
 | **Node.js** | ≥ 20 | matches root `engines` |
 | **pnpm** | ≥ 9 | this repo is a pnpm workspace |
-| **Docker Desktop** | latest | provides Postgres + PostGIS |
+| **Docker Desktop** | latest | runs Postgres + PostGIS **and** Redis as local containers |
 | **make** | any | GnuWin32 on Windows works |
 
 The backend is registered as the `@teeko/backend` workspace and is auto-discovered
@@ -23,7 +23,7 @@ by the root `pnpm-workspace.yaml`.
 
 ```bash
 cd apps/backend
-make init      # install deps, start postgres, enable PostGIS, run migrations
+make init      # install deps, start postgres + redis, enable PostGIS, run migrations
 make dev       # tsx watch src/server.ts
 ```
 
@@ -33,12 +33,17 @@ Server boots at **http://localhost:3000**. Hit `/` for an index payload, `/healt
 
 ## Make targets
 
+> **Postgres (with PostGIS) and Redis both run as local Docker containers** defined in
+> `docker-compose.yml` — nothing is installed on your machine. `make init` starts both;
+> `make reset` removes both. Postgres is on host port **5500**, Redis on **6379**.
+
 ```text
 make help        list all targets
 make install     pnpm install (root workspace)
-make init        full bootstrap: install → up → wait-pg → postgis → migrate
-make up          docker compose up -d postgres
+make init        full bootstrap: install → up → wait-pg → wait-redis → postgis → migrate
+make up          docker compose up -d postgres redis   (start BOTH containers)
 make wait-pg     block until postgres accepts TCP queries (handles PostGIS double-start)
+make wait-redis  block until redis answers PING
 make postgis     CREATE EXTENSION IF NOT EXISTS postgis
 make migrate     drizzle-kit migrate (apply files in drizzle/)
 make generate    drizzle-kit generate (after editing src/db/schema/*.ts)
@@ -48,10 +53,14 @@ make dev         tsx watch src/server.ts
 make worker      tsx watch src/worker.ts (BullMQ stub)
 make studio      open Drizzle Studio at https://local.drizzle.studio
 make psql        open psql against the running postgres
+make redis-cli   open redis-cli against the running redis
 make logs        tail postgres container logs
-make reset       docker compose down -v (delete container AND data volume)
+make reset       docker compose down -v   (stop BOTH containers + delete BOTH volumes)
 make build       tsc → dist/
 ```
+
+> Run these from `apps/backend`, or from the repo root (`make init`, `make reset`,
+> `make studio` are wired through there too).
 
 ---
 
@@ -94,7 +103,7 @@ Don't hand-edit migration files unless you know what you're doing.
 ### Wipe and start fresh
 
 ```bash
-make reset      # deletes container + volume — all data gone
+make reset      # stops both containers + deletes both volumes — all data gone
 make init       # rebuild from scratch
 ```
 
@@ -117,11 +126,14 @@ Copy `.env.example` to `.env` and edit. Defaults that work out of the box:
 NODE_ENV=development
 PORT=3000
 DATABASE_URL=postgres://teeko:teeko@localhost:5500/teeko
+REDIS_URL=redis://localhost:6379
 LOG_LEVEL=debug
 ```
 
-Postgres listens on host port **5500** (mapped from container 5432) so it doesn't
-clash with any local Postgres install on the default 5432.
+Both point at the local Docker containers. Postgres listens on host port **5500**
+(mapped from container 5432) so it doesn't clash with any local Postgres install on
+the default 5432; Redis is on **6379**. If you have your own Postgres/Redis running,
+make sure `DATABASE_URL`/`REDIS_URL` point at the containers above, not at them.
 
 ---
 
@@ -179,7 +191,7 @@ creates the row on the first authenticated `/me` call.
 ```
 apps/backend/
 ├── Makefile             # all dev workflow lives here
-├── docker-compose.yml   # postgis/postgis:16-3.4-alpine on :5500
+├── docker-compose.yml   # postgis/postgis:16-3.4-alpine on :5500 + redis:7-alpine on :6379
 ├── drizzle.config.ts    # drizzle-kit config
 ├── drizzle/             # generated SQL migrations
 ├── scripts/
