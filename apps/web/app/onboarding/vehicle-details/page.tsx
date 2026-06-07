@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -9,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { vehicleDetailsSchema, type VehicleDetailsFormData } from '@teeko/shared/schemas/onboarding'
 import { useOnboardingStore } from '@/stores/onboardingStore'
+import { useWebAuthStore } from '@/stores/authStore'
+import { api } from '@/lib/api'
 
 const currentYear = new Date().getFullYear()
 
@@ -16,6 +19,8 @@ export default function VehicleDetailsPage() {
   const { t } = useTranslation()
   const router = useRouter()
   const { setVehicleDetails, setStep, vehicleDetails } = useOnboardingStore()
+  const { profile } = useWebAuthStore()
+  const [loading, setLoading] = useState(false)
 
   const MAKES = ['Perodua', 'Proton', 'Toyota', 'Honda', 'Nissan', 'Hyundai', 'Mitsubishi', 'Mazda', 'Ford', 'Volkswagen', t('common.other')]
   const COLOURS = [
@@ -40,10 +45,26 @@ export default function VehicleDetailsPage() {
     defaultValues: vehicleDetails ?? undefined,
   })
 
-  const onSubmit = (data: VehicleDetailsFormData) => {
-    setVehicleDetails(data)
-    setStep(3)
-    router.push('/onboarding/vehicle-docs')
+  const onSubmit = async (data: VehicleDetailsFormData) => {
+    if (!profile) return
+    setLoading(true)
+    try {
+      await api.addVehicle(profile.id, {
+        plateNumber: data.plateNumber,
+        make: data.make,
+        model: data.model,
+        year: Number(data.year),
+        colour: data.colour,
+      })
+      setVehicleDetails(data)
+      setStep(3)
+      router.push('/onboarding/vehicle-docs')
+    } catch (err) {
+      console.error('Failed to save vehicle details:', err)
+      alert('Failed to save vehicle details. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -133,7 +154,7 @@ export default function VehicleDetailsPage() {
           <Button variant="outline" type="button" onClick={() => router.push('/onboarding/personal-docs')}>
             {t('common.back')}
           </Button>
-          <Button size="lg" type="submit">
+          <Button size="lg" type="submit" loading={loading}>
             {t('common.continue')}
           </Button>
         </div>

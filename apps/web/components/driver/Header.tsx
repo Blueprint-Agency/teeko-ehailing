@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Bell, User, LogOut, ChevronDown } from 'lucide-react'
 import { useWebAuthStore } from '@/stores/authStore'
@@ -23,7 +24,13 @@ interface HeaderProps {
 
 export function Header({ variant = 'light', showNav = true }: HeaderProps) {
   const { t } = useTranslation()
+  const router = useRouter()
   const { isAuthenticated, logout } = useWebAuthStore()
+
+  const handleLogout = () => {
+    logout()
+    router.push('/')
+  }
   const { unreadCount } = useApplicationStatusStore()
   const { locale, setLocale } = useLanguageStore()
 
@@ -131,7 +138,7 @@ export function Header({ variant = 'light', showNav = true }: HeaderProps) {
 
               {/* Logout */}
               <button
-                onClick={logout}
+                onClick={handleLogout}
                 className={cn(
                   'flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] transition-colors',
                   isNavy

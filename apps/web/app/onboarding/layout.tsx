@@ -1,9 +1,12 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { OnboardingProgress } from '@/components/driver/OnboardingProgress'
+import { useWebAuthStore } from '@/stores/authStore'
+import { api } from '@/lib/api'
 
 const STEP_MAP: Record<string, number> = {
   '/onboarding/agreement': 0,
@@ -13,10 +16,59 @@ const STEP_MAP: Record<string, number> = {
   '/onboarding/confirmation': 4,
 }
 
+const STEP_ROUTES = [
+  '/onboarding/agreement',
+  '/onboarding/personal-docs',
+  '/onboarding/vehicle-details',
+  '/onboarding/vehicle-docs',
+  '/onboarding/confirmation',
+]
+
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
+  const router = useRouter()
   const pathname = usePathname()
   const currentStep = pathname ? STEP_MAP[pathname] ?? 0 : 0
+  const { isAuthenticated, profile } = useWebAuthStore()
+
+  useEffect(() => {
+    if (!isAuthenticated || !profile) {
+      router.push('/auth/login')
+      return
+    }
+
+    const driverId = profile.id
+    const path = pathname || ''
+    let isMounted = true
+
+    async function checkStatus() {
+      try {
+        const appState = await api.getApplication(driverId)
+        if (!isMounted) return
+
+        if (appState.state === 'activated') {
+          router.push('/dashboard')
+          return
+        }
+
+        const targetStep = appState.currentStep
+        const currentRouteStep = STEP_MAP[path] ?? 0
+
+        // Redirect if attempting to skip ahead or on root /onboarding route
+        if (currentRouteStep > targetStep || !STEP_MAP.hasOwnProperty(path)) {
+          router.push(STEP_ROUTES[targetStep])
+        }
+      } catch (err) {
+        console.error('Failed to check onboarding status:', err)
+      }
+    }
+
+    checkStatus()
+
+    return () => {
+      isMounted = false
+    }
+  }, [isAuthenticated, profile, pathname, router])
 
   return (
     <div className="min-h-screen bg-[var(--color-surface)]">

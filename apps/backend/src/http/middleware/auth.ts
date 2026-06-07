@@ -1,7 +1,11 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { eq } from 'drizzle-orm';
 
 import { verifyClerkToken, type ClerkClaims } from '../../external/clerk';
 import { findUserByExternalId } from '../../modules/identity/repo';
+import { env } from '../../config/env';
+import { db } from '../../config/db';
+import { userRoles } from '../../db/schema/identity';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -19,6 +23,26 @@ const DEV_USER_ID = process.env.DEV_USER_ID ?? 'dev-driver-001';
 const DEV_ROLE = (process.env.DEV_ROLE ?? 'driver') as 'rider' | 'driver' | 'admin_super' | 'admin_ops' | 'admin_finance';
 
 export async function clerkAuthVerify(req: FastifyRequest, reply: FastifyReply) {
+  // Development mode bypass: allow authenticating via X-Teeko-User / X-Teeko-Role headers
+  if (env.NODE_ENV === 'development') {
+    const devUserId = req.headers['x-teeko-user'];
+    if (devUserId && typeof devUserId === 'string') {
+      const roleRow = await db.query.userRoles.findFirst({
+        where: eq(userRoles.userId, devUserId),
+      });
+      if (roleRow) {
+        req.user = {
+          id: devUserId,
+          role: roleRow.role,
+          clerkUserId: '',
+        };
+        return;
+      } else {
+        req.log.warn({ devUserId }, 'X-Teeko-User dev bypass user has no registered roles');
+      }
+    }
+  }
+
   const header = req.headers.authorization;
   if (!header || !header.toLowerCase().startsWith('bearer ')) {
     return reply.code(401).send({ error: 'unauthorized', message: 'missing bearer token' });

@@ -6,13 +6,17 @@ import { useTranslation } from 'react-i18next'
 import { AlertCircle, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useOnboardingStore } from '@/stores/onboardingStore'
+import { useWebAuthStore } from '@/stores/authStore'
+import { api } from '@/lib/api'
 
 export default function AgreementPage() {
   const { t } = useTranslation()
   const router = useRouter()
   const { acceptAgreement, setStep } = useOnboardingStore()
+  const { profile } = useWebAuthStore()
   const [scrolled, setScrolled] = useState(false)
   const [accepted, setAccepted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const handleScroll = () => {
@@ -22,10 +26,20 @@ export default function AgreementPage() {
     if (atBottom) setScrolled(true)
   }
 
-  const handleAccept = () => {
-    acceptAgreement()
-    setStep(1)
-    router.push('/onboarding/personal-docs')
+  const handleAccept = async () => {
+    if (!profile) return
+    setSubmitting(true)
+    try {
+      await api.acceptAgreement(profile.id)
+      acceptAgreement()
+      setStep(1)
+      router.push('/onboarding/personal-docs')
+    } catch (err) {
+      console.error('Failed to accept agreement:', err)
+      alert('Failed to accept agreement. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -77,6 +91,7 @@ export default function AgreementPage() {
             size="lg"
             className="mt-4 w-full"
             disabled={!accepted}
+            loading={submitting}
             onClick={handleAccept}
           >
             {accepted ? <><CheckCircle2 className="h-4 w-4" /> {t('common.continue')}</> : t('common.continue')}

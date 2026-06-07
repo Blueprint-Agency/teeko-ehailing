@@ -1,6 +1,6 @@
 import type { ApplicationStatus, DocumentState, DriverProfile, Notification } from '@teeko/shared/types'
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
 const PREFIX = `${BASE}/api/v1/driver-web`
 
 function devHeaders(driverId: string): HeadersInit {
@@ -49,6 +49,7 @@ export const api = {
     fetch(`${PREFIX}/agreement/accept`, {
       method: 'POST',
       headers: devHeaders(id),
+      body: JSON.stringify({}),
     }).then((r) => r.json()),
 
   uploadDocument: async (kind: string, file: File, driverId: string) => {
@@ -116,5 +117,33 @@ export const api = {
       throw new Error(error.error || `POST /auth/register/verify → ${res.status}`)
     }
     return res.json() as Promise<{ id: string; phone: string; fullName: string }>
+  },
+
+  addVehicle: async (driverId: string, details: {
+    plateNumber: string
+    make: string
+    model: string
+    year: number
+    colour: string
+    category?: 'go' | 'comfort' | 'xl' | 'premium' | 'bike'
+  }) => {
+    const res = await fetch(`${PREFIX}/vehicles`, {
+      method: 'POST',
+      headers: devHeaders(driverId),
+      body: JSON.stringify(details),
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}))
+      throw new Error(error.error || `POST /vehicles → ${res.status}`)
+    }
+    return res.json() as Promise<{
+      id: string
+      plateNumber: string
+      make: string
+      model: string
+      year: number
+      colour: string
+      category: string
+    }>
   },
 }

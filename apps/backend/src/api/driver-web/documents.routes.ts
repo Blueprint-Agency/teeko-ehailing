@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { extname } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../config/db';
-import { documents, documentReviews } from '../../db/schema/onboarding';
+import { documents, documentReviews, driverApplications } from '../../db/schema/onboarding';
 import { vehicles } from '../../db/schema/drivers';
 import { storage } from '../../lib/storage';
 
@@ -97,8 +97,8 @@ export async function routes(app: FastifyInstance) {
     };
     const dbKind = kindMap[frontendKind] ?? frontendKind;
 
-    const vehicleKinds = ['car_grant', 'road_tax', 'puspakom', 'insurance'];
-    const ownerKind = vehicleKinds.includes(dbKind) ? 'vehicle' : 'driver';
+    const vehicleKinds = ['car_grant', 'road_tax', 'puspakom', 'vehicle_insurance'];
+    const ownerKind = vehicleKinds.includes(frontendKind) ? 'vehicle' : 'driver';
 
     let ownerId = userId;
     if (ownerKind === 'vehicle') {
@@ -139,6 +139,43 @@ export async function routes(app: FastifyInstance) {
       });
     }
 
+    // Auto-advance application state when required documents are fully uploaded
+    if (ownerKind === 'driver') {
+      const dbDocs = await db.query.documents.findMany({
+        where: and(
+          eq(documents.ownerKind, 'driver'),
+          eq(documents.ownerId, userId),
+        ),
+      });
+      const uploadedKinds = new Set(dbDocs.map((d) => d.kind));
+      const requiredPersonal = ['nric_front', 'nric_back', 'cdl', 'psv_d', 'insurance', 'driver_selfie'];
+      const allPersonalUploaded = requiredPersonal.every((k) => uploadedKinds.has(k as any));
+
+      if (allPersonalUploaded) {
+        await db
+          .update(driverApplications)
+          .set({ state: 'personal_docs_submitted', updatedAt: new Date() })
+          .where(eq(driverApplications.driverId, userId));
+      }
+    } else if (ownerKind === 'vehicle') {
+      const dbDocs = await db.query.documents.findMany({
+        where: and(
+          eq(documents.ownerKind, 'vehicle'),
+          eq(documents.ownerId, ownerId),
+        ),
+      });
+      const uploadedKinds = new Set(dbDocs.map((d) => d.kind));
+      const requiredVehicle = ['car_grant', 'road_tax', 'puspakom', 'insurance'];
+      const allVehicleUploaded = requiredVehicle.every((k) => uploadedKinds.has(k as any));
+
+      if (allVehicleUploaded) {
+        await db
+          .update(driverApplications)
+          .set({ state: 'vehicle_docs_submitted', updatedAt: new Date() })
+          .where(eq(driverApplications.driverId, userId));
+      }
+    }
+
     return { url };
   });
 
@@ -157,8 +194,8 @@ export async function routes(app: FastifyInstance) {
       const dbKind = kindMap[frontendId] ?? frontendId;
 
       // Determine ownerKind from the kind
-      const vehicleKinds = ['car_grant', 'road_tax', 'puspakom', 'insurance'];
-      const ownerKind = vehicleKinds.includes(dbKind) ? 'vehicle' : 'driver';
+      const vehicleKinds = ['car_grant', 'road_tax', 'puspakom', 'vehicle_insurance'];
+      const ownerKind = vehicleKinds.includes(frontendId) ? 'vehicle' : 'driver';
 
       let ownerId = userId;
       if (ownerKind === 'vehicle') {
