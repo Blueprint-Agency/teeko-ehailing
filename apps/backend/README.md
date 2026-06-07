@@ -27,7 +27,7 @@ make init      # install deps, start postgres + redis, enable PostGIS, run migra
 make dev       # tsx watch src/server.ts
 ```
 
-Server boots at **http://localhost:3000**. Hit `/` for an index payload, `/healthz` for liveness.
+Server boots at **http://localhost:8000**. Hit `/` for an index payload, `/healthz` for liveness.
 
 ---
 
@@ -124,7 +124,7 @@ Copy `.env.example` to `.env` and edit. Defaults that work out of the box:
 
 ```ini
 NODE_ENV=development
-PORT=3000
+PORT=8000
 DATABASE_URL=postgres://teeko:teeko@localhost:5500/teeko
 REDIS_URL=redis://localhost:6379
 LOG_LEVEL=debug
@@ -145,7 +145,7 @@ testing, send the user via headers:
 ```bash
 curl -H "x-teeko-user: 00000000-0000-0000-0000-000000000001" \
      -H "x-teeko-role: rider" \
-     http://localhost:3000/api/v1/rider/__stub/profile
+     http://localhost:8000/api/v1/rider/__stub/profile
 ```
 
 Roles: `rider` · `driver` · `admin_super` · `admin_ops` · `admin_finance`.
@@ -233,7 +233,7 @@ PostGIS adds `spatial_ref_sys` and `tiger`/`topology` schemas. The
 `schemaFilter`/`tablesFilter` in `drizzle.config.ts` should hide these from
 drizzle-kit. If you see this, confirm your config matches what's checked in.
 
-**Port 3000 already in use**
+**Port 8000 already in use**
 Another process owns it (often a previous `make dev` that didn't clean up).
 Find and kill it, or change `PORT` in `.env`.
 
