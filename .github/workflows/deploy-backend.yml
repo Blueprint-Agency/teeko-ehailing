@@ -27,7 +27,10 @@ jobs:
       - name: Build and push BE image
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/backend
+          # Repo root context: the backend image needs the pnpm workspace
+          # (pnpm-workspace.yaml, lockfile, packages/shared) to resolve @teeko/shared.
+          context: .
+          file: ./apps/backend/Dockerfile
           push: true
           tags: |
             blueprintagency/ehailing-be:staging

@@ -1,0 +1,21 @@
+# Root .dockerignore — applies to the repo-root build context used by
+# apps/backend/Dockerfile (deploy-backend.yml: context: .).
+# Excluding node_modules + build artifacts keeps the context small and forces a
+# clean, lockfile-driven install inside the image.
+
+**/node_modules
+**/dist
+**/.next
+**/.expo
+**/.turbo
+**/*.tsbuildinfo
+**/*.log
+
+.git
+.github
+.idea
+.vscode
+
+# Never ship local secrets into the build context.
+**/.env
+**/.env.*
