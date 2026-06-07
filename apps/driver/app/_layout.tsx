@@ -47,33 +47,42 @@ function SocketBridge() {
       return;
     }
 
-    const s = connectSocket(getToken);
+    let cancelled = false;
 
-    s.on('trip.request', (data: {
-      trip_id: string;
-      category: string;
-      pickup: { lat: number; lng: number; address: string };
-      destination: { lat: number; lng: number; address: string };
-      fare_cents: number;
-      rider_name: string;
-    }) => {
-      setPendingOffer({
-        tripId: data.trip_id,
-        category: data.category,
-        pickup: data.pickup,
-        destination: data.destination,
-        fareCents: data.fare_cents,
-        riderName: data.rider_name,
-        countdownSeconds: 15,
+    // Ensure the driver row is provisioned before the socket auth fires,
+    // otherwise findUserByExternalId returns null and the server disconnects.
+    api.auth.me().catch(() => null).then(() => {
+      if (cancelled) return;
+
+      const s = connectSocket(getToken);
+
+      s.on('trip.request', (data: {
+        trip_id: string;
+        category: string;
+        pickup: { lat: number; lng: number; address: string };
+        destination: { lat: number; lng: number; address: string };
+        fare_cents: number;
+        rider_name: string;
+      }) => {
+        setPendingOffer({
+          tripId: data.trip_id,
+          category: data.category,
+          pickup: data.pickup,
+          destination: data.destination,
+          fareCents: data.fare_cents,
+          riderName: data.rider_name,
+          countdownSeconds: 15,
+        });
+        router.push('/(driver)/request');
       });
-      router.push('/(driver)/request');
-    });
 
-    s.on('trip.request.timeout', () => {
-      setPendingOffer(null);
+      s.on('trip.request.timeout', () => {
+        setPendingOffer(null);
+      });
     });
 
     return () => {
+      cancelled = true;
       const s = getSocket();
       s.off('trip.request');
       s.off('trip.request.timeout');
