@@ -70,7 +70,7 @@ export function mountSocketIO(httpServer: HttpServer): Server {
                 vehicle: vehicle ? {
                   plate: vehicle.plateNumber,
                   model: `${vehicle.make} ${vehicle.model}`,
-                  color: vehicle.color,
+                  color: vehicle.colour,
                 } : null,
               },
             });
