@@ -63,12 +63,14 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
   }, [signOut]);
 
   useEffect(() => {
-    // Register token getter first, then fetch profile — both in the same effect
-    // so the getter is guaranteed to be wired before the API call fires.
     setTokenGetter(async () => clerkGetToken());
 
     if (isSignedIn) {
-      fetchProfile().catch(() => {});
+      // Confirm a token is available before fetching — clerkGetToken() can
+      // return null on the first tick after sign-in while the cache warms up.
+      clerkGetToken()
+        .then((token) => { if (token) return fetchProfile(); })
+        .catch(() => {});
     } else if (isSignedIn === false) {
       clearProfile();
     }
