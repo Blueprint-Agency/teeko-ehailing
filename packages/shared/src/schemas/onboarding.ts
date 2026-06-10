@@ -4,6 +4,7 @@ const currentYear = new Date().getFullYear()
 
 export const vehicleDetailsSchema = z.object({
   make: z.string().min(1, 'Vehicle make is required').max(50),
+  makeOther: z.string().max(50).optional(),
   model: z.string().min(1, 'Vehicle model is required').max(100),
   year: z
     .number({ invalid_type_error: 'Enter a valid year' })

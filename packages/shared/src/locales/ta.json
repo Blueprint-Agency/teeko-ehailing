@@ -122,6 +122,8 @@
       "infoHeading": "வாகன தகவல்",
       "make": "வாகன தயாரிப்பு",
       "selectMake": "தயாரிப்பைத் தேர்ந்தெடுக்கவும்...",
+      "makeOther": "வாகன பிராண்டைக் குறிப்பிடவும்",
+      "makeOtherPlaceholder": "எ.கா. BMW, Kia, Subaru",
       "model": "வாகன மாடல்",
       "year": "தயாரிப்பு ஆண்டு",
       "plate": "தகடு எண்",

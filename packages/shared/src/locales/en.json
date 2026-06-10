@@ -122,6 +122,8 @@
       "infoHeading": "Vehicle Information",
       "make": "Vehicle make",
       "selectMake": "Select make…",
+      "makeOther": "Specify vehicle brand",
+      "makeOtherPlaceholder": "e.g. BMW, Kia, Subaru",
       "model": "Vehicle model",
       "year": "Year of manufacture",
       "plate": "Plate number",

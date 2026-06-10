@@ -122,6 +122,8 @@
       "infoHeading": "车辆信息",
       "make": "汽车品牌",
       "selectMake": "选择品牌...",
+      "makeOther": "请填写汽车品牌",
+      "makeOtherPlaceholder": "例如：BMW、Kia、Subaru",
       "model": "汽车型号",
       "year": "制造年份",
       "plate": "车牌号码",

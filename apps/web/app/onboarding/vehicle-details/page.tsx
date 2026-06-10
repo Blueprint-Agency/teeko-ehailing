@@ -36,27 +36,53 @@ export default function VehicleDetailsPage() {
     t('common.other')
   ]
 
+  const OTHER = t('common.other')
+
+  // If a saved make isn't one of the listed brands, treat it as a custom "Other" entry.
+  const savedMake = vehicleDetails?.make
+  const isSavedMakeCustom = !!savedMake && !MAKES.includes(savedMake)
+  const defaultValues = vehicleDetails
+    ? isSavedMakeCustom
+      ? { ...vehicleDetails, make: OTHER, makeOther: savedMake }
+      : vehicleDetails
+    : undefined
+
   const {
     register,
     handleSubmit,
+    watch,
+    setError,
     formState: { errors },
   } = useForm<VehicleDetailsFormData>({
     resolver: zodResolver(vehicleDetailsSchema),
-    defaultValues: vehicleDetails ?? undefined,
+    defaultValues,
   })
+
+  const isOtherMake = watch('make') === OTHER
 
   const onSubmit = async (data: VehicleDetailsFormData) => {
     if (!profile) return
+
+    let make = data.make
+    if (data.make === OTHER) {
+      const custom = data.makeOther?.trim()
+      if (!custom) {
+        setError('makeOther', { message: t('onboarding.vehicleDetails.makeOther') })
+        return
+      }
+      make = custom
+    }
+
     setLoading(true)
     try {
       await api.addVehicle(profile.id, {
         plateNumber: data.plateNumber,
-        make: data.make,
+        make,
         model: data.model,
         year: Number(data.year),
         colour: data.colour,
       })
-      setVehicleDetails(data)
+      setVehicleDetails({ ...data, make })
       setStep(3)
       router.push('/onboarding/vehicle-docs')
     } catch (err) {
@@ -104,6 +130,18 @@ export default function VehicleDetailsPage() {
               </select>
               {errors.make && <p className="text-xs text-[var(--color-error)]">{errors.make.message}</p>}
             </div>
+
+            {isOtherMake && (
+              <div className="sm:col-span-2">
+                <Input
+                  label={t('onboarding.vehicleDetails.makeOther')}
+                  placeholder={t('onboarding.vehicleDetails.makeOtherPlaceholder')}
+                  required
+                  error={errors.makeOther?.message}
+                  {...register('makeOther')}
+                />
+              </div>
+            )}
 
             <Input
               label={t('onboarding.vehicleDetails.model')}

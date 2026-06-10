@@ -122,6 +122,8 @@
       "infoHeading": "Maklumat Kenderaan",
       "make": "Jenama kenderaan",
       "selectMake": "Pilih jenama…",
+      "makeOther": "Nyatakan jenama kenderaan",
+      "makeOtherPlaceholder": "cth. BMW, Kia, Subaru",
       "model": "Model kenderaan",
       "year": "Tahun buatan",
       "plate": "Nombor plat",
