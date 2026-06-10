@@ -5,6 +5,7 @@
     "next": "Next",
     "back": "Back",
     "submit": "Submit",
+    "submitting": "Submitting…",
     "save": "Save",
     "cancel": "Cancel",
     "logout": "Log out",
@@ -140,7 +141,9 @@
     },
     "vehicleDocs": {
       "title": "Vehicle Documents",
-      "subtitle": "Upload valid documents for your registered vehicle."
+      "subtitle": "Upload valid documents for your registered vehicle.",
+      "incompleteError": "Some required documents are still missing. Please upload all documents before submitting.",
+      "submitError": "Something went wrong submitting your application. Please try again."
     },
     "confirmation": {
       "title": "Application Submitted!",
@@ -156,7 +159,9 @@
       "step3Desc": "When your EVP is approved, your account goes live. You will receive an SMS with a link to download the Teeko Driver app.",
       "step3Timeline": "After EVP approval",
       "getAppTitle": "Get ready to drive",
-      "getAppDesc": "Download the Teeko Driver app now. You'll be able to go online once your account is activated."
+      "getAppDesc": "Download the Teeko Driver app now. You'll be able to go online once your account is activated.",
+      "appStore": "App Store",
+      "googlePlay": "Google Play"
     }
   },
   "dashboard": {

@@ -1,17 +1,21 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { DocumentSlot } from '@/components/driver/DocumentSlot'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import { useWebAuthStore } from '@/stores/authStore'
+import { api } from '@/lib/api'
 
 export default function VehicleDocsPage() {
   const { t } = useTranslation()
   const router = useRouter()
   const { vehicleDocs, uploadVehicleDoc, setStep } = useOnboardingStore()
   const driverId = useWebAuthStore((s) => s.profile?.id ?? '')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const allUploaded = vehicleDocs.every((d) => d.status !== 'empty')
 
@@ -19,9 +23,22 @@ export default function VehicleDocsPage() {
     uploadVehicleDoc(docId, file, driverId).catch(console.error)
   }
 
-  const handleSubmit = () => {
-    setStep(4)
-    router.push('/onboarding/confirmation')
+  const handleSubmit = async () => {
+    setError(null)
+    setSubmitting(true)
+    try {
+      await api.submitApplication(driverId)
+      setStep(4)
+      router.push('/onboarding/confirmation')
+    } catch (err) {
+      setError(
+        err instanceof Error && err.message === 'incomplete_documents'
+          ? t('onboarding.vehicleDocs.incompleteError')
+          : t('onboarding.vehicleDocs.submitError')
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -43,16 +60,22 @@ export default function VehicleDocsPage() {
         ))}
       </div>
 
+      {error && (
+        <p className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-error)]/30 bg-[var(--color-error-light)] px-4 py-3 text-sm text-[var(--color-error)]">
+          {error}
+        </p>
+      )}
+
       <div className="mt-8 flex items-center justify-between">
         <Button variant="outline" onClick={() => router.push('/onboarding/vehicle-details')}>
           {t('common.back')}
         </Button>
         <Button
           size="lg"
-          disabled={!allUploaded}
+          disabled={!allUploaded || submitting}
           onClick={handleSubmit}
         >
-          {t('common.submit')}
+          {submitting ? t('common.submitting') : t('common.submit')}
         </Button>
       </div>
     </div>

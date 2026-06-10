@@ -68,6 +68,26 @@ async function fetchDocs(ownerKind: 'driver' | 'vehicle', ownerId: string) {
   });
 }
 
+// Executor that works for both the top-level db and a transaction handle.
+type Executor = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// Ensure a document has a review row in the `pending` state. Inserts one if
+// missing, otherwise resets an existing review back to pending (e.g. on
+// re-upload or resubmit of a previously approved/rejected document).
+async function ensurePendingReview(tx: Executor, documentId: string) {
+  const existingReview = await tx.query.documentReviews.findFirst({
+    where: eq(documentReviews.documentId, documentId),
+  });
+  if (existingReview) {
+    await tx
+      .update(documentReviews)
+      .set({ status: 'pending', reason: null, reviewedAt: null })
+      .where(eq(documentReviews.documentId, documentId));
+  } else {
+    await tx.insert(documentReviews).values({ documentId, status: 'pending' });
+  }
+}
+
 export async function routes(app: FastifyInstance) {
   app.get('/', async (req, reply) => {
     const userId = req.user!.id;
@@ -115,28 +135,83 @@ export async function routes(app: FastifyInstance) {
     const filePath = `drivers/${ownerId}/${dbKind}${ext}`;
     const url = await storage.save(filePath, buffer, data.mimetype);
 
-    // Upsert document record
-    const existing = await db.query.documents.findFirst({
-      where: and(
-        eq(documents.ownerKind, ownerKind as 'driver' | 'vehicle'),
-        eq(documents.ownerId, ownerId),
-        eq(documents.kind, dbKind as never),
-      ),
-    });
+    // Upsert the document record and (re)set its review to pending atomically,
+    // so a document is never persisted without a corresponding review row.
+    try {
+      await db.transaction(async (tx) => {
+        const existing = await tx.query.documents.findFirst({
+          where: and(
+            eq(documents.ownerKind, ownerKind as 'driver' | 'vehicle'),
+            eq(documents.ownerId, ownerId),
+            eq(documents.kind, dbKind as never),
+          ),
+        });
 
-    if (existing) {
-      await db
-        .update(documents)
-        .set({ gcsPath: url, mimeType: data.mimetype, uploadedAt: new Date() })
-        .where(eq(documents.id, existing.id));
-    } else {
-      await db.insert(documents).values({
-        ownerKind: ownerKind as 'driver' | 'vehicle',
-        ownerId,
-        kind: dbKind as never,
-        gcsPath: url,
-        mimeType: data.mimetype,
+        let documentId: string;
+        if (existing) {
+          await tx
+            .update(documents)
+            .set({ gcsPath: url, mimeType: data.mimetype, uploadedAt: new Date() })
+            .where(eq(documents.id, existing.id));
+          documentId = existing.id;
+        } else {
+          const [inserted] = await tx
+            .insert(documents)
+            .values({
+              ownerKind: ownerKind as 'driver' | 'vehicle',
+              ownerId,
+              kind: dbKind as never,
+              gcsPath: url,
+              mimeType: data.mimetype,
+            })
+            .returning({ id: documents.id });
+          if (!inserted) throw new Error('insert_failed');
+          documentId = inserted.id;
+        }
+
+        // Put the (re-)uploaded document into the pending review queue.
+        await ensurePendingReview(tx, documentId);
       });
+    } catch (err) {
+      req.log.error({ err }, 'document upload persistence failed');
+      return reply.code(500).send({ error: 'upload_failed' });
+    }
+
+    // Auto-advance application state when required documents are fully uploaded
+    if (ownerKind === 'driver') {
+      const dbDocs = await db.query.documents.findMany({
+        where: and(
+          eq(documents.ownerKind, 'driver'),
+          eq(documents.ownerId, userId),
+        ),
+      });
+      const uploadedKinds = new Set(dbDocs.map((d) => d.kind));
+      const requiredPersonal = ['nric_front', 'nric_back', 'cdl', 'psv_d', 'insurance', 'driver_selfie'];
+      const allPersonalUploaded = requiredPersonal.every((k) => uploadedKinds.has(k as any));
+
+      if (allPersonalUploaded) {
+        await db
+          .update(driverApplications)
+          .set({ state: 'personal_docs_submitted', updatedAt: new Date() })
+          .where(eq(driverApplications.driverId, userId));
+      }
+    } else if (ownerKind === 'vehicle') {
+      const dbDocs = await db.query.documents.findMany({
+        where: and(
+          eq(documents.ownerKind, 'vehicle'),
+          eq(documents.ownerId, ownerId),
+        ),
+      });
+      const uploadedKinds = new Set(dbDocs.map((d) => d.kind));
+      const requiredVehicle = ['car_grant', 'road_tax', 'puspakom', 'insurance'];
+      const allVehicleUploaded = requiredVehicle.every((k) => uploadedKinds.has(k as any));
+
+      if (allVehicleUploaded) {
+        await db
+          .update(driverApplications)
+          .set({ state: 'vehicle_docs_submitted', updatedAt: new Date() })
+          .where(eq(driverApplications.driverId, userId));
+      }
     }
 
     // Auto-advance application state when required documents are fully uploaded
@@ -215,11 +290,8 @@ export async function routes(app: FastifyInstance) {
 
       if (!doc) return reply.code(404).send({ error: 'document_not_found' });
 
-      // Reset the review to pending
-      await db
-        .update(documentReviews)
-        .set({ status: 'pending', reason: null, reviewedAt: null })
-        .where(eq(documentReviews.documentId, doc.id));
+      // Reset the review to pending (creates one if it was never reviewed).
+      await db.transaction((tx) => ensurePendingReview(tx, doc.id));
 
       return { ok: true };
     }

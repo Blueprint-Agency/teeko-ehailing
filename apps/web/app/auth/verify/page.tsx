@@ -151,7 +151,7 @@ function VerifyForm() {
         <p className="mt-4 text-center text-sm text-[var(--color-muted)]">
           {t('auth.verify.wrongNumber')}{' '}
           <Link href="/auth/login" className="font-medium text-[var(--color-teal-dark)] hover:underline">
-            {t('common.goBack')}
+            {t('common.back')}
           </Link>
         </p>
       </div>

@@ -5,6 +5,7 @@
     "next": "Seterusnya",
     "back": "Kembali",
     "submit": "Hantar",
+    "submitting": "Menghantar…",
     "save": "Simpan",
     "cancel": "Batal",
     "logout": "Log keluar",
@@ -140,7 +141,9 @@
     },
     "vehicleDocs": {
       "title": "Dokumen Kenderaan",
-      "subtitle": "Muat naik dokumen sah untuk kenderaan berdaftar anda."
+      "subtitle": "Muat naik dokumen sah untuk kenderaan berdaftar anda.",
+      "incompleteError": "Sesetengah dokumen yang diperlukan masih tiada. Sila muat naik semua dokumen sebelum menghantar.",
+      "submitError": "Berlaku masalah semasa menghantar permohonan anda. Sila cuba lagi."
     },
     "confirmation": {
       "title": "Permohonan Dihantar!",
@@ -156,7 +159,9 @@
       "step3Desc": "Apabila EVP anda diluluskan, akaun anda akan diaktifkan. Anda akan menerima SMS dengan pautan untuk memuat turun aplikasi Teeko Driver.",
       "step3Timeline": "Selepas kelulusan EVP",
       "getAppTitle": "Sedia untuk memandu",
-      "getAppDesc": "Muat turun aplikasi Teeko Driver sekarang. Anda boleh mula mengambil pesanan sebaik sahaja akaun anda diaktifkan."
+      "getAppDesc": "Muat turun aplikasi Teeko Driver sekarang. Anda boleh mula mengambil pesanan sebaik sahaja akaun anda diaktifkan.",
+      "appStore": "App Store",
+      "googlePlay": "Google Play"
     }
   },
   "dashboard": {

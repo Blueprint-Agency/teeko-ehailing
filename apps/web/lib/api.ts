@@ -20,7 +20,10 @@ async function get<T>(path: string, driverId: string): Promise<T> {
 async function patch<T>(path: string, driverId: string): Promise<T> {
   const res = await fetch(`${PREFIX}${path}`, {
     method: 'PATCH',
-    headers: devHeaders(driverId),
+    headers: {
+      'X-Teeko-User': driverId,
+      'X-Teeko-Role': 'driver',
+    },
   })
   if (!res.ok) throw new Error(`PATCH ${path} → ${res.status}`)
   return res.json() as Promise<T>
@@ -44,6 +47,19 @@ export const api = {
 
   getApplication: (id: string) =>
     get<{ state: string; currentStep: number; rejectionReason?: string | null }>('/application', id),
+
+  submitApplication: async (id: string) => {
+    const res = await fetch(`${PREFIX}/application/submit`, {
+      method: 'POST',
+      headers: devHeaders(id),
+      body: JSON.stringify({}),
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}))
+      throw new Error(error.error || `POST /application/submit → ${res.status}`)
+    }
+    return res.json() as Promise<{ ok: boolean; state: string; submittedAt: string | null }>
+  },
 
   acceptAgreement: (id: string) =>
     fetch(`${PREFIX}/agreement/accept`, {
