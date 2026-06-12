@@ -22,7 +22,13 @@ export const consentType = pgEnum('consent_type', [
 export const dsrKind = pgEnum('dsr_kind', ['access', 'erasure', 'correction']);
 export const dsrStatus = pgEnum('dsr_status', ['received', 'processing', 'fulfilled', 'denied']);
 export const evpAuthority = pgEnum('evp_authority', ['apad', 'lpkp']);
-export const evpStatus = pgEnum('evp_status', ['pending', 'approved', 'expired', 'rejected']);
+export const evpStatus = pgEnum('evp_status', [
+  'not_applied',
+  'pending',
+  'approved',
+  'expired',
+  'rejected',
+]);
 export const psvStatus = pgEnum('psv_status', ['valid', 'expired', 'revoked']);
 
 export const consentLog = pgTable('consent_log', {

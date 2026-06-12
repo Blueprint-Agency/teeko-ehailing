@@ -8,6 +8,7 @@ import { notificationInbox } from '../src/db/schema/notifications-content';
 export const MOCK_DRIVER_ID = '00000000-0000-0000-0000-000000000001';
 export const MOCK_VEHICLE_ID = '00000000-0000-0000-0000-000000000002';
 export const MOCK_APPLICATION_ID = '00000000-0000-0000-0000-000000000003';
+export const MOCK_ADMIN_ID = '00000000-0000-0000-0000-0000000000a0';
 
 async function seed() {
   console.log('Seeding mock driver...');
@@ -25,6 +26,21 @@ async function seed() {
   await db.insert(userRoles).values({
     userId: MOCK_DRIVER_ID,
     role: 'driver',
+  }).onConflictDoNothing();
+
+  // ── Admin user (for the admin panel dev-bypass auth) ───────────────────────
+  await db.insert(users).values({
+    id: MOCK_ADMIN_ID,
+    phone: '+60100000000',
+    email: 'admin@teeko.my',
+    fullName: 'Teeko Admin',
+    locale: 'en',
+    status: 'active',
+  }).onConflictDoNothing();
+
+  await db.insert(userRoles).values({
+    userId: MOCK_ADMIN_ID,
+    role: 'admin_super',
   }).onConflictDoNothing();
 
   // ── Driver profile ────────────────────────────────────────────────────────
@@ -89,7 +105,7 @@ async function seed() {
       status: doc.reviewStatus,
       reason: doc.rejectionReason ?? null,
       reviewedAt: doc.reviewStatus !== 'pending' ? new Date('2025-01-11T10:00:00Z') : null,
-    }).onConflictDoNothing();
+    }).onConflictDoNothing({ target: documentReviews.documentId });
   }
 
   for (const doc of vehicleDocs) {
@@ -107,7 +123,7 @@ async function seed() {
       documentId: doc.id,
       status: doc.reviewStatus,
       reviewedAt: doc.reviewStatus !== 'pending' ? new Date('2025-01-11T10:00:00Z') : null,
-    }).onConflictDoNothing();
+    }).onConflictDoNothing({ target: documentReviews.documentId });
   }
 
   // ── Notifications ─────────────────────────────────────────────────────────
@@ -157,7 +173,9 @@ async function seed() {
   console.log('Seed complete.');
   console.log(`  Driver ID : ${MOCK_DRIVER_ID}`);
   console.log(`  Vehicle ID: ${MOCK_VEHICLE_ID}`);
+  console.log(`  Admin ID  : ${MOCK_ADMIN_ID}`);
   console.log('  Set NEXT_PUBLIC_DEV_DRIVER_ID in apps/web/.env.local');
+  console.log('  Set NEXT_PUBLIC_ADMIN_DEV_USER in apps/admin/.env.local');
 }
 
 seed()

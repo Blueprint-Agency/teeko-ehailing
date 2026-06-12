@@ -1,61 +1,63 @@
 'use client';
 import {
   Box, Typography, Chip, Button, Dialog, DialogTitle,
-  DialogContent, DialogActions, TextField, Alert, Stack,
+  DialogContent, DialogActions, TextField, Alert, Stack, CircularProgress,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { useDriverStore } from '@/stores/driver';
 import { useRbac } from '@/hooks/useRbac';
-import { useState } from 'react';
-
-const DOC_TYPES = ['IC (Front)', 'IC (Back)', 'Driving Licence', 'Vehicle Registration', 'Vehicle Insurance', 'Vehicle Inspection (JPJ)', 'EVP Certificate'];
-
-interface DocRow {
-  id: string; driverId: string; driverName: string; docType: string;
-  city: string; category: string; uploadedAt: string; status: string;
-}
-
-function generateDocRows(drivers: ReturnType<typeof useDriverStore.getState>['drivers']): DocRow[] {
-  const rows: DocRow[] = [];
-  drivers
-    .filter((d) => d.status === 'pending' || d.evp === 'pending')
-    .forEach((d) => {
-      DOC_TYPES.slice(0, 5).forEach((dt, i) => {
-        rows.push({
-          id: `${d.id}_doc${i}`,
-          driverId: d.id,
-          driverName: d.name,
-          docType: dt,
-          city: d.city,
-          category: d.category,
-          uploadedAt: '2026-05-14',
-          status: i < 3 ? 'approved' : 'pending',
-        });
-      });
-    });
-  return rows;
-}
+import { adminApi, type DocReviewRow } from '@/lib/api';
+import { useEffect, useState } from 'react';
 
 export default function DocumentsPage() {
-  const drivers = useDriverStore((s) => s.drivers);
   const { can } = useRbac();
-  const rows = generateDocRows(drivers);
-  const [dialog, setDialog] = useState<{ open: boolean; row: DocRow | null; action: 'approve' | 'reject' }>({ open: false, row: null, action: 'approve' });
+  const [rows, setRows] = useState<DocReviewRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [dialog, setDialog] = useState<{ open: boolean; row: DocReviewRow | null; action: 'approve' | 'reject' }>({ open: false, row: null, action: 'approve' });
   const [reason, setReason] = useState('');
   const [done, setDone] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  const handleAction = () => {
-    setDone(`Document ${dialog.action === 'approve' ? 'approved' : 'rejected'} successfully.`);
+  useEffect(() => {
+    adminApi
+      .getDocumentQueue()
+      .then(setRows)
+      .catch((e) => setError(e.message ?? 'Failed to load documents'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const closeDialog = () => {
     setDialog({ open: false, row: null, action: 'approve' });
     setReason('');
   };
 
+  const handleAction = async () => {
+    if (!dialog.row) return;
+    const { documentId } = dialog.row;
+    const action = dialog.action;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await adminApi.reviewDocument(documentId, action === 'approve' ? 'approved' : 'rejected', reason || undefined);
+      setRows((rs) => rs.map((r) => (r.documentId === documentId ? { ...r, status: action === 'approve' ? 'approved' : 'rejected' } : r)));
+      setDone(
+        res.evpCreated
+          ? 'Document approved — all documents verified, EVP application created.'
+          : `Document ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
+      );
+      closeDialog();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Action failed');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const columns: GridColDef[] = [
     { field: 'driverName', headerName: 'Driver', flex: 1, minWidth: 160 },
-    { field: 'city', headerName: 'City', width: 120 },
     { field: 'category', headerName: 'Category', width: 100 },
-    { field: 'docType', headerName: 'Document', width: 180 },
-    { field: 'uploadedAt', headerName: 'Uploaded', width: 110 },
+    { field: 'docType', headerName: 'Document', width: 220 },
+    { field: 'uploadedAt', headerName: 'Uploaded', width: 180, valueGetter: (v) => (v ? new Date(v).toLocaleString() : '—') },
     {
       field: 'status', headerName: 'Status', width: 110,
       renderCell: ({ value }) => <Chip label={value} size="small" color={value === 'approved' ? 'success' : value === 'rejected' ? 'error' : 'warning'} />,
@@ -75,10 +77,17 @@ export default function DocumentsPage() {
     <Box>
       <Typography variant="h6" fontWeight={700} mb={2.5}>Document Review Queue</Typography>
       {done && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setDone('')}>{done}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       <Box sx={{ height: 550 }}>
-        <DataGrid rows={rows} columns={columns} pageSizeOptions={[25, 50]} disableRowSelectionOnClick />
+        {loading ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <DataGrid getRowId={(r) => r.documentId} rows={rows} columns={columns} pageSizeOptions={[25, 50]} disableRowSelectionOnClick />
+        )}
       </Box>
-      <Dialog open={dialog.open} onClose={() => setDialog({ open: false, row: null, action: 'approve' })} maxWidth="xs" fullWidth>
+      <Dialog open={dialog.open} onClose={closeDialog} maxWidth="xs" fullWidth>
         <DialogTitle>{dialog.action === 'approve' ? 'Approve' : 'Reject'} Document</DialogTitle>
         <DialogContent>
           <Typography variant="body2" mb={2}>
@@ -89,10 +98,10 @@ export default function DocumentsPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog({ open: false, row: null, action: 'approve' })}>Cancel</Button>
+          <Button onClick={closeDialog} disabled={submitting}>Cancel</Button>
           <Button variant="contained" color={dialog.action === 'approve' ? 'success' : 'error'} onClick={handleAction}
-            disabled={dialog.action === 'reject' && !reason}>
-            Confirm
+            disabled={submitting || (dialog.action === 'reject' && !reason)}>
+            {submitting ? 'Saving…' : 'Confirm'}
           </Button>
         </DialogActions>
       </Dialog>

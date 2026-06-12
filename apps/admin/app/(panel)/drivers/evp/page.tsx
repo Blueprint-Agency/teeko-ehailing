@@ -1,9 +1,11 @@
 'use client';
-import { useState } from 'react';
-import { Box, Typography, Chip, Menu, MenuItem, ListItemIcon, Tooltip } from '@mui/material';
+import { useEffect, useState } from 'react';
+import {
+  Box, Typography, Chip, Menu, MenuItem, ListItemIcon, Tooltip, Alert, CircularProgress,
+} from '@mui/material';
 import { Check, LockOpen, Lock } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid';
-import { useDriverStore } from '@/stores/driver';
+import { adminApi, type EvpRecord } from '@/lib/api';
 
 const EVP_STATUSES = ['not_applied', 'pending', 'approved', 'rejected', 'expired'] as const;
 
@@ -16,13 +18,21 @@ const evpColor = (value: string) =>
 const evpLabel = (value: string) => value.replace('_', ' ');
 
 export default function EvpPage() {
-  const drivers = useDriverStore((s) => s.drivers);
-  const updateDriverEvp = useDriverStore((s) => s.updateDriverEvp);
-  const openDriverAccount = useDriverStore((s) => s.openDriverAccount);
+  const [rows, setRows] = useState<EvpRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const editingDriver = drivers.find((d) => d.id === editingId) ?? null;
+  const editingRecord = rows.find((d) => d.id === editingId) ?? null;
+
+  useEffect(() => {
+    adminApi
+      .getEvpRecords()
+      .then(setRows)
+      .catch((e) => setError(e.message ?? 'Failed to load EVP records'))
+      .finally(() => setLoading(false));
+  }, []);
 
   const openMenu = (e: React.MouseEvent<HTMLElement>, id: string) => {
     setAnchorEl(e.currentTarget);
@@ -32,19 +42,16 @@ export default function EvpPage() {
     setAnchorEl(null);
     setEditingId(null);
   };
-  const selectStatus = (status: string) => {
-    if (editingId) updateDriverEvp(editingId, status);
+  const selectStatus = (status: EvpRecord['evp']) => {
+    if (editingId) setRows((rs) => rs.map((r) => (r.id === editingId ? { ...r, evp: status } : r)));
     closeMenu();
   };
-
-  const rows = drivers.map((d) => ({
-    ...d,
-    evpExpiry: d.evp === 'approved' ? '2026-12-31' : d.evp === 'expired' ? '2025-12-31' : '—',
-  }));
+  const openAccount = (id: string) =>
+    setRows((rs) => rs.map((r) => (r.id === id && r.evp === 'approved' ? { ...r, account: 'open' } : r)));
 
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Driver', flex: 1, minWidth: 180 },
-    { field: 'city', headerName: 'City', width: 130 },
+    { field: 'region', headerName: 'Region', width: 200 },
     { field: 'category', headerName: 'Category', width: 100 },
     {
       field: 'evp', headerName: 'EVP Status', width: 150,
@@ -80,7 +87,7 @@ export default function EvpPage() {
                 size="small"
                 color="default"
                 icon={<Lock fontSize="small" />}
-                onClick={canOpen ? () => openDriverAccount(row.id) : undefined}
+                onClick={canOpen ? () => openAccount(row.id) : undefined}
                 disabled={!canOpen}
                 sx={{ cursor: canOpen ? 'pointer' : 'not-allowed' }}
               />
@@ -89,7 +96,7 @@ export default function EvpPage() {
         );
       },
     },
-    { field: 'evpExpiry', headerName: 'Expiry Date', width: 120 },
+    { field: 'evpExpiry', headerName: 'Expiry Date', width: 120, valueGetter: (v) => v ?? '—' },
     { field: 'trips', headerName: 'Trips', width: 80, type: 'number' },
     { field: 'joinDate', headerName: 'Joined', width: 110 },
   ];
@@ -97,19 +104,26 @@ export default function EvpPage() {
   return (
     <Box>
       <Typography variant="h6" fontWeight={700} mb={2.5}>EVP Application Tracker</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       <Box sx={{ height: 550 }}>
-        <DataGrid rows={rows} columns={columns} pageSizeOptions={[25, 50]} disableRowSelectionOnClick />
+        {loading ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <DataGrid rows={rows} columns={columns} pageSizeOptions={[25, 50]} disableRowSelectionOnClick />
+        )}
       </Box>
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={closeMenu}>
         {EVP_STATUSES.map((status) => (
           <MenuItem
             key={status}
-            selected={editingDriver?.evp === status}
+            selected={editingRecord?.evp === status}
             onClick={() => selectStatus(status)}
             sx={{ textTransform: 'capitalize' }}
           >
             <ListItemIcon sx={{ minWidth: 32 }}>
-              {editingDriver?.evp === status && <Check fontSize="small" />}
+              {editingRecord?.evp === status && <Check fontSize="small" />}
             </ListItemIcon>
             {evpLabel(status)}
           </MenuItem>

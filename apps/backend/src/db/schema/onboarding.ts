@@ -81,7 +81,7 @@ export const documents = pgTable('documents', {
 
 export const documentReviews = pgTable('document_reviews', {
   id: uuid().primaryKey().defaultRandom(),
-  documentId: uuid().notNull().references(() => documents.id, { onDelete: 'cascade' }),
+  documentId: uuid().notNull().unique().references(() => documents.id, { onDelete: 'cascade' }),
   status: documentReviewStatus().notNull().default('pending'),
   reviewerId: uuid().references(() => users.id),
   reason: text(),

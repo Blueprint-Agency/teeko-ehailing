@@ -1,0 +1,1 @@
+ALTER TYPE "public"."evp_status" ADD VALUE 'not_applied' BEFORE 'pending';
