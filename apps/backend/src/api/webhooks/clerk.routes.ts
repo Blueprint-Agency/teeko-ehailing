@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { Webhook } from 'svix';
 
 import { env } from '../../config/env';
@@ -14,6 +14,65 @@ type ClerkUserEvent = {
     last_name?: string | null;
   };
 };
+
+async function handleClerkWebhook(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  signingSecret: string,
+) {
+  const svixId = req.headers['svix-id'];
+  const svixTs = req.headers['svix-timestamp'];
+  const svixSig = req.headers['svix-signature'];
+  if (
+    typeof svixId !== 'string' ||
+    typeof svixTs !== 'string' ||
+    typeof svixSig !== 'string'
+  ) {
+    return reply.code(400).send({ error: 'missing_svix_headers' });
+  }
+
+  const payload = req.body as { raw: string; parsed: ClerkUserEvent };
+  let evt: ClerkUserEvent;
+  try {
+    const wh = new Webhook(signingSecret);
+    evt = wh.verify(payload.raw, {
+      'svix-id': svixId,
+      'svix-timestamp': svixTs,
+      'svix-signature': svixSig,
+    }) as ClerkUserEvent;
+  } catch (err) {
+    req.log.warn({ err }, 'clerk webhook signature verification failed');
+    return reply.code(400).send({ error: 'invalid_signature' });
+  }
+
+  if (evt.type === 'user.created') {
+    // No-op: JIT handles creation on first /me call.
+    return { ok: true, ignored: 'user.created (handled by JIT)' };
+  }
+
+  const primary = evt.data.email_addresses?.find(
+    (e) => e.id === evt.data.primary_email_address_id,
+  );
+  const email = primary?.email_address ?? null;
+
+  // Webhook semantics: Clerk sends `null` for cleared name fields. Map to
+  // `null` through to updateRiderFields so a user clearing their name in
+  // Clerk is mirrored in our DB. (This is the webhook path; the PATCH /me
+  // path keeps `undefined`-means-don't-touch semantics.)
+  const fullNameRaw = [evt.data.first_name, evt.data.last_name]
+    .filter((s): s is string => typeof s === 'string' && s.length > 0)
+    .join(' ')
+    .trim();
+  const fullName: string | null = fullNameRaw || null;
+
+  await applyClerkWebhook({
+    type: evt.type,
+    clerkUserId: evt.data.id,
+    email,
+    fullName,
+  });
+  return { ok: true };
+}
 
 export async function routes(app: FastifyInstance) {
   // Svix verification needs the raw body. Register a content-type parser
@@ -31,61 +90,13 @@ export async function routes(app: FastifyInstance) {
     },
   );
 
-  app.post('/clerk', async (req, reply) => {
-    const svixId = req.headers['svix-id'];
-    const svixTs = req.headers['svix-timestamp'];
-    const svixSig = req.headers['svix-signature'];
-    if (
-      typeof svixId !== 'string' ||
-      typeof svixTs !== 'string' ||
-      typeof svixSig !== 'string'
-    ) {
-      return reply.code(400).send({ error: 'missing_svix_headers' });
-    }
+  // Rider Clerk app webhook — configure in Clerk dashboard with endpoint /webhooks/clerk/rider
+  app.post('/clerk/rider', async (req, reply) =>
+    handleClerkWebhook(req, reply, env.CLERK_RIDER_WEBHOOK_SIGNING_SECRET),
+  );
 
-    const payload = req.body as { raw: string; parsed: ClerkUserEvent };
-    let evt: ClerkUserEvent;
-    try {
-      // Webhook constructor base64-decodes the secret and throws on a
-      // malformed secret; verify() throws on a bad signature. Both paths
-      // collapse to a 400 invalid_signature response.
-      const wh = new Webhook(env.CLERK_WEBHOOK_SIGNING_SECRET);
-      evt = wh.verify(payload.raw, {
-        'svix-id': svixId,
-        'svix-timestamp': svixTs,
-        'svix-signature': svixSig,
-      }) as ClerkUserEvent;
-    } catch (err) {
-      req.log.warn({ err }, 'clerk webhook signature verification failed');
-      return reply.code(400).send({ error: 'invalid_signature' });
-    }
-
-    if (evt.type === 'user.created') {
-      // No-op: JIT handles creation on first /me call.
-      return { ok: true, ignored: 'user.created (handled by JIT)' };
-    }
-
-    const primary = evt.data.email_addresses?.find(
-      (e) => e.id === evt.data.primary_email_address_id,
-    );
-    const email = primary?.email_address ?? null;
-
-    // Webhook semantics: Clerk sends `null` for cleared name fields. Map to
-    // `null` through to updateRiderFields so a user clearing their name in
-    // Clerk is mirrored in our DB. (This is the webhook path; the PATCH /me
-    // path keeps `undefined`-means-don't-touch semantics.)
-    const fullNameRaw = [evt.data.first_name, evt.data.last_name]
-      .filter((s): s is string => typeof s === 'string' && s.length > 0)
-      .join(' ')
-      .trim();
-    const fullName: string | null = fullNameRaw || null;
-
-    await applyClerkWebhook({
-      type: evt.type,
-      clerkUserId: evt.data.id,
-      email,
-      fullName,
-    });
-    return { ok: true };
-  });
+  // Driver Clerk app webhook — configure in Clerk dashboard with endpoint /webhooks/clerk/driver
+  app.post('/clerk/driver', async (req, reply) =>
+    handleClerkWebhook(req, reply, env.CLERK_DRIVER_WEBHOOK_SIGNING_SECRET),
+  );
 }
