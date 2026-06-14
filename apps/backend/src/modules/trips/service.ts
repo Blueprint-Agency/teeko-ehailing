@@ -7,9 +7,15 @@ import { env } from '../../config/env';
 
 type Coords = { lat: number; lng: number };
 
-// WKT stored as SRID=4326;POINT(lng lat)
-function parsePoint(wkt: unknown): Coords {
-  const m = String(wkt).match(/POINT\(([^ ]+) ([^ )]+)\)/);
+// PostGIS geography may be returned as { x: lng, y: lat } (pg object) or WKT string.
+function parsePoint(raw: unknown): Coords {
+  if (raw !== null && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    const lat = Number(o['y']);
+    const lng = Number(o['x']);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+  const m = String(raw).match(/POINT\(([^ ]+) ([^ )]+)\)/);
   return m ? { lat: parseFloat(m[2]!), lng: parseFloat(m[1]!) } : { lat: 0, lng: 0 };
 }
 
@@ -121,10 +127,7 @@ export const tripsService = {
 
     const etaMin =
       driverLocation && trip.status === 'matched'
-        ? await trackingService.getEtaMinutes(driverLocation, {
-            lat: (trip.pickup as unknown as { y: number }).y,
-            lng: (trip.pickup as unknown as { x: number }).x,
-          })
+        ? await trackingService.getEtaMinutes(driverLocation, parsePoint(trip.pickup))
         : null;
 
     return { trip, driverLocation, etaMin };

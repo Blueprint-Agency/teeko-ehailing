@@ -114,23 +114,23 @@ export default function MapBackground({
             <Polyline
               coordinates={routePolyline.map(([lat, lng]) => ({ latitude: lat, longitude: lng }))}
               strokeColor="#FFFFFF"
-              strokeWidth={10}
+              strokeWidth={14}
             />
             <Polyline
               coordinates={routePolyline.map(([lat, lng]) => ({ latitude: lat, longitude: lng }))}
               strokeColor={colors.accent}
-              strokeWidth={5}
+              strokeWidth={8}
             />
           </>
         )}
-        {pickupMarker && (
+        {pickupMarker && isFinite(pickupMarker.lat) && isFinite(pickupMarker.lng) && (
           <Marker
             coordinate={{ latitude: pickupMarker.lat, longitude: pickupMarker.lng }}
             pinColor="#22C55E"
             title="Pickup"
           />
         )}
-        {destinationMarker && (
+        {destinationMarker && isFinite(destinationMarker.lat) && isFinite(destinationMarker.lng) && (
           <Marker
             coordinate={{ latitude: destinationMarker.lat, longitude: destinationMarker.lng }}
             pinColor={colors.accent}

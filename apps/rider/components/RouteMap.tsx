@@ -153,8 +153,8 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeColor = phase === 'approach' ? '#E11D2E' : '#E11D2E';
-  const previewColor = '#C9CDD3';
+  const activeColor = '#E11D2E';
+  const previewColor = '#6B7280';
 
   return (
     <MapView
@@ -169,27 +169,28 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
         userPanned.current = true;
       }}
     >
-      {/* Preview of the full route always shown, softened so it doesn't fight the active line. */}
+      {/* Preview of the full route — white casing + gray fill so it reads clearly on any tile */}
       {phase === 'approach' ? (
-        <Polyline
-          coordinates={tripPolyline}
-          strokeColor={previewColor}
-          strokeWidth={4}
-          lineDashPattern={[6, 6]}
-        />
+        <>
+          <Polyline coordinates={tripPolyline} strokeColor="#FFFFFF" strokeWidth={10} lineDashPattern={[1, 0]} />
+          <Polyline coordinates={tripPolyline} strokeColor={previewColor} strokeWidth={6} lineDashPattern={[12, 8]} />
+        </>
       ) : null}
 
       {/* In-trip: traveled (faded behind) + remaining (bright ahead) with a white casing */}
       {phase === 'intrip' ? (
         <>
-          {split.remaining.length >= 2 ? (
-            <Polyline coordinates={split.remaining} strokeColor="#FFFFFF" strokeWidth={10} />
-          ) : null}
           {split.traveled.length >= 2 ? (
-            <Polyline coordinates={split.traveled} strokeColor="#9CA3AF" strokeWidth={4} />
+            <>
+              <Polyline coordinates={split.traveled} strokeColor="#FFFFFF" strokeWidth={10} />
+              <Polyline coordinates={split.traveled} strokeColor="#9CA3AF" strokeWidth={6} />
+            </>
           ) : null}
           {split.remaining.length >= 2 ? (
-            <Polyline coordinates={split.remaining} strokeColor={activeColor} strokeWidth={6} />
+            <>
+              <Polyline coordinates={split.remaining} strokeColor="#FFFFFF" strokeWidth={14} />
+              <Polyline coordinates={split.remaining} strokeColor={activeColor} strokeWidth={8} />
+            </>
           ) : null}
         </>
       ) : null}
@@ -197,8 +198,8 @@ export const RouteMap = forwardRef<RouteMapHandle, RouteMapProps>(function Route
       {/* Approach tail: driver → pickup, rendered as the active line */}
       {phase === 'approach' && approachTail.length >= 2 ? (
         <>
-          <Polyline coordinates={approachTail} strokeColor="#FFFFFF" strokeWidth={10} />
-          <Polyline coordinates={approachTail} strokeColor={activeColor} strokeWidth={6} />
+          <Polyline coordinates={approachTail} strokeColor="#FFFFFF" strokeWidth={14} />
+          <Polyline coordinates={approachTail} strokeColor={activeColor} strokeWidth={8} />
         </>
       ) : null}
 

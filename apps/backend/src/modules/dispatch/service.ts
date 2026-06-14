@@ -4,6 +4,19 @@ import { trips, tripOffers, driverProfiles, driverRadiusSettings, fareQuotes, us
 import { redis } from '../../config/redis';
 import { trackingService } from '../tracking/service';
 
+/** Extracts lat/lng from a PostGIS geography column that may be returned as a
+ *  plain object { x: lng, y: lat } (some pg drivers) or WKT "POINT(lng lat)". */
+function extractPoint(raw: unknown): { lat: number; lng: number } {
+  if (raw !== null && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    const lat = Number(o['y']);
+    const lng = Number(o['x']);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+  const m = String(raw).match(/POINT\(([^ ]+) ([^ )]+)\)/);
+  return m ? { lat: parseFloat(m[2]!), lng: parseFloat(m[1]!) } : { lat: 0, lng: 0 };
+}
+
 async function findOnlineDriverIds(): Promise<string[]> {
   const rows = await db.query.driverProfiles.findMany({
     where: eq(driverProfiles.availability, 'online'),
@@ -22,8 +35,7 @@ export const dispatchService = {
     const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
     if (!trip) { console.log(`[dispatch] trip not found`); return; }
 
-    const pickupLat = (trip.pickup as unknown as { y: number }).y;
-    const pickupLng = (trip.pickup as unknown as { x: number }).x;
+    const { lat: pickupLat, lng: pickupLng } = extractPoint(trip.pickup);
     console.log(`[dispatch] pickup lat=${pickupLat} lng=${pickupLng} category=${trip.category}`);
 
     let nearbyIds = await trackingService.nearbyDrivers(pickupLat, pickupLng, DISPATCH_RADIUS_KM);
@@ -116,10 +128,8 @@ export const dispatchService = {
       .set(`offer:${tripId}:current`, driverId, 'EX', OFFER_TTL_SEC)
       .catch(() => null);
 
-    const pickupLat = (trip.pickup as unknown as { y: number }).y;
-    const pickupLng = (trip.pickup as unknown as { x: number }).x;
-    const destLat = (trip.dropoff as unknown as { y: number }).y;
-    const destLng = (trip.dropoff as unknown as { x: number }).x;
+    const { lat: pickupLat, lng: pickupLng } = extractPoint(trip.pickup);
+    const { lat: destLat, lng: destLng } = extractPoint(trip.dropoff);
 
     const [quote, rider] = await Promise.all([
       trip.fareQuoteId

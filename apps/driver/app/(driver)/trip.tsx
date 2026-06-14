@@ -39,6 +39,10 @@ export default function TripScreen() {
     let sub: Location.LocationSubscription | null = null;
     Location.requestForegroundPermissionsAsync().then(({ status }) => {
       if (status !== 'granted') return;
+      // Seed immediately so the first directions fetch doesn't wait for the watch
+      Location.getLastKnownPositionAsync({}).then((pos) => {
+        if (pos) setDriverLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      }).catch(() => null);
       Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 15 },
         (loc) => setDriverLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }),
@@ -47,21 +51,12 @@ export default function TripScreen() {
     return () => { sub?.remove(); };
   }, []);
 
-  // Phase 0: driver → pickup. Phase 2: pickup → destination.
-  const directionsOrigin =
-    phaseIndex === 0
-      ? driverLocation
-      : activeTrip?.pickup
-        ? { lat: activeTrip.pickup.lat, lng: activeTrip.pickup.lng }
-        : null;
+  // Always use live driver position as origin so "remaining route" is accurate.
+  // Phase 0: driver → pickup. Phases 1 & 2: driver → destination.
   const directionsDestination =
     phaseIndex === 0
-      ? activeTrip?.pickup
-        ? { lat: activeTrip.pickup.lat, lng: activeTrip.pickup.lng }
-        : null
-      : activeTrip?.destination
-        ? { lat: activeTrip.destination.lat, lng: activeTrip.destination.lng }
-        : null;
+      ? (activeTrip?.pickup ?? null)
+      : (activeTrip?.destination ?? null);
 
   const driverFetcher = (
     o: { lat: number; lng: number },
@@ -71,11 +66,11 @@ export default function TripScreen() {
     api.driver.directions(o, d, opts) as Promise<DirectionsResult>;
 
   const { result: directions } = useDirections({
-    origin: directionsOrigin,
+    origin: driverLocation,
     destination: directionsDestination,
     fetcher: driverFetcher,
     options: { mode: 'driving', departureTime: 'now' },
-    enabled: phaseIndex === 0 || phaseIndex === 2,
+    enabled: phaseIndex < 3 && !!driverLocation,
   });
 
   const PHASES = [

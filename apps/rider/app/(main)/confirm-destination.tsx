@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from 'react';
-import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 
@@ -41,23 +40,6 @@ export default function ConfirmDestinationScreen() {
     });
     setDestination({ ...destination, lat: pinCoord.lat, lng: pinCoord.lng });
     router.push('/(main)/ride-selection');
-
-    // Resolve the human-readable address in the background and update the store
-    Location.reverseGeocodeAsync({ latitude: currentLatLng.lat, longitude: currentLatLng.lng })
-      .then((results) => {
-        const r = results[0];
-        if (r) {
-          const address = [r.name, r.street, r.city].filter(Boolean).join(', ');
-          setPickup({
-            id: 'current-location',
-            name: 'My Location',
-            address,
-            lat: currentLatLng.lat,
-            lng: currentLatLng.lng,
-          });
-        }
-      })
-      .catch(() => null);
   };
 
   const recenter = () => {

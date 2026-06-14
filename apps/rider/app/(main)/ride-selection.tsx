@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 
 import { routesApi, useAuthStore, usePaymentsStore, useTripStore } from '@teeko/api';
 import { formatDistance, formatDuration, useDirections } from '@teeko/maps';
@@ -24,6 +25,7 @@ export default function RideSelectionScreen() {
   const selectRideType = useTripStore((s) => s.selectRideType);
   const selectPayment = useTripStore((s) => s.selectPayment);
   const book = useTripStore((s) => s.book);
+  const setPickup = useTripStore((s) => s.setPickup);
   const destination = useTripStore((s) => s.destination);
   const pickup = useTripStore((s) => s.pickup);
 
@@ -67,7 +69,29 @@ export default function RideSelectionScreen() {
     if (!rider || !canBook) return;
     setBooking(true);
     try {
+      // Resolve pickup address if still the placeholder set in confirm-destination
+      const currentPickup = useTripStore.getState().pickup;
+      if (currentPickup && currentPickup.address === 'Current Location') {
+        try {
+          const results = await Location.reverseGeocodeAsync({
+            latitude: currentPickup.lat,
+            longitude: currentPickup.lng,
+          });
+          const r = results[0];
+          if (r) {
+            const address = [r.name, r.street, r.city].filter(Boolean).join(', ');
+            setPickup({ ...currentPickup, name: address, address });
+          }
+        } catch {
+          // keep placeholder — non-fatal
+        }
+      }
       await book(rider.id);
+      // Sync store pickup with what was booked (address now confirmed by API)
+      const bookedTrip = useTripStore.getState().trip;
+      if (bookedTrip?.pickup) {
+        setPickup(bookedTrip.pickup);
+      }
       const { status } = useTripStore.getState();
       if (status === 'matched' || status === 'arrived') {
         router.replace('/(main)/driver-matched');
