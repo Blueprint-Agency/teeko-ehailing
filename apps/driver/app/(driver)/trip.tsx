@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Phone, Check } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import type { DirectionsResult, FetchDirectionsOptions } from '@teeko/shared';
+import { formatDistance, formatDuration, useDirections } from '@teeko/maps';
 import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
@@ -15,12 +18,65 @@ const PHASE_KEYS = ['navigating', 'arrived', 'inprogress', 'completed'] as const
 
 export default function TripScreen() {
   const router = useRouter();
-  const [phaseIndex, setPhaseIndex] = useState(0);
+  const activeTripStatus = useDriverStore((s) => s.activeTripStatus);
+
+  function statusToPhase(status: string | null): number {
+    if (status === 'driver_arrived') return 1;
+    if (status === 'in_trip') return 2;
+    return 0;
+  }
+
+  const [phaseIndex, setPhaseIndex] = useState(() => statusToPhase(activeTripStatus));
   const colors = useColors();
   const { activeTheme } = useTheme();
   const t = useT();
   const styles = createStyles(colors);
   const { activeTripId, setActiveTripId, activeTrip, setActiveTrip } = useDriverStore();
+
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
+    Location.requestForegroundPermissionsAsync().then(({ status }) => {
+      if (status !== 'granted') return;
+      Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 15 },
+        (loc) => setDriverLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }),
+      ).then((s) => { sub = s; });
+    });
+    return () => { sub?.remove(); };
+  }, []);
+
+  // Phase 0: driver → pickup. Phase 2: pickup → destination.
+  const directionsOrigin =
+    phaseIndex === 0
+      ? driverLocation
+      : activeTrip?.pickup
+        ? { lat: activeTrip.pickup.lat, lng: activeTrip.pickup.lng }
+        : null;
+  const directionsDestination =
+    phaseIndex === 0
+      ? activeTrip?.pickup
+        ? { lat: activeTrip.pickup.lat, lng: activeTrip.pickup.lng }
+        : null
+      : activeTrip?.destination
+        ? { lat: activeTrip.destination.lat, lng: activeTrip.destination.lng }
+        : null;
+
+  const driverFetcher = (
+    o: { lat: number; lng: number },
+    d: { lat: number; lng: number },
+    opts?: FetchDirectionsOptions,
+  ): Promise<DirectionsResult> =>
+    api.driver.directions(o, d, opts) as Promise<DirectionsResult>;
+
+  const { result: directions } = useDirections({
+    origin: directionsOrigin,
+    destination: directionsDestination,
+    fetcher: driverFetcher,
+    options: { mode: 'driving', departureTime: 'now' },
+    enabled: phaseIndex === 0 || phaseIndex === 2,
+  });
 
   const PHASES = [
     { key: 'navigating', label: t('driver.navigatingToPickup') },
@@ -70,6 +126,24 @@ export default function TripScreen() {
     ]);
   };
 
+  // Phase 0 → navigate to pickup; phase 2 → navigate to destination
+  const navDestination =
+    phaseIndex === 0 ? activeTrip?.pickup : activeTrip?.destination;
+
+  const openInMaps = () => {
+    if (!navDestination) return;
+    const { lat, lng } = navDestination;
+    Linking.openURL(
+      `https://maps.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+    );
+  };
+
+  const openInWaze = () => {
+    if (!navDestination) return;
+    const { lat, lng } = navDestination;
+    Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`);
+  };
+
   const phaseActionLabel = () => {
     if (phaseIndex === 0) return t('driver.iveArrived');
     if (phaseIndex === 1) return t('driver.startTrip');
@@ -102,7 +176,13 @@ export default function TripScreen() {
       <Text style={styles.phaseLabel}>{phase.label}</Text>
 
       {/* Map */}
-      <MapBackground />
+      <MapBackground
+        routePolyline={directions?.polyline}
+        liveLocation={driverLocation}
+        followDriver={phaseIndex === 1 || phaseIndex === 3}
+        pickupMarker={activeTrip?.pickup ? { lat: activeTrip.pickup.lat, lng: activeTrip.pickup.lng } : undefined}
+        destinationMarker={activeTrip?.destination ? { lat: activeTrip.destination.lat, lng: activeTrip.destination.lng } : undefined}
+      />
 
       {/* Rider card */}
       <View style={styles.card}>
@@ -132,17 +212,25 @@ export default function TripScreen() {
         </View>
 
         <View style={styles.fareRow}>
-          <Text style={styles.fareLabel}>{t('driver.estFare')}</Text>
+          <View>
+            <Text style={styles.fareLabel}>{t('driver.estFare')}</Text>
+            {directions ? (
+              <Text style={[styles.fareLabel, { marginTop: 2 }]}>
+                {formatDistance(directions.distanceMeters)} ·{' '}
+                {formatDuration(directions.durationInTrafficSeconds ?? directions.durationSeconds)}
+              </Text>
+            ) : null}
+          </View>
           <Text style={styles.fareValue}>RM {activeTrip ? (activeTrip.fareCents / 100).toFixed(2) : '—'}</Text>
         </View>
 
         {/* Navigation buttons */}
         {!isCompleted && (
           <View style={styles.navBtns}>
-            <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('Maps', 'Opening Google Maps...')}>
+            <TouchableOpacity style={styles.navBtn} onPress={openInMaps}>
               <Text style={styles.navBtnText}>{t('driver.openInMaps')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('Waze', 'Opening Waze...')}>
+            <TouchableOpacity style={styles.navBtn} onPress={openInWaze}>
               <Text style={styles.navBtnText}>{t('driver.openInWaze')}</Text>
             </TouchableOpacity>
           </View>

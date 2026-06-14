@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTripStore } from '@teeko/api';
+import { routesApi, useTripStore } from '@teeko/api';
+import { useDirections } from '@teeko/maps';
 import type { BottomSheetHandle } from '@teeko/ui';
 import { Icon, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
@@ -23,6 +24,7 @@ export default function InTripScreen() {
   const driverPosition = useTripStore((s) => s.driverPosition);
   const driverHeading = useTripStore((s) => s.driverHeading);
   const cancel = useTripStore((s) => s.cancel);
+  const restoreActiveTrip = useTripStore((s) => s.restoreActiveTrip);
 
   const cancelSheetRef = useRef<BottomSheetHandle>(null);
   const chatSheetRef = useRef<BottomSheetHandle>(null);
@@ -36,7 +38,27 @@ export default function InTripScreen() {
     }
   }, [status]);
 
-  if (!driver || !pickup || !destination) return null;
+  useEffect(() => {
+    if (!pickup || !destination) {
+      restoreActiveTrip().catch(() => null);
+    }
+  }, []);
+
+  const { result: directions } = useDirections({
+    origin: pickup,
+    destination,
+    fetcher: routesApi.fetchDirections,
+    options: { mode: 'driving', departureTime: 'now' },
+    enabled: !!pickup && !!destination,
+  });
+
+  if (!driver || !pickup || !destination) {
+    return (
+      <View className="flex-1 items-center justify-center bg-surface">
+        <ActivityIndicator size="large" color="#E11D2E" />
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-surface">
@@ -49,7 +71,7 @@ export default function InTripScreen() {
         phase="intrip"
         bottomInset={240}
         topInset={60}
-        routePolyline={trip?.routePolyline}
+        routePolyline={directions?.polyline}
       />
 
       {/* Status pill */}
@@ -85,7 +107,7 @@ export default function InTripScreen() {
               </Text>
             </View>
             <Text weight="bold" className="text-base">
-              RM {trip?.fare.amountMyr.toFixed(2) ?? '—'}
+              RM {trip?.fare?.amountMyr?.toFixed(2) ?? '—'}
             </Text>
           </View>
 

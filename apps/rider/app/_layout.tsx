@@ -55,6 +55,7 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
   const { getToken: clerkGetToken, isSignedIn, signOut } = useAuth();
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
   const clearProfile = useAuthStore((s) => s.clear);
+  const restoreActiveTrip = useTripStore((s) => s.restoreActiveTrip);
 
   useEffect(() => {
     setApiUnauthorizedHandler(() => {
@@ -69,6 +70,15 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
       fetchProfile().catch(() => {
         router.replace('/(auth)/login');
       });
+      // Re-hydrate trip store after a refresh so screens like driver-matched
+      // don't render blank due to wiped Zustand state.
+      restoreActiveTrip().then((clientStatus) => {
+        if (clientStatus === 'matched' || clientStatus === 'arrived') {
+          router.replace('/(main)/driver-matched');
+        } else if (clientStatus === 'in_trip') {
+          router.replace('/(main)/in-trip');
+        }
+      }).catch(() => null);
     } else if (isSignedIn === false) {
       clearProfile();
     }

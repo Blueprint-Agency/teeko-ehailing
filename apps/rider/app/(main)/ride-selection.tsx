@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAuthStore, usePaymentsStore, useTripStore } from '@teeko/api';
+import { routesApi, useAuthStore, usePaymentsStore, useTripStore } from '@teeko/api';
+import { formatDistance, formatDuration, useDirections } from '@teeko/maps';
 import type { BottomSheetHandle } from '@teeko/ui';
 import { Button, Icon, Pressable, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
@@ -16,7 +17,7 @@ export default function RideSelectionScreen() {
   const rider = useAuthStore((s) => s.rider);
 
   const fareOptions = useTripStore((s) => s.fareOptions);
-  console.log('fareOptions', fareOptions)
+  const quoteError = useTripStore((s) => s.error);
   const rideType = useTripStore((s) => s.rideType);
   const paymentMethodId = useTripStore((s) => s.paymentMethodId);
   const quote = useTripStore((s) => s.quote);
@@ -24,6 +25,15 @@ export default function RideSelectionScreen() {
   const selectPayment = useTripStore((s) => s.selectPayment);
   const book = useTripStore((s) => s.book);
   const destination = useTripStore((s) => s.destination);
+  const pickup = useTripStore((s) => s.pickup);
+
+  const { result: route } = useDirections({
+    origin: pickup,
+    destination,
+    fetcher: routesApi.fetchDirections,
+    options: { mode: 'driving', departureTime: 'now' },
+    enabled: !!pickup && !!destination,
+  });
 
   const methods = usePaymentsStore((s) => s.methods);
   const defaultId = usePaymentsStore((s) => s.defaultId);
@@ -58,7 +68,14 @@ export default function RideSelectionScreen() {
     setBooking(true);
     try {
       await book(rider.id);
-      router.replace('/(main)/finding-driver');
+      const { status } = useTripStore.getState();
+      if (status === 'matched' || status === 'arrived') {
+        router.replace('/(main)/driver-matched');
+      } else if (status === 'in_trip') {
+        router.replace('/(main)/in-trip');
+      } else {
+        router.replace('/(main)/finding-driver');
+      }
     } catch {
       setBooking(false);
     }
@@ -84,6 +101,12 @@ export default function RideSelectionScreen() {
             <Text weight="bold" className="text-base" numberOfLines={1}>
               {destination?.name ?? 'Destination'}
             </Text>
+            {route ? (
+              <Text tone="secondary" className="text-xs">
+                {formatDistance(route.distanceMeters)} ·{' '}
+                {formatDuration(route.durationInTrafficSeconds ?? route.durationSeconds)}
+              </Text>
+            ) : null}
           </View>
         </View>
       </SafeAreaView>
@@ -93,6 +116,12 @@ export default function RideSelectionScreen() {
           <ActivityIndicator size="large" color="#E11D2E" />
           <Text tone="secondary" className="text-sm">
             Getting fares…
+          </Text>
+        </View>
+      ) : quoteError && fareOptions.length === 0 ? (
+        <View className="flex-1 items-center justify-center gap-3 px-gutter">
+          <Text tone="secondary" className="text-center text-sm">
+            Could not load fares. Please go back and try again.
           </Text>
         </View>
       ) : (

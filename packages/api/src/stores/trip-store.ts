@@ -46,6 +46,8 @@ export type TripState = {
   reset: () => void;
   applyTripUpdate: (status: TripStatus, driver?: Driver) => void;
   connectSocket: (socket: TripSocket) => void;
+  pollStatus: () => Promise<void>;
+  restoreActiveTrip: () => Promise<string | null>;
 };
 
 let activeSocket: TripSocket | null = null;
@@ -77,9 +79,14 @@ export const useTripStore = create<TripState>((set, get) => ({
   async quote() {
     const { pickup, destination } = get();
     if (!pickup || !destination) return;
-    set({ status: 'pending' });
-    const fareOptions = await tripsApi.estimate(pickup, destination);
-    set({ fareOptions, status: 'pending' });
+    set({ status: 'pending', error: null });
+    try {
+      const fareOptions = await tripsApi.estimate(pickup, destination);
+      if (!Array.isArray(fareOptions)) throw new Error('Invalid fare response');
+      set({ fareOptions, status: 'pending' });
+    } catch (e) {
+      set({ error: (e as Error).message, status: 'idle' });
+    }
   },
 
   selectRideType(r) {
@@ -110,14 +117,19 @@ export const useTripStore = create<TripState>((set, get) => ({
       set({ trip, status: 'searching' });
       // Status transitions (matched → arrived → in_trip → completed) are
       // driven by socket events via applyTripUpdate / connectSocket.
-    } catch {
+    } catch (e: any) {
+      if (e?.status === 409) {
+        // Active trip already exists in DB — restore it and let the caller navigate
+        await get().restoreActiveTrip();
+        return;
+      }
       set({ status: 'no_drivers', error: 'Could not create booking' });
     }
   },
 
   async cancel(reason) {
     const trip = get().trip;
-    if (trip) {
+    if (trip?.id) {
       await tripsApi.cancel(trip.id, reason);
     }
     set({
@@ -165,7 +177,8 @@ export const useTripStore = create<TripState>((set, get) => ({
 
   applyTripUpdate(status, driver) {
     if (status === 'matched' && driver) {
-      set({ status: 'matched', driver, trip: { ...get().trip!, driver, status: 'matched' } });
+      const existing = get().trip;
+      set({ status: 'matched', driver, trip: existing ? { ...existing, driver, status: 'matched' } : null });
     } else if (status === 'arrived') {
       set({ status: 'arrived' });
     } else if (status === 'in_trip') {
@@ -200,6 +213,56 @@ export const useTripStore = create<TripState>((set, get) => ({
         driverEtaMin: data.etaMin ?? null,
       });
     });
+  },
+
+  async pollStatus() {
+    try {
+      const active = await tripsApi.getActive();
+      if (!active) {
+        set({ status: 'cancelled' });
+        return;
+      }
+      // backend now returns clientStatus (already mapped to TripStatus names)
+      const mapped = active.clientStatus as TripStatus;
+      if (mapped && mapped !== get().status) {
+        set({ status: mapped });
+      }
+    } catch {
+      // ignore — socket is the primary channel, polling is best-effort
+    }
+  },
+
+  async restoreActiveTrip() {
+    try {
+      const session = await tripsApi.getActive();
+      if (!session) return null;
+      const { clientStatus, pickup, destination, driver, fare, rideType, tripId, paymentMethodId, createdAt } = session;
+      const trip: Trip = {
+        id: tripId,
+        status: clientStatus as TripStatus,
+        riderId: '',
+        driver: driver ?? undefined,
+        pickup,
+        destination,
+        rideType: rideType as RideCategory,
+        fare: { ...fare, rideType: rideType as RideCategory },
+        paymentMethodId,
+        routePolyline: [],
+        createdAt,
+      };
+      set({
+        trip,
+        status: clientStatus as TripStatus,
+        pickup,
+        destination,
+        driver: driver ?? null,
+        rideType: rideType as RideCategory,
+        paymentMethodId,
+      });
+      return clientStatus;
+    } catch {
+      return null;
+    }
   },
 
   reset() {

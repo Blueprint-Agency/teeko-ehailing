@@ -1,3 +1,4 @@
+import type { DirectionsResult, FetchDirectionsOptions } from '@teeko/shared';
 import { useDriverStore } from '../store/useDriverStore';
 
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000') + '/api/v1';
@@ -60,5 +61,28 @@ export const api = {
     completeTrip: (tripId: string) => req(`/driver/trips/${tripId}/complete`, { method: 'POST' }),
     cancelTrip: (tripId: string, reasonCode = 'driver_cancelled') =>
       req(`/driver/trips/${tripId}/cancel`, { method: 'POST', body: JSON.stringify({ reasonCode }) }),
+    getActiveTrip: () =>
+      req<{
+        ok: boolean;
+        data: {
+          tripId: string;
+          status: string;
+          category: string;
+          pickup: { lat: number; lng: number; address: string };
+          destination: { lat: number; lng: number; address: string };
+          fareCents: number;
+          riderName: string;
+          countdownSeconds: number;
+        } | null;
+      }>('/driver/trips/active'),
+    directions: (
+      origin: { lat: number; lng: number },
+      destination: { lat: number; lng: number },
+      options?: FetchDirectionsOptions,
+    ) =>
+      req<DirectionsResult>('/driver/directions', {
+        method: 'POST',
+        body: JSON.stringify({ origin, destination, ...options }),
+      }),
   },
 };

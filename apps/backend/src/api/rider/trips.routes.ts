@@ -120,6 +120,13 @@ export async function routes(app: FastifyInstance) {
     return reply.code(201).send(trip);
   });
 
+  // GET /api/v1/rider/trips/active — polling fallback for socket events
+  app.get('/active', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    const data = await tripsService.getRiderActiveTrip(req.user.id);
+    return { ok: true, data: data ?? null };
+  });
+
   // GET /api/v1/rider/trips — trip history (mock empty)
   app.get('/', async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });

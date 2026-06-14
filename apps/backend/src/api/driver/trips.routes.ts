@@ -7,6 +7,13 @@ import { DomainError } from '../../shared/errors';
 const CancelBody = z.object({ reasonCode: z.string().min(1).default('driver_cancelled') });
 
 export async function routes(app: FastifyInstance) {
+  // GET /api/v1/driver/trips/active — crash recovery
+  app.get('/active', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    const data = await tripsService.getDriverActiveTrip(req.user.id);
+    return { ok: true, data: data ?? null };
+  });
+
   // POST /api/v1/driver/trips/:id/accept
   app.post<{ Params: { id: string } }>('/:id/accept', async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });

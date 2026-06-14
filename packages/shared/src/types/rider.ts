@@ -94,3 +94,32 @@ export interface Trip {
   rating?: number;
   comment?: string;
 }
+
+// ─── Directions / Routing ─────────────────────────────────────────────────────
+
+export type TravelMode = 'driving' | 'walking' | 'bicycling' | 'transit';
+
+export interface FetchDirectionsOptions {
+  mode?: TravelMode;
+  /** Pass 'now' or a Unix timestamp to request traffic-aware duration for driving. */
+  departureTime?: number | 'now';
+}
+
+export interface RouteStep {
+  instruction: string;
+  distanceMeters: number;
+  durationSeconds: number;
+  maneuver?: string;
+  startLocation: { lat: number; lng: number };
+  endLocation: { lat: number; lng: number };
+}
+
+export interface DirectionsResult {
+  polyline: Array<[number, number]>;
+  distanceMeters: number;
+  durationSeconds: number;
+  /** null when departureTime was not requested or mode is not driving */
+  durationInTrafficSeconds: number | null;
+  steps: RouteStep[];
+  summary: string;
+}

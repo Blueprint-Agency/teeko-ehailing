@@ -61,6 +61,8 @@ function SocketBridge() {
   const token = useDriverStore((s) => s.token);
   const setPendingOffer = useDriverStore((s) => s.setPendingOffer);
   const setActiveTrip = useDriverStore((s) => s.setActiveTrip);
+  const setActiveTripId = useDriverStore((s) => s.setActiveTripId);
+  const setActiveTripStatus = useDriverStore((s) => s.setActiveTripStatus);
   const router = useRouter();
   // Guard: connect once per session; don't reconnect on every token refresh.
   const hasConnectedRef = useRef(false);
@@ -80,6 +82,16 @@ function SocketBridge() {
     // Provision the driver row (token is now valid) before the socket auth fires.
     api.auth.me().catch(() => null).then(() => {
       if (cancelled) return;
+
+      // Restore active trip state on app restart — fires after token is confirmed
+      // valid so the request is authenticated (unlike home screen useEffect which
+      // races with TokenSync.registerTokenGetter on mount).
+      api.driver.getActiveTrip().then(({ data }) => {
+        if (!data || cancelled) return;
+        setActiveTripId(data.tripId);
+        setActiveTrip(data);
+        setActiveTripStatus(data.status);
+      }).catch(() => null);
 
       const s = connectSocket(getToken);
 

@@ -58,7 +58,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     res = await fetch(fullUrl, { ...init, headers });
   } catch (err) {
     console.error('[API] network error on', fullUrl, err);
-    throw err;
+    throw new ApiError(503, path, 'Network request failed — server unreachable');
   }
   console.log('[API] <--', res.status, fullUrl);
   if (!res.ok) {

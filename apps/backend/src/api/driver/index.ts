@@ -13,6 +13,7 @@ import { routes as safety } from './safety.routes';
 import { routes as chat } from './chat.routes';
 import { routes as notifications } from './notifications.routes';
 import { routes as support } from './support.routes';
+import { routes as maps } from './maps.routes';
 
 export async function driverRoutes(app: FastifyInstance) {
   app.addHook('preHandler', driverClerkAuthVerify);
@@ -33,5 +34,6 @@ export async function driverRoutes(app: FastifyInstance) {
     await scope.register(chat);
     await scope.register(notifications, { prefix: '/notifications' });
     await scope.register(support, { prefix: '/support' });
+    await scope.register(maps);
   });
 }
