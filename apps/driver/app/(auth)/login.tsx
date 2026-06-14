@@ -37,18 +37,31 @@ export default function LoginScreen() {
     setPasswordError(undefined);
     setLoading(true);
     try {
-      const attempt = await signIn.create({ identifier: email.trim(), password });
-      if (attempt.status === 'complete') {
-        await setActive({ session: attempt.createdSessionId });
+      // Two-step flow: identify first, then attempt password factor separately.
+      // Passing password directly to create() can trigger needs_client_trust on
+      // some Clerk configurations even with bot protection disabled.
+      const identified = await signIn.create({ identifier: email.trim() });
+
+      if (identified.status === 'needs_first_factor') {
+        const attempt = await signIn.attemptFirstFactor({ strategy: 'password', password });
+        if (attempt.status === 'complete') {
+          await setActive({ session: attempt.createdSessionId });
+          router.replace('/(driver)/(tabs)/home');
+        } else if (attempt.status === 'needs_second_factor') {
+          await signIn.prepareSecondFactor({ strategy: 'email_code' });
+          setMfaStep(true);
+        } else {
+          Alert.alert('Login incomplete', 'Please try again.');
+        }
+      } else if (identified.status === 'complete') {
+        await setActive({ session: identified.createdSessionId });
         router.replace('/(driver)/(tabs)/home');
-      } else if (attempt.status === 'needs_second_factor') {
-        await signIn.prepareSecondFactor({ strategy: 'email_code' });
-        setMfaStep(true);
       } else {
         Alert.alert('Login incomplete', 'Please try again.');
       }
     } catch (err: unknown) {
-      const code = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
+      const clerkErr = err as { errors?: Array<{ code?: string; message?: string }> };
+      const code = clerkErr.errors?.[0]?.code;
       if (code === 'form_identifier_not_found' || code === 'form_param_format_invalid') {
         setEmailError('Invalid email address.');
       } else if (code === 'form_password_incorrect') {
@@ -74,7 +87,8 @@ export default function LoginScreen() {
         Alert.alert('Verification incomplete', 'Please try again.');
       }
     } catch (err: unknown) {
-      const code = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
+      const clerkErr = err as { errors?: Array<{ code?: string; message?: string }> };
+      const code = clerkErr.errors?.[0]?.code;
       if (code === 'form_code_incorrect' || code === 'verification_failed') {
         setOtpError('Invalid code. Please try again.');
       } else if (code === 'verification_expired') {

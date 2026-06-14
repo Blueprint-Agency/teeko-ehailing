@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { auth0Verify } from '../../http/middleware/auth';
+import { driverClerkAuthVerify } from '../../http/middleware/auth';
 import { requireRole } from '../../http/middleware/requireRole';
 
 import { routes as auth } from './auth.routes';
@@ -15,7 +15,7 @@ import { routes as notifications } from './notifications.routes';
 import { routes as support } from './support.routes';
 
 export async function driverRoutes(app: FastifyInstance) {
-  app.addHook('preHandler', auth0Verify);
+  app.addHook('preHandler', driverClerkAuthVerify);
 
   // Auth runs without requireRole — it JIT-provisions the row that
   // requireRole will check on every other driver route.

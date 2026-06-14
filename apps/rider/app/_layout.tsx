@@ -66,11 +66,9 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
     setTokenGetter(async () => clerkGetToken());
 
     if (isSignedIn) {
-      // Confirm a token is available before fetching — clerkGetToken() can
-      // return null on the first tick after sign-in while the cache warms up.
-      clerkGetToken()
-        .then((token) => { if (token) return fetchProfile(); })
-        .catch(() => {});
+      fetchProfile().catch(() => {
+        router.replace('/(auth)/login');
+      });
     } else if (isSignedIn === false) {
       clearProfile();
     }

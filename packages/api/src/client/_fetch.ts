@@ -49,7 +49,18 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((init.headers as Record<string, string>) ?? {}),
   };
-  const res = await fetch(`${baseUrl()}${path}`, { ...init, headers });
+  const fullUrl = `${baseUrl()}${path}`;
+  console.log('[API] -->', init.method ?? 'GET', fullUrl);
+  console.log('[API] headers:', JSON.stringify(headers, null, 2));
+  if (init.body) console.log('[API] body:', init.body);
+  let res: Response;
+  try {
+    res = await fetch(fullUrl, { ...init, headers });
+  } catch (err) {
+    console.error('[API] network error on', fullUrl, err);
+    throw err;
+  }
+  console.log('[API] <--', res.status, fullUrl);
   if (!res.ok) {
     const body = await res.text();
     if (res.status === 401 && unauthorizedHandler) unauthorizedHandler();

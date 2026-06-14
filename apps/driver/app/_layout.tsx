@@ -1,30 +1,49 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
+import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
 import { ThemeProvider, useTheme } from '../components/ThemeProvider';
 import { useColors } from '../constants/colors';
 import { LocaleProvider } from '../providers/LocaleProvider';
 import { useDriverStore } from '../store/useDriverStore';
 import { connectSocket, disconnectSocket, getSocket } from '../lib/socket';
-import { api } from '../lib/api';
+import { api, registerTokenGetter } from '../lib/api';
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
+
+const tokenCache = {
+  getToken: async (key: string) => {
+    const val = await SecureStore.getItemAsync(key);
+    console.log('[Clerk cache] getToken', key, val ? `found (${val.length} chars)` : 'null/missing');
+    return val;
+  },
+  saveToken: async (key: string, value: string) => {
+    console.log('[Clerk cache] saveToken', key, `(${value.length} chars)`);
+    return SecureStore.setItemAsync(key, value);
+  },
+  clearToken: async (key: string) => {
+    console.log('[Clerk cache] clearToken', key);
+    return SecureStore.deleteItemAsync(key);
+  },
+};
 
 function TokenSync() {
   const { getToken, isSignedIn } = useAuth();
   const setToken = useDriverStore((s) => s.setToken);
 
+  // Register Clerk's getToken as the async getter for api.ts — called fresh on
+  // every request so tokens are never stale even if the store hasn't refreshed yet.
+  useEffect(() => {
+    registerTokenGetter(getToken);
+  }, []);
+
   useEffect(() => {
     if (!isSignedIn) { setToken(null); return; }
     getToken().then((t) => {
-      if (t) {
-        setToken(t);
-        // JIT-provision the driver row on every fresh sign-in (idempotent on backend).
-        api.auth.me().catch(() => null);
-      }
+      if (t) setToken(t);
     }).catch(() => setToken(null));
     const id = setInterval(() => {
       getToken().then((t) => { if (t) setToken(t); }).catch(() => null);
@@ -37,20 +56,28 @@ function TokenSync() {
 
 function SocketBridge() {
   const { getToken, isSignedIn } = useAuth();
+  // Depend on token so we only connect once the token is actually available in
+  // the store, avoiding the race where api.auth.me fires before TokenSync sets it.
+  const token = useDriverStore((s) => s.token);
   const setPendingOffer = useDriverStore((s) => s.setPendingOffer);
   const setActiveTrip = useDriverStore((s) => s.setActiveTrip);
   const router = useRouter();
+  // Guard: connect once per session; don't reconnect on every token refresh.
+  const hasConnectedRef = useRef(false);
 
   useEffect(() => {
-    if (!isSignedIn) {
+    if (!isSignedIn || !token) {
+      hasConnectedRef.current = false;
       disconnectSocket();
       return;
     }
 
+    if (hasConnectedRef.current) return;
+    hasConnectedRef.current = true;
+
     let cancelled = false;
 
-    // Ensure the driver row is provisioned before the socket auth fires,
-    // otherwise findUserByExternalId returns null and the server disconnects.
+    // Provision the driver row (token is now valid) before the socket auth fires.
     api.auth.me().catch(() => null).then(() => {
       if (cancelled) return;
 
@@ -83,12 +110,8 @@ function SocketBridge() {
 
     return () => {
       cancelled = true;
-      const s = getSocket();
-      s.off('trip.request');
-      s.off('trip.request.timeout');
-      disconnectSocket();
     };
-  }, [isSignedIn]);
+  }, [isSignedIn, token]);
 
   return null;
 }
@@ -109,7 +132,7 @@ function RootLayoutContent() {
 
 export default function RootLayout() {
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
       <SafeAreaProvider>
         <LocaleProvider>
           <ThemeProvider>
