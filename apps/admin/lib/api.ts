@@ -64,4 +64,13 @@ export const adminApi = {
       `/drivers/documents/${documentId}/review`,
       { status, reason },
     ),
+
+  updateEvpStatus: (recordId: string, status: EvpRecord['evp']) =>
+    post<{ ok: boolean; status: EvpRecord['evp'] }>(
+      `/drivers/evp/${recordId}/status`,
+      { status },
+    ),
+
+  openEvpAccount: (recordId: string) =>
+    post<{ ok: boolean; account: 'open' }>(`/drivers/evp/${recordId}/open-account`, {}),
 };

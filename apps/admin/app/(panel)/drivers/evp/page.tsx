@@ -43,11 +43,31 @@ export default function EvpPage() {
     setEditingId(null);
   };
   const selectStatus = (status: EvpRecord['evp']) => {
-    if (editingId) setRows((rs) => rs.map((r) => (r.id === editingId ? { ...r, evp: status } : r)));
+    const id = editingId;
     closeMenu();
+    if (!id) return;
+
+    const prev = rows.find((r) => r.id === id)?.evp;
+    if (!prev || prev === status) return;
+
+    // Optimistic update, rolled back if the backend rejects the change.
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, evp: status } : r)));
+    adminApi.updateEvpStatus(id, status).catch((e) => {
+      setError(e.message ?? 'Failed to update EVP status');
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, evp: prev } : r)));
+    });
   };
-  const openAccount = (id: string) =>
-    setRows((rs) => rs.map((r) => (r.id === id && r.evp === 'approved' ? { ...r, account: 'open' } : r)));
+  const openAccount = (id: string) => {
+    const row = rows.find((r) => r.id === id);
+    if (!row || row.evp !== 'approved' || row.account === 'open') return;
+
+    // Optimistic update, rolled back if the backend rejects the change.
+    setRows((rs) => rs.map((r) => (r.id === id ? { ...r, account: 'open' } : r)));
+    adminApi.openEvpAccount(id).catch((e) => {
+      setError(e.message ?? 'Failed to open account');
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, account: 'closed' } : r)));
+    });
+  };
 
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Driver', flex: 1, minWidth: 180 },

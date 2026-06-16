@@ -16,8 +16,12 @@ interface StageProps {
 
 function Stage({ index, title, status, detail, isLast }: StageProps) {
   const isApproved = status === 'approved' || status === 'active'
-  const isRejected = status === 'rejected' || status === 'suspended'
-  const isActive = status === 'in_progress' || status === 'submitted' || status === 'under_review'
+  const isRejected = status === 'rejected' || status === 'suspended' || status === 'expired'
+  const isActive =
+    status === 'in_progress' ||
+    status === 'submitted' ||
+    status === 'under_review' ||
+    status === 'pending'
   const isPending = !isApproved && !isRejected && !isActive
 
   return (
@@ -72,7 +76,7 @@ export function StatusTracker({ status }: StatusTrackerProps) {
   const { t, i18n } = useTranslation()
 
   const evpDetail =
-    status.evpApplication !== 'not_started'
+    status.evpApplication !== 'not_applied'
       ? `${t('onboarding.confirmation.step2Desc')} (${status.evpBody ?? 'APAD'})`
       : t('onboarding.confirmation.step2Title')
 

@@ -6,7 +6,7 @@ import { vehicles } from '../../db/schema/drivers';
 import { evpRecords } from '../../db/schema/compliance';
 
 type ReviewStageStatus = 'pending' | 'in_progress' | 'approved' | 'rejected';
-type EVPStatus = 'not_started' | 'submitted' | 'approved' | 'rejected';
+type EVPStatus = 'not_applied' | 'pending' | 'approved' | 'rejected' | 'expired';
 type AccountStatus = 'pending_activation' | 'active' | 'suspended';
 
 const REQUIRED_PERSONAL = ['nric_front', 'nric_back', 'cdl', 'psv_d', 'insurance', 'driver_selfie'];
@@ -32,17 +32,16 @@ function computeDocReview(
   return 'in_progress';
 }
 
+// Mirror the EVP record status verbatim — same value the admin EVP tracker shows.
 function computeEvpStatus(recordStatus: string | null | undefined): EVPStatus {
   switch (recordStatus) {
+    case 'pending':
     case 'approved':
-      return 'approved';
     case 'rejected':
     case 'expired':
-      return 'rejected';
-    case 'pending':
-      return 'submitted';
+      return recordStatus;
     default:
-      return 'not_started';
+      return 'not_applied';
   }
 }
 

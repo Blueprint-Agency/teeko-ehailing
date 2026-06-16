@@ -33,10 +33,11 @@ export function Badge({ className, variant, ...props }: BadgeProps) {
 export function statusVariant(status: string): BadgeProps['variant'] {
   switch (status) {
     case 'approved': case 'active': return 'success'
-    case 'rejected': case 'suspended': return 'error'
+    case 'rejected': case 'suspended': case 'expired': return 'error'
     case 'under_review': case 'in_progress': case 'submitted': return 'info'
+    case 'pending': return 'warning'
     case 'uploaded': return 'teal'
-    case 'pending': case 'pending_activation': case 'not_started': return 'pending'
+    case 'pending_activation': case 'not_started': case 'not_applied': return 'pending'
     default: return 'default'
   }
 }
@@ -51,6 +52,8 @@ export function statusLabel(status: string): string {
     pending: 'Pending',
     in_progress: 'Under Review',
     not_started: 'Not Started',
+    not_applied: 'Not Applied',
+    expired: 'Expired',
     submitted: 'Submitted',
     pending_activation: 'Pending Activation',
     active: 'Active',

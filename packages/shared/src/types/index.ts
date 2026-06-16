@@ -52,7 +52,7 @@ export interface VehicleDetails {
 // ─── Application Status ───────────────────────────────────────────────────────
 
 export type ReviewStageStatus = 'pending' | 'in_progress' | 'approved' | 'rejected'
-export type EVPStatus = 'not_started' | 'submitted' | 'approved' | 'rejected'
+export type EVPStatus = 'not_applied' | 'pending' | 'approved' | 'rejected' | 'expired'
 export type AccountStatus = 'pending_activation' | 'active' | 'suspended'
 
 export interface ApplicationStatus {

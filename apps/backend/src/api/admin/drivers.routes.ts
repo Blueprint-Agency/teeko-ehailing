@@ -162,4 +162,105 @@ export async function routes(app: FastifyInstance) {
       account: r.appState === 'activated' ? 'open' : 'closed',
     }));
   });
+
+  const EVP_STATUSES = ['not_applied', 'pending', 'approved', 'rejected', 'expired'] as const;
+  type EvpStatus = (typeof EVP_STATUSES)[number];
+
+  const EVP_NOTICE: Partial<Record<EvpStatus, { title: string; body: string }>> = {
+    pending: {
+      title: 'EVP application submitted',
+      body: 'Your e-hailing vehicle permit application has been submitted to the authority and is pending approval.',
+    },
+    approved: {
+      title: 'EVP application approved',
+      body: 'Your e-hailing vehicle permit has been approved. Your account will be activated shortly.',
+    },
+    rejected: {
+      title: 'EVP application rejected',
+      body: 'Your e-hailing vehicle permit application was rejected. Please contact support for next steps.',
+    },
+    expired: {
+      title: 'EVP permit expired',
+      body: 'Your e-hailing vehicle permit has expired. Please renew it to continue driving.',
+    },
+  };
+
+  app.post<{ Params: { recordId: string }; Body: { status?: string } }>(
+    '/evp/:recordId/status',
+    async (req, reply) => {
+      const { recordId } = req.params;
+      const { status } = req.body ?? {};
+
+      if (!status || !EVP_STATUSES.includes(status as EvpStatus)) {
+        return reply.code(400).send({ error: 'invalid_status' });
+      }
+      const next = status as EvpStatus;
+
+      const record = await db.query.evpRecords.findFirst({ where: eq(evpRecords.id, recordId) });
+      if (!record) return reply.code(404).send({ error: 'evp_record_not_found' });
+
+      const now = new Date();
+      const patch: Partial<typeof evpRecords.$inferInsert> = { status: next };
+      // Stamp the lifecycle timestamps the driver-web status view reads.
+      if (next === 'pending' && !record.submittedAt) patch.submittedAt = now;
+      if (next === 'approved') patch.approvedAt = now;
+
+      await db.transaction(async (tx) => {
+        await tx.update(evpRecords).set(patch).where(eq(evpRecords.id, recordId));
+
+        const notice = EVP_NOTICE[next];
+        if (notice && next !== record.status) {
+          await tx.insert(notificationInbox).values({
+            userId: record.driverId,
+            category: 'evp',
+            title: notice.title,
+            body: notice.body,
+            deeplink: 'evp_update',
+          });
+        }
+      });
+
+      return { ok: true, status: next };
+    },
+  );
+
+  app.post<{ Params: { recordId: string } }>(
+    '/evp/:recordId/open-account',
+    async (req, reply) => {
+      const { recordId } = req.params;
+
+      const record = await db.query.evpRecords.findFirst({ where: eq(evpRecords.id, recordId) });
+      if (!record) return reply.code(404).send({ error: 'evp_record_not_found' });
+      // Account can only be opened once the permit is approved (final onboarding step).
+      if (record.status !== 'approved') {
+        return reply.code(409).send({ error: 'evp_not_approved' });
+      }
+
+      const application = await db.query.driverApplications.findFirst({
+        where: eq(driverApplications.driverId, record.driverId),
+      });
+      if (!application) return reply.code(404).send({ error: 'application_not_found' });
+
+      const now = new Date();
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(driverApplications)
+          .set({ state: 'activated', approvedAt: application.approvedAt ?? now, updatedAt: now })
+          .where(eq(driverApplications.driverId, record.driverId));
+
+        if (application.state !== 'activated') {
+          await tx.insert(notificationInbox).values({
+            userId: record.driverId,
+            category: 'evp',
+            title: 'Account activated',
+            body: 'Your Teeko driver account is now active. You can start accepting trips.',
+            deeplink: 'evp_update',
+          });
+        }
+      });
+
+      return { ok: true, account: 'open' as const };
+    },
+  );
 }
