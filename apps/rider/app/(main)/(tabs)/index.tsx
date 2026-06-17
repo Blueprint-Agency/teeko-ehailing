@@ -10,18 +10,9 @@ import type { Place } from '@teeko/shared';
 import { Icon, Pressable, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
-import { CarMarker } from '../../../components/CarMarker';
 import { RecentPlaceRow } from '../../../components/RecentPlaceRow';
 import { WhereToBar } from '../../../components/WhereToBar';
 
-const NEARBY_OFFSETS = [
-  { id: 'n1', dLat: 0.0018, dLng: 0.0022, heading: 34, phase: 0.0 },
-  { id: 'n2', dLat: -0.0014, dLng: 0.0031, heading: 118, phase: 1.1 },
-  { id: 'n3', dLat: 0.0026, dLng: -0.0019, heading: 202, phase: 2.3 },
-  { id: 'n4', dLat: -0.0024, dLng: -0.0027, heading: 280, phase: 3.7 },
-  { id: 'n5', dLat: 0.0009, dLng: -0.0036, heading: 65, phase: 4.9 },
-];
-const NEARBY_DRIFT = 0.00025;
 const DEFAULT_ZOOM = { latitudeDelta: 0.018, longitudeDelta: 0.018 };
 
 export default function HomeTab() {
@@ -38,12 +29,6 @@ export default function HomeTab() {
 
   const mapRef = useRef<MapViewHandle>(null);
   const snappedToUser = useRef(false);
-
-  const [driftTick, setDriftTick] = useState(0);
-  useEffect(() => {
-    const iv = setInterval(() => setDriftTick((x) => x + 1), 600);
-    return () => clearInterval(iv);
-  }, []);
 
   useEffect(() => {
     loadRecent();
@@ -121,20 +106,6 @@ export default function HomeTab() {
           showsUserLocation
           showsMyLocationButton={false}
         >
-          {NEARBY_OFFSETS.map((o) => {
-            const drift = Math.sin(driftTick * 0.4 + o.phase) * NEARBY_DRIFT;
-            return (
-              <Marker
-                key={o.id}
-                coordinate={{
-                  latitude: currentLatLng.lat + o.dLat + drift,
-                  longitude: currentLatLng.lng + o.dLng + drift,
-                }}
-              >
-                <CarMarker heading={o.heading} />
-              </Marker>
-            );
-          })}
         </MapView>
       </View>
 
