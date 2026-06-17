@@ -43,6 +43,8 @@ async function req<T = unknown>(path: string, options: RequestInit = {}): Promis
 export const api = {
   auth: {
     me: () => req<{ user: { id: string; email: string | null; fullName: string | null; status: string }; driverProfile: { approvalStatus: string } }>('/driver/auth/me'),
+    sendOtp: () => req<{ ok: true }>('/driver/auth/send-otp', { method: 'POST', body: JSON.stringify({}) }),
+    verifyOtp: (code: string) => req<{ ok: true }>('/driver/auth/verify-otp', { method: 'POST', body: JSON.stringify({ code }) }),
   },
   driver: {
     goOnline: () => req('/driver/status/online', { method: 'PUT' }),

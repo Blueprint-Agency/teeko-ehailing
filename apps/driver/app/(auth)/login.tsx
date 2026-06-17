@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
   StatusBar, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
@@ -23,41 +23,56 @@ export default function LoginScreen() {
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
   const [mfaStep, setMfaStep] = useState(false);
+  const [clientTrustStep, setClientTrustStep] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState<string | undefined>();
   const [devToken, setDevToken] = useState(__DEV__ ? 'dev-bypass-token' : '');
   const [showDev, setShowDev] = useState(false);
+  const pendingCredsRef = useRef<{ email: string; password: string } | null>(null);
+  const verifyStrategyRef = useRef<'email_code' | 'phone_code'>('email_code');
   const setToken = useDriverStore((s) => s.setToken);
 
   const styles = createStyles(colors);
 
-  const handleLogin = async () => {
-    if (!isLoaded || !email.trim() || !password) return;
-    setEmailError(undefined);
-    setPasswordError(undefined);
+  const prepareClientTrust = async (resource: { supportedSecondFactors?: Array<{ strategy: string }> }) => {
+    const preferred = ['email_code', 'phone_code'] as const;
+    const strategy = (resource.supportedSecondFactors?.find(f =>
+      (preferred as readonly string[]).includes(f.strategy)
+    )?.strategy ?? 'email_code') as typeof preferred[number];
+    verifyStrategyRef.current = strategy;
+    await signIn!.prepareSecondFactor({ strategy });
+    setClientTrustStep(true);
+  };
+
+  const doSignIn = async () => {
+    if (!isLoaded || !signIn) return;
+    const creds = pendingCredsRef.current;
+    if (!creds) return;
     setLoading(true);
     try {
-      // Two-step flow: identify first, then attempt password factor separately.
-      // Passing password directly to create() can trigger needs_client_trust on
-      // some Clerk configurations even with bot protection disabled.
-      const identified = await signIn.create({ identifier: email.trim() });
+      const identified = await signIn.create({ identifier: creds.email });
 
       if (identified.status === 'needs_first_factor') {
-        const attempt = await signIn.attemptFirstFactor({ strategy: 'password', password });
+        const attempt = await signIn.attemptFirstFactor({ strategy: 'password', password: creds.password });
         if (attempt.status === 'complete') {
           await setActive({ session: attempt.createdSessionId });
           router.replace('/(driver)/(tabs)/home');
         } else if (attempt.status === 'needs_second_factor') {
+          verifyStrategyRef.current = 'email_code';
           await signIn.prepareSecondFactor({ strategy: 'email_code' });
           setMfaStep(true);
+        } else if ((attempt.status as string) === 'needs_client_trust') {
+          await prepareClientTrust(attempt as any);
         } else {
           Alert.alert('Login incomplete', 'Please try again.');
         }
       } else if (identified.status === 'complete') {
         await setActive({ session: identified.createdSessionId });
         router.replace('/(driver)/(tabs)/home');
+      } else if ((identified.status as string) === 'needs_client_trust') {
+        await prepareClientTrust(identified as any);
       } else {
-        Alert.alert('Login incomplete', 'Please try again.');
+        Alert.alert('Login incomplete', `Status: ${identified.status}. Please try again.`);
       }
     } catch (err: unknown) {
       const clerkErr = err as { errors?: Array<{ code?: string; message?: string }> };
@@ -74,12 +89,23 @@ export default function LoginScreen() {
     }
   };
 
+  const handleLogin = async () => {
+    if (!isLoaded || !signIn || !email.trim() || !password) return;
+    setEmailError(undefined);
+    setPasswordError(undefined);
+    pendingCredsRef.current = { email: email.trim(), password };
+    await doSignIn();
+  };
+
   const handleVerifyOtp = async () => {
-    if (!isLoaded || !otpCode.trim()) return;
+    if (!isLoaded || !signIn || !otpCode.trim()) return;
     setOtpError(undefined);
     setLoading(true);
     try {
-      const attempt = await signIn.attemptSecondFactor({ strategy: 'email_code', code: otpCode.trim() });
+      const attempt = await signIn.attemptSecondFactor({
+        strategy: verifyStrategyRef.current,
+        code: otpCode.trim(),
+      });
       if (attempt.status === 'complete') {
         await setActive({ session: attempt.createdSessionId });
         router.replace('/(driver)/(tabs)/home');
@@ -101,6 +127,18 @@ export default function LoginScreen() {
     }
   };
 
+  const resetToLogin = () => {
+    setMfaStep(false);
+    setClientTrustStep(false);
+    setOtpCode('');
+    setOtpError(undefined);
+  };
+
+  const showOtpStep = mfaStep || clientTrustStep;
+  const otpHint = clientTrustStep
+    ? 'A verification code was sent to confirm this device.'
+    : 'A code was sent to your email.';
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
@@ -115,11 +153,11 @@ export default function LoginScreen() {
             <Text style={styles.tagline}>{t('driver.loginTagline')}</Text>
           </View>
 
-          {mfaStep ? (
+          {showOtpStep ? (
             <>
               <View style={styles.inputBlock}>
                 <Text style={styles.inputLabel}>VERIFICATION CODE</Text>
-                <Text style={styles.inputHint}>A code was sent to your email.</Text>
+                <Text style={styles.inputHint}>{otpHint}</Text>
                 <TextInput
                   style={[styles.textInput, styles.otpInput]}
                   placeholder="123456"
@@ -142,7 +180,7 @@ export default function LoginScreen() {
                 {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.continueBtnText}>Verify</Text>}
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.registerLink} onPress={() => { setMfaStep(false); setOtpCode(''); }}>
+              <TouchableOpacity style={styles.registerLink} onPress={resetToLogin}>
                 <Text style={styles.registerLinkText}>← Back</Text>
               </TouchableOpacity>
             </>
@@ -220,9 +258,9 @@ export default function LoginScreen() {
               <TouchableOpacity
                 style={styles.devBtn}
                 onPress={() => {
-                  const t = devToken.trim();
-                  if (!t) { Alert.alert('Empty token'); return; }
-                  setToken(t);
+                  const tok = devToken.trim();
+                  if (!tok) { Alert.alert('Empty token'); return; }
+                  setToken(tok);
                   router.replace('/(driver)/(tabs)/home');
                 }}
               >
