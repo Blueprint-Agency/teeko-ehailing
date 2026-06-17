@@ -3,7 +3,7 @@
 // private to the module.
 import { logger } from '../../config/logger';
 import { isUniqueViolation } from '../../db/errors';
-import { clerk, type ClerkClaims } from '../../external/clerk';
+import { clerk, driverClerk, type ClerkClaims } from '../../external/clerk';
 import { sendVerificationOtp } from '../auth_otp/service';
 
 import {
@@ -40,6 +40,7 @@ export type RiderMeResponse = {
  */
 async function resolveProfileFromClerk(
   claims: ClerkClaims,
+  clerkClient = clerk,
 ): Promise<{ email: string | undefined; fullName: string | undefined }> {
   const claimEmail = claims.email;
   const claimName = [claims.firstName, claims.lastName].filter(Boolean).join(' ').trim();
@@ -48,7 +49,7 @@ async function resolveProfileFromClerk(
   }
   // Fallback: JWT template missing fields; query Clerk admin API.
   try {
-    const user = await clerk.users.getUser(claims.sub);
+    const user = await clerkClient.users.getUser(claims.sub);
     const primaryEmail = user.emailAddresses.find(
       (e) => e.id === user.primaryEmailAddressId,
     )?.emailAddress;
@@ -151,7 +152,7 @@ export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<Drive
 
   let row: IdentityRow | null = await findUserByExternalId('clerk', claims.sub);
   if (!row) {
-    const profile = await resolveProfileFromClerk(claims);
+    const profile = await resolveProfileFromClerk(claims, driverClerk);
     try {
       await provisionDriver({
         clerkUserId: claims.sub,

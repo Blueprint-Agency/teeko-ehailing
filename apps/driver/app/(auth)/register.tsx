@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSignUp } from '@clerk/clerk-expo';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { api } from '../../lib/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -44,6 +45,7 @@ export default function RegisterScreen() {
 
       if (created.status === 'complete') {
         await setActive({ session: created.createdSessionId! });
+        await api.auth.me().catch(() => {});
         router.replace('/(auth)/verify-email');
       } else {
         Alert.alert('Registration failed', `Sign-up incomplete (status: ${created.status}). Disable email verification in Clerk dashboard.`);

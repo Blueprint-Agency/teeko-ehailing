@@ -26,7 +26,7 @@ export default function VerifyEmailScreen() {
   useEffect(() => {
     if (autoSentRef.current) return;
     autoSentRef.current = true;
-    api.auth.sendOtp().catch(() => {});
+    api.auth.sendOtp().catch(() => { });
   }, []);
 
   const handleVerify = async () => {
@@ -67,7 +67,7 @@ export default function VerifyEmailScreen() {
   };
 
   const handleClose = async () => {
-    try { await clerk.signOut(); } catch {}
+    try { await clerk.signOut(); } catch { }
     router.replace('/(auth)/login');
   };
 
