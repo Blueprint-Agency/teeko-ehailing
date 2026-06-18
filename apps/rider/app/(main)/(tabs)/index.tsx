@@ -23,7 +23,6 @@ export default function HomeTab() {
   const loadRecent = usePlacesStore((s) => s.loadRecent);
   const loadSaved = usePlacesStore((s) => s.loadSaved);
   const setDestination = useTripStore((s) => s.setDestination);
-  const currentLatLng = useLocationStore((s) => s.current);
   const setCurrent = useLocationStore((s) => s.setCurrent);
   const setPermission = useLocationStore((s) => s.setPermission);
 
@@ -98,11 +97,6 @@ export default function HomeTab() {
         <MapView
           ref={mapRef}
           style={{ flex: 1 }}
-          initialRegion={{
-            latitude: currentLatLng.lat,
-            longitude: currentLatLng.lng,
-            ...DEFAULT_ZOOM,
-          }}
           showsUserLocation
           showsMyLocationButton={false}
         >

@@ -83,7 +83,14 @@ export const useTripStore = create<TripState>((set, get) => ({
     try {
       const fareOptions = await tripsApi.estimate(pickup, destination);
       if (!Array.isArray(fareOptions)) throw new Error('Invalid fare response');
-      set({ fareOptions, status: 'pending' });
+      // Only reset status to 'pending' if we haven't advanced to searching/matched.
+      // Guards against a slow quote response overwriting status after book() is called.
+      const current = get().status;
+      if (current === 'pending') {
+        set({ fareOptions, status: 'pending' });
+      } else {
+        set({ fareOptions });
+      }
     } catch (e) {
       set({ error: (e as Error).message, status: 'idle' });
     }

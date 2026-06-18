@@ -53,17 +53,21 @@ export default function HomeScreen() {
     // Push current position immediately so dispatch can find this driver right away
     const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     const { latitude, longitude, heading } = current.coords;
-    api.driver.updateLocation(latitude, longitude, heading ?? 0).catch(() => null);
-    getSocket().emit('driver.location', { lat: latitude, lng: longitude, heading: heading ?? 0 });
+    if (latitude !== 0 || longitude !== 0) {
+      api.driver.updateLocation(latitude, longitude, heading ?? 0).catch(() => null);
+      getSocket().emit('driver.location', { lat: latitude, lng: longitude, heading: heading ?? 0 });
+    }
 
     locationSub.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
       (loc) => {
-        api.driver.updateLocation(loc.coords.latitude, loc.coords.longitude, loc.coords.heading ?? 0).catch(() => null);
+        const { latitude: lat, longitude: lng, heading: hdg } = loc.coords;
+        if (lat === 0 && lng === 0) return;
+        api.driver.updateLocation(lat, lng, hdg ?? 0).catch(() => null);
         getSocket().emit('driver.location', {
-          lat: loc.coords.latitude,
-          lng: loc.coords.longitude,
-          heading: loc.coords.heading ?? 0,
+          lat,
+          lng,
+          heading: hdg ?? 0,
         });
       },
     );

@@ -7,6 +7,13 @@ export { Polyline } from './Polyline';
 export { CurrentLocationButton } from './CurrentLocationButton';
 
 export { formatDuration, formatDistance } from './directions';
+export {
+  curvedRoute,
+  nearestIndex,
+  splitPolylineAt,
+  toLatLngLiterals,
+  type LatLngLiteral,
+} from './route';
 
 export {
   useDirections,

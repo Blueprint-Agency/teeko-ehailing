@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Circle, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
+import type { LatLngLiteral } from '@teeko/maps';
 import { useColors } from '../../constants/colors';
 
 const KL_REGION = {
@@ -22,7 +23,7 @@ export default function MapBackground({
 }: {
   children?: React.ReactNode;
   radius?: number;
-  routePolyline?: Array<[number, number]>;
+  routePolyline?: LatLngLiteral[];
   liveLocation?: { lat: number; lng: number } | null;
   followDriver?: boolean;
   pickupMarker?: { lat: number; lng: number };
@@ -38,7 +39,9 @@ export default function MapBackground({
       if (status !== 'granted') return;
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setLocation(loc);
+      if (loc.coords.latitude !== 0 || loc.coords.longitude !== 0) {
+        setLocation(loc);
+      }
     })();
   }, []);
 
@@ -46,7 +49,7 @@ export default function MapBackground({
   useEffect(() => {
     if (!routePolyline || routePolyline.length < 2 || !mapRef.current) return;
     mapRef.current.fitToCoordinates(
-      routePolyline.map(([lat, lng]) => ({ latitude: lat, longitude: lng })),
+      routePolyline,
       { edgePadding: { top: 80, right: 50, bottom: 320, left: 50 }, animated: true },
     );
   }, [routePolyline]);
@@ -111,16 +114,8 @@ export default function MapBackground({
         )}
         {routePolyline && routePolyline.length >= 2 && (
           <>
-            <Polyline
-              coordinates={routePolyline.map(([lat, lng]) => ({ latitude: lat, longitude: lng }))}
-              strokeColor="#FFFFFF"
-              strokeWidth={14}
-            />
-            <Polyline
-              coordinates={routePolyline.map(([lat, lng]) => ({ latitude: lat, longitude: lng }))}
-              strokeColor={colors.accent}
-              strokeWidth={8}
-            />
+            <Polyline coordinates={routePolyline} strokeColor="#FFFFFF" strokeWidth={14} />
+            <Polyline coordinates={routePolyline} strokeColor={colors.accent} strokeWidth={8} />
           </>
         )}
         {pickupMarker && isFinite(pickupMarker.lat) && isFinite(pickupMarker.lng) && (

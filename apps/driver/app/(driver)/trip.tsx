@@ -6,7 +6,7 @@ import { useRouter } from 'expo-router';
 import { Phone, Check } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import type { DirectionsResult, FetchDirectionsOptions } from '@teeko/shared';
-import { formatDistance, formatDuration, useDirections } from '@teeko/maps';
+import { curvedRoute, formatDistance, formatDuration, toLatLngLiterals, useDirections } from '@teeko/maps';
 import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
@@ -37,18 +37,39 @@ export default function TripScreen() {
 
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
-    Location.requestForegroundPermissionsAsync().then(({ status }) => {
-      if (status !== 'granted') return;
-      // Seed immediately so the first directions fetch doesn't wait for the watch
-      Location.getLastKnownPositionAsync({}).then((pos) => {
-        if (pos) setDriverLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      }).catch(() => null);
-      Location.watchPositionAsync(
+    let cancelled = false;
+
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted' || cancelled) return;
+
+      // Fast path: use last-known position if valid.
+      const last = await Location.getLastKnownPositionAsync({}).catch(() => null);
+      if (!cancelled && last && (last.coords.latitude !== 0 || last.coords.longitude !== 0)) {
+        setDriverLocation({ lat: last.coords.latitude, lng: last.coords.longitude });
+      } else if (!cancelled) {
+        // Slow path: no valid cache — get a fresh fix so directions load immediately.
+        const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+        if (!cancelled && current && (current.coords.latitude !== 0 || current.coords.longitude !== 0)) {
+          setDriverLocation({ lat: current.coords.latitude, lng: current.coords.longitude });
+        }
+      }
+
+      const s = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 15 },
-        (loc) => setDriverLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude }),
-      ).then((s) => { sub = s; });
-    });
-    return () => { sub?.remove(); };
+        (loc) => {
+          if (!cancelled && (loc.coords.latitude !== 0 || loc.coords.longitude !== 0)) {
+            setDriverLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+          }
+        },
+      );
+      if (!cancelled) sub = s; else s.remove();
+    })();
+
+    return () => {
+      cancelled = true;
+      sub?.remove();
+    };
   }, []);
 
   // Always use live driver position as origin so "remaining route" is accurate.
@@ -67,10 +88,10 @@ export default function TripScreen() {
 
   const { result: directions } = useDirections({
     origin: driverLocation,
-    destination: directionsDestination,
+    destination: validDest,
     fetcher: driverFetcher,
     options: { mode: 'driving', departureTime: 'now' },
-    enabled: phaseIndex < 3 && !!driverLocation,
+    enabled: phaseIndex < 3 && !!driverLocation && !!validDest,
   });
 
   const PHASES = [
@@ -120,6 +141,18 @@ export default function TripScreen() {
       },
     ]);
   };
+
+  const validDest = directionsDestination && (directionsDestination.lat !== 0 || directionsDestination.lng !== 0)
+    ? directionsDestination
+    : null;
+
+  // Use the live directions polyline when available; fall back to a client-side
+  // Bézier curve so the route is always visible even before the API responds.
+  const routePolyline = directions?.polyline
+    ? toLatLngLiterals(directions.polyline)
+    : driverLocation && validDest
+      ? curvedRoute(driverLocation, validDest)
+      : undefined;
 
   // Phase 0 → navigate to pickup; phase 2 → navigate to destination
   const navDestination =
@@ -172,11 +205,11 @@ export default function TripScreen() {
 
       {/* Map */}
       <MapBackground
-        routePolyline={directions?.polyline}
+        routePolyline={routePolyline}
         liveLocation={driverLocation}
         followDriver={phaseIndex === 1 || phaseIndex === 3}
-        pickupMarker={activeTrip?.pickup ? { lat: activeTrip.pickup.lat, lng: activeTrip.pickup.lng } : undefined}
-        destinationMarker={activeTrip?.destination ? { lat: activeTrip.destination.lat, lng: activeTrip.destination.lng } : undefined}
+        pickupMarker={activeTrip?.pickup && (activeTrip.pickup.lat !== 0 || activeTrip.pickup.lng !== 0) ? { lat: activeTrip.pickup.lat, lng: activeTrip.pickup.lng } : undefined}
+        destinationMarker={activeTrip?.destination && (activeTrip.destination.lat !== 0 || activeTrip.destination.lng !== 0) ? { lat: activeTrip.destination.lat, lng: activeTrip.destination.lng } : undefined}
       />
 
       {/* Rider card */}

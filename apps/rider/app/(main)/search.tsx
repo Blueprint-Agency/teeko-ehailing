@@ -46,7 +46,7 @@ export default function SearchScreen() {
       return;
     }
     debounced.current = setTimeout(
-      () => search(q, currentLatLng),
+      () => search(q, currentLatLng ?? undefined),
       250,
     );
     return () => {

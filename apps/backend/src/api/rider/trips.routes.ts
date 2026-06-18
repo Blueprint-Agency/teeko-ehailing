@@ -13,8 +13,8 @@ const PlaceShape = z.object({
   id: z.string().optional().default(''),
   name: z.string().optional().default(''),
   address: z.string().optional().default(''),
-  lat: z.number(),
-  lng: z.number(),
+  lat: z.number().refine((v) => v !== 0, { message: 'lat must not be 0' }),
+  lng: z.number().refine((v) => v !== 0, { message: 'lng must not be 0' }),
   category: z.string().optional(),
 });
 

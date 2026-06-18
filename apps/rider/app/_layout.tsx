@@ -120,7 +120,7 @@ export default function RootLayout() {
       if (status === 'granted') {
         try {
           const pos = await Location.getLastKnownPositionAsync({ maxAge: 60_000 });
-          if (pos && !cancelled) {
+          if (pos && !cancelled && (pos.coords.latitude !== 0 || pos.coords.longitude !== 0)) {
             setCurrent(
               { lat: pos.coords.latitude, lng: pos.coords.longitude },
               pos.coords.heading ?? 0,
