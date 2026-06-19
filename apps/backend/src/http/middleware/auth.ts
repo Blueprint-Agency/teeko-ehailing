@@ -23,8 +23,9 @@ const DEV_USER_ID = process.env.DEV_USER_ID ?? 'dev-driver-001';
 const DEV_ROLE = (process.env.DEV_ROLE ?? 'driver') as 'rider' | 'driver' | 'admin_super' | 'admin_ops' | 'admin_finance';
 
 export async function clerkAuthVerify(req: FastifyRequest, reply: FastifyReply) {
-  // Development mode bypass: allow authenticating via X-Teeko-User / X-Teeko-Role headers
-  if (env.NODE_ENV === 'development') {
+  // Development mode bypass: allow authenticating via X-Teeko-User / X-Teeko-Role headers.
+  // Also enabled on staging via DEV_AUTH_BYPASS (admin panel has no real auth yet — insecure).
+  if (env.NODE_ENV === 'development' || env.DEV_AUTH_BYPASS) {
     const devUserId = req.headers['x-teeko-user'];
     if (devUserId && typeof devUserId === 'string') {
       const roleRow = await db.query.userRoles.findFirst({

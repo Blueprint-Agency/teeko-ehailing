@@ -3,6 +3,13 @@ import { z } from 'zod';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Staging-only escape hatch: when 'true', honour the X-Teeko-User / X-Teeko-Role
+  // dev headers even under NODE_ENV=production (admin panel has no real auth yet).
+  // INSECURE — anyone can impersonate any user by setting a header. Demo use only.
+  DEV_AUTH_BYPASS: z
+    .string()
+    .optional()
+    .transform((v) => v === 'true'),
   PORT: z.coerce.number().int().positive().default(3000),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   DATABASE_URL: z.string().url(),
