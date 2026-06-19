@@ -29,6 +29,7 @@
       }
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.teeko.rider",
       "permissions": [
         "ACCESS_COARSE_LOCATION",

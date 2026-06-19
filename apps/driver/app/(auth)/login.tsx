@@ -1,14 +1,13 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import { useDriverStore } from '../../store/useDriverStore';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -26,11 +25,8 @@ export default function LoginScreen() {
   const [clientTrustStep, setClientTrustStep] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [otpError, setOtpError] = useState<string | undefined>();
-  const [devToken, setDevToken] = useState(__DEV__ ? 'dev-bypass-token' : '');
-  const [showDev, setShowDev] = useState(false);
   const pendingCredsRef = useRef<{ email: string; password: string } | null>(null);
   const verifyStrategyRef = useRef<'email_code' | 'phone_code'>('email_code');
-  const setToken = useDriverStore((s) => s.setToken);
 
   const styles = createStyles(colors);
 
@@ -142,8 +138,8 @@ export default function LoginScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.container}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Logo */}
           <View style={styles.logoBlock}>
             <View style={styles.logo}>
@@ -237,38 +233,7 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Dev bypass */}
-          <TouchableOpacity onPress={() => setShowDev((v) => !v)} style={styles.devToggle}>
-            <Text style={styles.devToggleText}>{showDev ? '▲ Dev bypass' : '▼ Dev bypass'}</Text>
-          </TouchableOpacity>
-
-          {showDev && (
-            <View style={styles.devBox}>
-              <Text style={styles.devLabel}>Paste Clerk JWT</Text>
-              <TextInput
-                style={styles.devInput}
-                placeholder="eyJ..."
-                placeholderTextColor={colors.textMut}
-                value={devToken}
-                onChangeText={setDevToken}
-                multiline
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <TouchableOpacity
-                style={styles.devBtn}
-                onPress={() => {
-                  const tok = devToken.trim();
-                  if (!tok) { Alert.alert('Empty token'); return; }
-                  setToken(tok);
-                  router.replace('/(driver)/(tabs)/home');
-                }}
-              >
-                <Text style={styles.devBtnText}>Use token & continue →</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -277,7 +242,7 @@ export default function LoginScreen() {
 const createStyles = (colors: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
-  container: { flex: 1, padding: 24, justifyContent: 'center' },
+  container: { flexGrow: 1, padding: 24, justifyContent: 'center' },
 
   logoBlock: { alignItems: 'center', marginBottom: 48 },
   logo: {
@@ -316,27 +281,4 @@ const createStyles = (colors: any) => StyleSheet.create({
   registerLink: { alignItems: 'center', marginBottom: 12 },
   registerLinkText: { color: colors.textSec, fontSize: 14 },
   registerLinkAccent: { color: colors.accent, fontWeight: '700' },
-
-  devToggle: { alignItems: 'center', marginTop: 16, marginBottom: 4 },
-  devToggleText: { color: colors.textMut, fontSize: 11, fontWeight: '600' },
-  devBox: {
-    marginTop: 8, padding: 14, borderRadius: 12,
-    borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.surface,
-    borderStyle: 'dashed',
-  },
-  devLabel: { color: colors.textMut, fontSize: 11, fontWeight: '700', marginBottom: 8 },
-  devInput: {
-    backgroundColor: colors.surfaceHigh, borderRadius: 8,
-    borderWidth: 1, borderColor: colors.border,
-    padding: 10, color: colors.text, fontSize: 11,
-    minHeight: 60, fontFamily: 'monospace',
-    marginBottom: 10,
-  },
-  devBtn: {
-    backgroundColor: colors.surfaceHigh, borderRadius: 10,
-    borderWidth: 1, borderColor: colors.border,
-    paddingVertical: 10, alignItems: 'center',
-  },
-  devBtnText: { color: colors.accent, fontSize: 13, fontWeight: '700' },
 });

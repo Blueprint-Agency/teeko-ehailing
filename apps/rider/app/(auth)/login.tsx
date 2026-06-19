@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Keyboard, TouchableWithoutFeedback, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, View } from 'react-native';
 
 import { useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
@@ -82,8 +82,13 @@ export default function LoginScreen() {
 
   return (
     <ScreenContainer>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View className="flex-1 justify-between pb-6 pt-8">
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'space-between', paddingBottom: 24, paddingTop: 32 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           <View>
             <Text weight="bold" className="text-3xl leading-tight">
               {t('auth.loginTitle')}
@@ -188,8 +193,9 @@ export default function LoginScreen() {
               </Text>
             </Pressable>
           </View>
-        </View>
-      </TouchableWithoutFeedback>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }

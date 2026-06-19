@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Keyboard, ScrollView, TouchableWithoutFeedback, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, View } from 'react-native';
 
 import { useAuthStore, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
@@ -151,6 +151,7 @@ export default function SignupScreen() {
 
   return (
     <ScreenContainer>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <ScrollView
           contentContainerStyle={{
@@ -275,6 +276,7 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }

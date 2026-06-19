@@ -16,6 +16,7 @@
     },
     "android": {
       "jsEngine": "hermes",
+      "softwareKeyboardLayoutMode": "resize",
       "package": "com.teeko.driver",
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",

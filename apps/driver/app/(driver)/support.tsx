@@ -55,7 +55,7 @@ export default function SupportScreen() {
       {activeTab === 'chat' ? (
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
           <ScrollView contentContainerStyle={styles.chatScroll}>
             <View style={styles.agentStatus}>
@@ -93,7 +93,8 @@ export default function SupportScreen() {
           </View>
         </KeyboardAvoidingView>
       ) : (
-        <ScrollView contentContainerStyle={styles.formScroll}>
+        <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
           <Text style={styles.formLabel}>{t('driver.formTopic')}</Text>
           <View style={styles.topicGrid}>
             {QUICK_TOPIC_KEYS.map((key) => (
@@ -123,6 +124,7 @@ export default function SupportScreen() {
             <Text style={styles.submitText}>{t('driver.submitReport')}</Text>
           </TouchableOpacity>
         </ScrollView>
+        </KeyboardAvoidingView>
       )}
     </View>
   );

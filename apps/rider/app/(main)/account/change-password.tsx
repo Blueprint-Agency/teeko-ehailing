@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Keyboard, ScrollView, TouchableWithoutFeedback, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, View } from 'react-native';
 
 import { useUser } from '@clerk/clerk-expo';
 import { ApiError, authApi, useAuthStore, useUIStore } from '@teeko/api';
@@ -165,6 +165,7 @@ export default function ChangePasswordScreen() {
         </Text>
       </View>
 
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -250,6 +251,7 @@ export default function ChangePasswordScreen() {
           <Button label="Update password" onPress={submit} loading={busy} disabled={busy} />
         )}
       </View>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }

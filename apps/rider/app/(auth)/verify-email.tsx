@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { KeyboardAvoidingView, Platform, View } from 'react-native';
 
 import { ApiError, authApi, useAuthStore, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
@@ -109,6 +109,7 @@ export default function VerifyEmailScreen() {
 
   return (
     <ScreenContainer>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <View className="flex-1 justify-between pb-6 pt-8">
         <View>
           <Pressable onPress={onClose} haptic="selection" accessibilityRole="button" className="mb-6 h-10 w-10 items-center justify-center">
@@ -158,6 +159,7 @@ export default function VerifyEmailScreen() {
           />
         </View>
       </View>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }
