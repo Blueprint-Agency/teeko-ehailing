@@ -18,7 +18,7 @@ export default function TripCompleteScreen() {
   const [stars, setStars] = useState(0);
   const [comment, setComment] = useState('');
 
-  const fare = trip?.fare.amountMyr ?? 0;
+  const fare = trip?.fare?.amountMyr ?? 0;
 
   const handleDone = () => {
     rateTrip(stars > 0 ? stars : 5, comment.trim() || undefined);

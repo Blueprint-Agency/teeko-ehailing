@@ -9,7 +9,7 @@ export interface DriverCardProps {
 }
 
 export function DriverCard({ driver, compact }: DriverCardProps) {
-  const vehicleLine = `${driver.vehicle.colour} ${driver.vehicle.model}`;
+  const vehicleLine = [driver.vehicle?.colour, driver.vehicle?.model].filter(Boolean).join(' ');
   const photoSize = compact ? 40 : 48;
 
   return (

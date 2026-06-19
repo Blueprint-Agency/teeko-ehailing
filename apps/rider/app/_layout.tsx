@@ -55,6 +55,7 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
   const { getToken: clerkGetToken, isSignedIn, signOut } = useAuth();
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
   const clearProfile = useAuthStore((s) => s.clear);
+  const restoreActiveTrip = useTripStore((s) => s.restoreActiveTrip);
 
   useEffect(() => {
     setApiUnauthorizedHandler(() => {
@@ -63,12 +64,21 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
   }, [signOut]);
 
   useEffect(() => {
-    // Register token getter first, then fetch profile — both in the same effect
-    // so the getter is guaranteed to be wired before the API call fires.
     setTokenGetter(async () => clerkGetToken());
 
     if (isSignedIn) {
-      fetchProfile().catch(() => {});
+      fetchProfile().catch(() => {
+        router.replace('/(auth)/login');
+      });
+      // Re-hydrate trip store after a refresh so screens like driver-matched
+      // don't render blank due to wiped Zustand state.
+      restoreActiveTrip().then((clientStatus) => {
+        if (clientStatus === 'matched' || clientStatus === 'arrived') {
+          router.replace('/(main)/driver-matched');
+        } else if (clientStatus === 'in_trip') {
+          router.replace('/(main)/in-trip');
+        }
+      }).catch(() => null);
     } else if (isSignedIn === false) {
       clearProfile();
     }
@@ -110,7 +120,7 @@ export default function RootLayout() {
       if (status === 'granted') {
         try {
           const pos = await Location.getLastKnownPositionAsync({ maxAge: 60_000 });
-          if (pos && !cancelled) {
+          if (pos && !cancelled && (pos.coords.latitude !== 0 || pos.coords.longitude !== 0)) {
             setCurrent(
               { lat: pos.coords.latitude, lng: pos.coords.longitude },
               pos.coords.heading ?? 0,

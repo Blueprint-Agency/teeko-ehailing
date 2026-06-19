@@ -9,6 +9,7 @@ export {
   placesApi,
   paymentsApi,
   tripsApi,
+  routesApi,
   api,
   ApiError,
   setApiTokenGetter,

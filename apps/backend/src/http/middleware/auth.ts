@@ -1,7 +1,7 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { eq } from 'drizzle-orm';
 
-import { verifyClerkToken, type ClerkClaims } from '../../external/clerk';
+import { verifyRiderClerkToken, verifyDriverClerkToken, type ClerkClaims } from '../../external/clerk';
 import { findUserByExternalId } from '../../modules/identity/repo';
 import { env } from '../../config/env';
 import { db } from '../../config/db';
@@ -57,10 +57,11 @@ export async function clerkAuthVerify(req: FastifyRequest, reply: FastifyReply) 
 
   let claims: ClerkClaims;
   try {
-    claims = await verifyClerkToken(token);
+    claims = await verifyRiderClerkToken(token);
   } catch (err) {
-    req.log.warn({ err }, 'clerk token verification failed');
-    return reply.code(401).send({ error: 'unauthorized', message: 'invalid token' });
+    req.log.warn({ err }, 'rider clerk token verification failed');
+    const riderDetail = err instanceof Error ? err.message : String(err);
+    return reply.code(401).send({ error: 'unauthorized', message: riderDetail });
   }
   req.clerkAuth = claims;
   const row = await findUserByExternalId('clerk', claims.sub);
@@ -69,6 +70,32 @@ export async function clerkAuthVerify(req: FastifyRequest, reply: FastifyReply) 
   }
 }
 
-// Backwards-compat re-export for any module that still imports `auth0Verify`.
-// Will be removed in the cleanup task once all imports are migrated.
+export async function driverClerkAuthVerify(req: FastifyRequest, reply: FastifyReply) {
+  const header = req.headers.authorization;
+  if (!header || !header.toLowerCase().startsWith('bearer ')) {
+    return reply.code(401).send({ error: 'unauthorized', message: 'missing bearer token' });
+  }
+  const token = header.slice(7).trim();
+
+  if (process.env.NODE_ENV !== 'production' && token === DEV_TOKEN) {
+    req.user = { id: DEV_USER_ID, role: DEV_ROLE, clerkUserId: 'dev' };
+    return;
+  }
+
+  let claims: ClerkClaims;
+  try {
+    claims = await verifyDriverClerkToken(token);
+  } catch (err) {
+    req.log.warn({ err }, 'driver clerk token verification failed');
+    const detail = err instanceof Error ? err.message : String(err);
+    return reply.code(401).send({ error: 'unauthorized', message: detail });
+  }
+  req.clerkAuth = claims;
+  const row = await findUserByExternalId('clerk', claims.sub);
+  if (row) {
+    req.user = { id: row.id, role: row.role, clerkUserId: claims.sub };
+  }
+}
+
+// Backwards-compat alias — driver/index.ts has been updated to use driverClerkAuthVerify directly.
 export { clerkAuthVerify as auth0Verify };

@@ -20,7 +20,6 @@ export async function routes(app: FastifyInstance) {
   app.put('/online', async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
     const driverId = req.user.id;
-    console.log('driverId', driverId)
 
     const profile = await db.query.driverProfiles.findFirst({
       where: eq(driverProfiles.userId, driverId),

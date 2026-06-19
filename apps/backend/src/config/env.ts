@@ -7,10 +7,13 @@ const schema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   DATABASE_URL: z.string().url(),
 
-  // Clerk (Phase 1 rider auth)
-  CLERK_SECRET_KEY: z.string(),
-  CLERK_PUBLISHABLE_KEY: z.string().optional(),
-  CLERK_WEBHOOK_SIGNING_SECRET: z.string(),
+  // Clerk — separate instances for rider and driver apps
+  CLERK_RIDER_SECRET_KEY: z.string(),
+  CLERK_RIDER_PUBLISHABLE_KEY: z.string().optional(),
+  CLERK_RIDER_WEBHOOK_SIGNING_SECRET: z.string(),
+  CLERK_DRIVER_SECRET_KEY: z.string(),
+  CLERK_DRIVER_PUBLISHABLE_KEY: z.string().optional(),
+  CLERK_DRIVER_WEBHOOK_SIGNING_SECRET: z.string(),
 
   // Email — Gmail SMTP (active provider). Resend kept optional for future flip-back.
   GMAIL_USER: z.string().email(),

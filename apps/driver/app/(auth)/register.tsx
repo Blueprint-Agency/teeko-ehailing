@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useSignUp } from '@clerk/clerk-expo';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { api } from '../../lib/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -23,11 +24,6 @@ export default function RegisterScreen() {
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
 
-  // Email verification step
-  const [verifyStep, setVerifyStep] = useState(false);
-  const [code, setCode] = useState('');
-  const [codeError, setCodeError] = useState<string | undefined>();
-
   const styles = createStyles(colors);
 
   const handleRegister = async () => {
@@ -40,18 +36,6 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      // If the user went back from the verify step, signUp is already created
-      // and in 'missing_requirements' state. Skip create and just resend the code.
-      if (signUp?.status === 'missing_requirements') {
-        try {
-          await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-        } catch {
-          // Already prepared
-        }
-        setVerifyStep(true);
-        return;
-      }
-
       const created = await signUp!.create({
         firstName: fullName.trim().split(' ')[0],
         lastName: fullName.trim().split(' ').slice(1).join(' ') || undefined,
@@ -60,15 +44,12 @@ export default function RegisterScreen() {
       });
 
       if (created.status === 'complete') {
-        // Clerk instance doesn't require email verification — activate immediately.
         await setActive({ session: created.createdSessionId! });
-        router.replace('/(driver)/(tabs)/home');
-        return;
+        await api.auth.me().catch(() => {});
+        router.replace('/(auth)/verify-email');
+      } else {
+        Alert.alert('Registration failed', `Sign-up incomplete (status: ${created.status}). Disable email verification in Clerk dashboard.`);
       }
-
-      // Needs email verification
-      await signUp!.prepareEmailAddressVerification({ strategy: 'email_code' });
-      setVerifyStep(true);
     } catch (err: unknown) {
       const clerkErr = (err as { errors?: Array<{ code?: string; message?: string }> }).errors?.[0];
       if (clerkErr?.code === 'form_identifier_exists') {
@@ -77,39 +58,8 @@ export default function RegisterScreen() {
         setEmailError('Invalid email address.');
       } else if (clerkErr?.code === 'form_password_pwned' || clerkErr?.code === 'form_password_length_too_short') {
         setPasswordError(clerkErr.message ?? 'Password is too weak.');
-      } else if (clerkErr?.code === 'invalid_action') {
-        // Already created — go straight to verify step
-        setVerifyStep(true);
       } else {
         Alert.alert('Registration failed', clerkErr?.message ?? 'Something went wrong. Try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerify = async () => {
-    if (!isLoaded || !code.trim()) return;
-    setCodeError(undefined);
-    setLoading(true);
-    try {
-      const result = await signUp.attemptEmailAddressVerification({ code: code.trim() });
-      if (result.status === 'complete') {
-        await setActive({ session: result.createdSessionId });
-        // TokenSync in _layout.tsx will fire immediately after isSignedIn becomes
-        // true, fetch the token, and call api.auth.me() to JIT-provision the DB row.
-        router.replace('/(driver)/(tabs)/home');
-      } else {
-        Alert.alert('Verification incomplete', 'Please try again.');
-      }
-    } catch (err: unknown) {
-      const errCode = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
-      if (errCode === 'form_code_incorrect' || errCode === 'verification_failed') {
-        setCodeError('Invalid code. Please try again.');
-      } else if (errCode === 'verification_expired') {
-        setCodeError('Code expired. Go back and resend.');
-      } else {
-        Alert.alert('Error', 'Something went wrong. Try again.');
       }
     } finally {
       setLoading(false);
@@ -133,39 +83,7 @@ export default function RegisterScreen() {
             <Text style={styles.tagline}>Create your driver account</Text>
           </View>
 
-          {verifyStep ? (
-            <>
-              <View style={styles.inputBlock}>
-                <Text style={styles.inputLabel}>VERIFICATION CODE</Text>
-                <Text style={styles.inputHint}>A 6-digit code was sent to {email}.</Text>
-                <TextInput
-                  style={[styles.textInput, styles.otpInput, codeError && styles.inputError]}
-                  placeholder="123456"
-                  placeholderTextColor={colors.textMut}
-                  keyboardType="number-pad"
-                  value={code}
-                  onChangeText={(v) => { setCode(v); if (codeError) setCodeError(undefined); }}
-                  maxLength={6}
-                  autoFocus
-                />
-                {codeError && <Text style={styles.errorText}>{codeError}</Text>}
-              </View>
-
-              <TouchableOpacity
-                style={[styles.continueBtn, loading && { opacity: 0.6 }]}
-                onPress={handleVerify}
-                activeOpacity={0.85}
-                disabled={loading || !code}
-              >
-                {loading ? <ActivityIndicator color="#000" /> : <Text style={styles.continueBtnText}>Verify & Create Account</Text>}
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.linkBtn} onPress={() => { setVerifyStep(false); setCode(''); }}>
-                <Text style={styles.linkText}>← Back</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
+          <>
               <View style={styles.inputBlock}>
                 <Text style={styles.inputLabel}>FULL NAME</Text>
                 <TextInput
@@ -224,7 +142,6 @@ export default function RegisterScreen() {
                 <Text style={styles.linkText}>Already have an account? <Text style={styles.linkAccent}>Sign in</Text></Text>
               </TouchableOpacity>
             </>
-          )}
         </View>
       </KeyboardAvoidingView>
     </View>

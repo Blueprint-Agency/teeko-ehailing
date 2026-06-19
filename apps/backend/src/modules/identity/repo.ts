@@ -112,7 +112,7 @@ export async function provisionDriver(input: ProvisionInput): Promise<string> {
         provider: 'clerk',
         providerSub: input.clerkUserId,
       });
-    await tx.insert(driverProfiles).values({ userId: user.id });
+    await tx.insert(driverProfiles).values({ userId: user.id, approvalStatus: 'approved' });
 
     return user.id;
   });

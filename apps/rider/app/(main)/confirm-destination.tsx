@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from 'react';
-import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 
@@ -20,35 +19,22 @@ export default function ConfirmDestinationScreen() {
   const currentLatLng = useLocationStore((s) => s.current);
   const mapRef = useRef<MapViewHandle>(null);
 
-  const origin: LatLng = destination ?? currentLatLng;
-  const [pinCoord, setPinCoord] = useState<LatLng>(origin);
+  const origin: LatLng | null = destination ?? currentLatLng;
+  const [pinCoord, setPinCoord] = useState<LatLng>(origin ?? { lat: 0, lng: 0 });
 
   const onRegionChange = useCallback((region: Region) => {
     setPinCoord({ lat: region.latitude, lng: region.longitude });
   }, []);
 
-  const confirm = async () => {
-    if (!destination) {
+  const confirm = () => {
+    if (!destination || !currentLatLng) {
       router.back();
       return;
-    }
-    let pickupAddress = 'Current Location';
-    try {
-      const results = await Location.reverseGeocodeAsync({
-        latitude: currentLatLng.lat,
-        longitude: currentLatLng.lng,
-      });
-      const r = results[0];
-      if (r) {
-        pickupAddress = [r.name, r.street, r.city].filter(Boolean).join(', ');
-      }
-    } catch {
-      // keep fallback
     }
     setPickup({
       id: 'current-location',
       name: 'My Location',
-      address: pickupAddress,
+      address: 'Current Location',
       lat: currentLatLng.lat,
       lng: currentLatLng.lng,
     });
@@ -57,6 +43,7 @@ export default function ConfirmDestinationScreen() {
   };
 
   const recenter = () => {
+    if (!origin) return;
     mapRef.current?.animateToRegion({
       latitude: origin.lat,
       longitude: origin.lng,
@@ -69,12 +56,12 @@ export default function ConfirmDestinationScreen() {
     <View className="flex-1 bg-surface">
       <MapWithPin
         ref={mapRef}
-        initialRegion={{
+        initialRegion={origin ? {
           latitude: origin.lat,
           longitude: origin.lng,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
-        }}
+        } : undefined}
         onRegionChangeComplete={onRegionChange}
       />
 
@@ -117,7 +104,7 @@ export default function ConfirmDestinationScreen() {
             </Text>
           ) : null}
           <View className="mt-4">
-            <Button label="Confirm destination" onPress={confirm} disabled={!destination} />
+            <Button label="Confirm destination" onPress={confirm} disabled={!destination || !currentLatLng} />
           </View>
         </View>
       </SafeAreaView>

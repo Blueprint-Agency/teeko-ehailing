@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Phone, Check } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import type { DirectionsResult, FetchDirectionsOptions } from '@teeko/shared';
+import { curvedRoute, formatDistance, formatDuration, toLatLngLiterals, useDirections } from '@teeko/maps';
 import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
@@ -15,12 +18,81 @@ const PHASE_KEYS = ['navigating', 'arrived', 'inprogress', 'completed'] as const
 
 export default function TripScreen() {
   const router = useRouter();
-  const [phaseIndex, setPhaseIndex] = useState(0);
+  const activeTripStatus = useDriverStore((s) => s.activeTripStatus);
+
+  function statusToPhase(status: string | null): number {
+    if (status === 'driver_arrived') return 1;
+    if (status === 'in_trip') return 2;
+    return 0;
+  }
+
+  const [phaseIndex, setPhaseIndex] = useState(() => statusToPhase(activeTripStatus));
   const colors = useColors();
   const { activeTheme } = useTheme();
   const t = useT();
   const styles = createStyles(colors);
   const { activeTripId, setActiveTripId, activeTrip, setActiveTrip } = useDriverStore();
+
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
+    let cancelled = false;
+
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted' || cancelled) return;
+
+      // Fast path: use last-known position if valid.
+      const last = await Location.getLastKnownPositionAsync({}).catch(() => null);
+      if (!cancelled && last && (last.coords.latitude !== 0 || last.coords.longitude !== 0)) {
+        setDriverLocation({ lat: last.coords.latitude, lng: last.coords.longitude });
+      } else if (!cancelled) {
+        // Slow path: no valid cache — get a fresh fix so directions load immediately.
+        const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).catch(() => null);
+        if (!cancelled && current && (current.coords.latitude !== 0 || current.coords.longitude !== 0)) {
+          setDriverLocation({ lat: current.coords.latitude, lng: current.coords.longitude });
+        }
+      }
+
+      const s = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 4000, distanceInterval: 15 },
+        (loc) => {
+          if (!cancelled && (loc.coords.latitude !== 0 || loc.coords.longitude !== 0)) {
+            setDriverLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+          }
+        },
+      );
+      if (!cancelled) sub = s; else s.remove();
+    })();
+
+    return () => {
+      cancelled = true;
+      sub?.remove();
+    };
+  }, []);
+
+  // Always use live driver position as origin so "remaining route" is accurate.
+  // Phase 0: driver → pickup. Phases 1 & 2: driver → destination.
+  const directionsDestination =
+    phaseIndex === 0
+      ? (activeTrip?.pickup ?? null)
+      : (activeTrip?.destination ?? null);
+
+  const driverFetcher = (
+    o: { lat: number; lng: number },
+    d: { lat: number; lng: number },
+    opts?: FetchDirectionsOptions,
+  ): Promise<DirectionsResult> =>
+    api.driver.directions(o, d, opts) as Promise<DirectionsResult>;
+
+  const { result: directions } = useDirections({
+    origin: driverLocation,
+    destination: validDest,
+    fetcher: driverFetcher,
+    options: { mode: 'driving', departureTime: 'now' },
+    enabled: phaseIndex < 3 && !!driverLocation && !!validDest,
+  });
 
   const PHASES = [
     { key: 'navigating', label: t('driver.navigatingToPickup') },
@@ -70,6 +142,36 @@ export default function TripScreen() {
     ]);
   };
 
+  const validDest = directionsDestination && (directionsDestination.lat !== 0 || directionsDestination.lng !== 0)
+    ? directionsDestination
+    : null;
+
+  // Use the live directions polyline when available; fall back to a client-side
+  // Bézier curve so the route is always visible even before the API responds.
+  const routePolyline = directions?.polyline
+    ? toLatLngLiterals(directions.polyline)
+    : driverLocation && validDest
+      ? curvedRoute(driverLocation, validDest)
+      : undefined;
+
+  // Phase 0 → navigate to pickup; phase 2 → navigate to destination
+  const navDestination =
+    phaseIndex === 0 ? activeTrip?.pickup : activeTrip?.destination;
+
+  const openInMaps = () => {
+    if (!navDestination) return;
+    const { lat, lng } = navDestination;
+    Linking.openURL(
+      `https://maps.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`,
+    );
+  };
+
+  const openInWaze = () => {
+    if (!navDestination) return;
+    const { lat, lng } = navDestination;
+    Linking.openURL(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`);
+  };
+
   const phaseActionLabel = () => {
     if (phaseIndex === 0) return t('driver.iveArrived');
     if (phaseIndex === 1) return t('driver.startTrip');
@@ -102,7 +204,13 @@ export default function TripScreen() {
       <Text style={styles.phaseLabel}>{phase.label}</Text>
 
       {/* Map */}
-      <MapBackground />
+      <MapBackground
+        routePolyline={routePolyline}
+        liveLocation={driverLocation}
+        followDriver={phaseIndex === 1 || phaseIndex === 3}
+        pickupMarker={activeTrip?.pickup && (activeTrip.pickup.lat !== 0 || activeTrip.pickup.lng !== 0) ? { lat: activeTrip.pickup.lat, lng: activeTrip.pickup.lng } : undefined}
+        destinationMarker={activeTrip?.destination && (activeTrip.destination.lat !== 0 || activeTrip.destination.lng !== 0) ? { lat: activeTrip.destination.lat, lng: activeTrip.destination.lng } : undefined}
+      />
 
       {/* Rider card */}
       <View style={styles.card}>
@@ -132,17 +240,25 @@ export default function TripScreen() {
         </View>
 
         <View style={styles.fareRow}>
-          <Text style={styles.fareLabel}>{t('driver.estFare')}</Text>
+          <View>
+            <Text style={styles.fareLabel}>{t('driver.estFare')}</Text>
+            {directions ? (
+              <Text style={[styles.fareLabel, { marginTop: 2 }]}>
+                {formatDistance(directions.distanceMeters)} ·{' '}
+                {formatDuration(directions.durationInTrafficSeconds ?? directions.durationSeconds)}
+              </Text>
+            ) : null}
+          </View>
           <Text style={styles.fareValue}>RM {activeTrip ? (activeTrip.fareCents / 100).toFixed(2) : '—'}</Text>
         </View>
 
         {/* Navigation buttons */}
         {!isCompleted && (
           <View style={styles.navBtns}>
-            <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('Maps', 'Opening Google Maps...')}>
+            <TouchableOpacity style={styles.navBtn} onPress={openInMaps}>
               <Text style={styles.navBtnText}>{t('driver.openInMaps')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navBtn} onPress={() => Alert.alert('Waze', 'Opening Waze...')}>
+            <TouchableOpacity style={styles.navBtn} onPress={openInWaze}>
               <Text style={styles.navBtnText}>{t('driver.openInWaze')}</Text>
             </TouchableOpacity>
           </View>

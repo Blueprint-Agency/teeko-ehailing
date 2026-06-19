@@ -7,6 +7,18 @@ import { env } from '../../config/env';
 
 type Coords = { lat: number; lng: number };
 
+// PostGIS geography may be returned as { x: lng, y: lat } (pg object) or WKT string.
+function parsePoint(raw: unknown): Coords {
+  if (raw !== null && typeof raw === 'object') {
+    const o = raw as Record<string, unknown>;
+    const lat = Number(o['y']);
+    const lng = Number(o['x']);
+    if (!isNaN(lat) && !isNaN(lng)) return { lat, lng };
+  }
+  const m = String(raw).match(/POINT\(([^ ]+) ([^ )]+)\)/);
+  return m ? { lat: parseFloat(m[2]!), lng: parseFloat(m[1]!) } : { lat: 0, lng: 0 };
+}
+
 export const tripsService = {
   // ---- rider: request ride ----
   async requestRide(
@@ -115,10 +127,7 @@ export const tripsService = {
 
     const etaMin =
       driverLocation && trip.status === 'matched'
-        ? await trackingService.getEtaMinutes(driverLocation, {
-            lat: (trip.pickup as unknown as { y: number }).y,
-            lng: (trip.pickup as unknown as { x: number }).x,
-          })
+        ? await trackingService.getEtaMinutes(driverLocation, parsePoint(trip.pickup))
         : null;
 
     return { trip, driverLocation, etaMin };
@@ -297,6 +306,105 @@ export const tripsService = {
     });
 
     return { ok: true };
+  },
+
+  // ---- driver: get active trip (for crash recovery) ----
+  async getDriverActiveTrip(driverId: string) {
+    const trip = await db.query.trips.findFirst({
+      where: and(
+        eq(trips.driverId, driverId),
+        not(inArray(trips.status, ['completed', 'cancelled', 'no_show'])),
+      ),
+    });
+    if (!trip) return null;
+
+    const [quote, rider] = await Promise.all([
+      trip.fareQuoteId
+        ? db.query.fareQuotes.findFirst({ where: eq(fareQuotes.id, trip.fareQuoteId) })
+        : Promise.resolve(null),
+      db.query.users.findFirst({ where: eq(users.id, trip.riderId) }),
+    ]);
+
+    const pickup = parsePoint(trip.pickup);
+    const dropoff = parsePoint(trip.dropoff);
+
+    return {
+      tripId: trip.id,
+      status: trip.status,
+      category: trip.category,
+      pickup: { ...pickup, address: trip.pickupAddress ?? '' },
+      destination: { ...dropoff, address: trip.dropoffAddress ?? '' },
+      fareCents: quote?.totalCents ?? 0,
+      riderName: rider?.fullName ?? 'Rider',
+      countdownSeconds: 0,
+    };
+  },
+
+  // ---- rider: get active trip (session restore + polling fallback) ----
+  async getRiderActiveTrip(riderId: string) {
+    const trip = await db.query.trips.findFirst({
+      where: and(
+        eq(trips.riderId, riderId),
+        not(inArray(trips.status, ['completed', 'cancelled', 'no_show'])),
+      ),
+    });
+    if (!trip) return null;
+
+    const [quote, driverUser, driverProfile, activeVehicleRow] = await Promise.all([
+      trip.fareQuoteId
+        ? db.query.fareQuotes.findFirst({ where: eq(fareQuotes.id, trip.fareQuoteId) })
+        : Promise.resolve(null),
+      trip.driverId
+        ? db.query.users.findFirst({ where: eq(users.id, trip.driverId) })
+        : Promise.resolve(null),
+      trip.driverId
+        ? db.query.driverProfiles.findFirst({ where: eq(driverProfiles.userId, trip.driverId) })
+        : Promise.resolve(null),
+      trip.driverId
+        ? db.query.driverActiveVehicle.findFirst({ where: eq(driverActiveVehicle.driverId, trip.driverId) })
+        : Promise.resolve(null),
+    ]);
+
+    const vehicle = activeVehicleRow
+      ? await db.query.vehicles.findFirst({ where: eq(vehicles.id, activeVehicleRow.vehicleId) })
+      : null;
+
+    const pickupCoords = parsePoint(trip.pickup);
+    const dropoffCoords = parsePoint(trip.dropoff);
+
+    const CLIENT_STATUS: Record<string, string> = {
+      requested: 'searching',
+      matched: 'matched',
+      driver_arrived: 'arrived',
+      in_trip: 'in_trip',
+      completed: 'completed',
+      cancelled: 'cancelled',
+    };
+
+    return {
+      tripId: trip.id,
+      clientStatus: CLIENT_STATUS[trip.status] ?? trip.status,
+      rideType: trip.category,
+      pickup: { id: '', name: trip.pickupAddress ?? '', address: trip.pickupAddress ?? '', lat: pickupCoords.lat, lng: pickupCoords.lng },
+      destination: { id: '', name: trip.dropoffAddress ?? '', address: trip.dropoffAddress ?? '', lat: dropoffCoords.lat, lng: dropoffCoords.lng },
+      fare: { rideType: trip.category, amountMyr: (quote?.totalCents ?? 0) / 100, etaMin: 0 },
+      driver: trip.driverId && driverUser
+        ? {
+            id: trip.driverId,
+            name: driverUser.fullName ?? 'Driver',
+            photoUrl: `https://i.pravatar.cc/150?u=${trip.driverId}`,
+            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+            vehicle: vehicle
+              ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
+              : { model: 'Vehicle', colour: '', seats: 4, category: trip.category },
+            plate: vehicle?.plateNumber ?? '',
+            languages: ['ms', 'en'],
+            phone: driverUser.phone ?? '',
+          }
+        : null,
+      paymentMethodId: trip.paymentMethodId ?? '',
+      createdAt: trip.createdAt.toISOString(),
+    };
   },
 
   // ---- rider: trip history ----

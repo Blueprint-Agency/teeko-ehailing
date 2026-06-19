@@ -18,12 +18,15 @@ interface DriverStore {
   pendingOffer: TripOffer | null;
   activeTrip: TripOffer | null;
   activeTripId: string | null;
+  /** DB status of the active trip — used to restore the correct phase after a crash */
+  activeTripStatus: string | null;
   setToken: (token: string | null) => void;
   setOnline: (v: boolean) => void;
   setRadius: (r: number) => void;
   setPendingOffer: (offer: TripOffer | null) => void;
   setActiveTrip: (offer: TripOffer | null) => void;
   setActiveTripId: (id: string | null) => void;
+  setActiveTripStatus: (status: string | null) => void;
 }
 
 export const useDriverStore = create<DriverStore>((set) => ({
@@ -33,10 +36,12 @@ export const useDriverStore = create<DriverStore>((set) => ({
   pendingOffer: null,
   activeTrip: null,
   activeTripId: null,
+  activeTripStatus: null,
   setToken: (token) => set({ token }),
   setOnline: (isOnline) => set({ isOnline }),
   setRadius: (radius) => set({ radius }),
   setPendingOffer: (pendingOffer) => set({ pendingOffer }),
   setActiveTrip: (activeTrip) => set({ activeTrip }),
   setActiveTripId: (activeTripId) => set({ activeTripId }),
+  setActiveTripStatus: (activeTripStatus) => set({ activeTripStatus }),
 }));

@@ -1,6 +1,6 @@
 import type { Server as HttpServer } from 'node:http';
 import { Server, type Socket } from 'socket.io';
-import { verifyClerkToken } from '../../external/clerk';
+import { verifyRiderClerkToken, verifyDriverClerkToken } from '../../external/clerk';
 import { findUserByExternalId } from '../../modules/identity/repo';
 import { trackingService } from '../../modules/tracking/service';
 import { db } from '../../db';
@@ -24,7 +24,8 @@ export function mountSocketIO(httpServer: HttpServer): Server {
     // --- auth handshake ---
     socket.on('auth', async ({ token }: { token: string }) => {
       try {
-        const claims = await verifyClerkToken(token);
+        // Accept tokens from either the rider or driver Clerk instance.
+        const claims = await verifyRiderClerkToken(token).catch(() => verifyDriverClerkToken(token));
         const user = await findUserByExternalId('clerk', claims.sub);
         console.log(`[WS] auth lookup clerkSub=${claims.sub} → dbUserId=${user?.id ?? 'NOT FOUND'} role=${user?.role}`);
         if (!user) { socket.disconnect(); return; }

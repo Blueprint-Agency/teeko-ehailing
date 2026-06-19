@@ -13,8 +13,8 @@ const PlaceShape = z.object({
   id: z.string().optional().default(''),
   name: z.string().optional().default(''),
   address: z.string().optional().default(''),
-  lat: z.number(),
-  lng: z.number(),
+  lat: z.number().refine((v) => v !== 0, { message: 'lat must not be 0' }),
+  lng: z.number().refine((v) => v !== 0, { message: 'lng must not be 0' }),
   category: z.string().optional(),
 });
 
@@ -118,6 +118,13 @@ export async function routes(app: FastifyInstance) {
       createdAt: dbTrip.createdAt.toISOString(),
     };
     return reply.code(201).send(trip);
+  });
+
+  // GET /api/v1/rider/trips/active — polling fallback for socket events
+  app.get('/active', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    const data = await tripsService.getRiderActiveTrip(req.user.id);
+    return { ok: true, data: data ?? null };
   });
 
   // GET /api/v1/rider/trips — trip history (mock empty)

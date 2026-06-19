@@ -1,13 +1,21 @@
-// External provider client — Clerk.
+// External provider clients — Clerk (separate instances for rider and driver apps).
 // Wraps @clerk/backend so middleware/webhook code never touches the SDK directly.
 import { createClerkClient, verifyToken, type ClerkClient } from '@clerk/backend';
 
 import { env } from '../config/env';
 
-export const clerk: ClerkClient = createClerkClient({
-  secretKey: env.CLERK_SECRET_KEY,
-  publishableKey: env.CLERK_PUBLISHABLE_KEY,
+export const riderClerk: ClerkClient = createClerkClient({
+  secretKey: env.CLERK_RIDER_SECRET_KEY,
+  publishableKey: env.CLERK_RIDER_PUBLISHABLE_KEY,
 });
+
+export const driverClerk: ClerkClient = createClerkClient({
+  secretKey: env.CLERK_DRIVER_SECRET_KEY,
+  publishableKey: env.CLERK_DRIVER_PUBLISHABLE_KEY,
+});
+
+// Backward-compat alias used by modules/auth_otp and modules/identity (rider path).
+export const clerk: ClerkClient = riderClerk;
 
 export type ClerkClaims = {
   sub: string;
@@ -16,15 +24,7 @@ export type ClerkClaims = {
   lastName?: string;
 };
 
-/**
- * Verify a Clerk-issued JWT bearer token.
- * Throws if the token is missing, malformed, expired, or fails signature checks.
- * Returns the verified claims we care about.
- */
-export async function verifyClerkToken(token: string): Promise<ClerkClaims> {
-  const verified = await verifyToken(token, {
-    secretKey: env.CLERK_SECRET_KEY,
-  });
+function extractClaims(verified: { sub: string; email?: unknown; first_name?: unknown; last_name?: unknown }): ClerkClaims {
   return {
     sub: verified.sub,
     email: typeof verified.email === 'string' ? verified.email : undefined,
@@ -32,3 +32,16 @@ export async function verifyClerkToken(token: string): Promise<ClerkClaims> {
     lastName: typeof verified.last_name === 'string' ? verified.last_name : undefined,
   };
 }
+
+export async function verifyRiderClerkToken(token: string): Promise<ClerkClaims> {
+  const verified = await verifyToken(token, { secretKey: env.CLERK_RIDER_SECRET_KEY });
+  return extractClaims(verified);
+}
+
+export async function verifyDriverClerkToken(token: string): Promise<ClerkClaims> {
+  const verified = await verifyToken(token, { secretKey: env.CLERK_DRIVER_SECRET_KEY });
+  return extractClaims(verified);
+}
+
+// Backward-compat alias — resolves to the rider verifier.
+export const verifyClerkToken = verifyRiderClerkToken;

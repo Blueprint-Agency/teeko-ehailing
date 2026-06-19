@@ -14,9 +14,10 @@ export function TripProgressStrip() {
   const driverEtaMin = useTripStore((s) => s.driverEtaMin);
   const driverPosition = useTripStore((s) => s.driverPosition);
   const destination = useTripStore((s) => s.destination);
+  const pickup = useTripStore((s) => s.pickup);
 
   const active = ['matched', 'arrived', 'in_trip'].includes(status);
-  if (!active || !driver || !trip) return null;
+  if (!active || !driver || !trip || !pickup || !destination) return null;
 
   const distanceKm =
     driverPosition && destination

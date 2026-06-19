@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
 } from 'react-native';
@@ -20,8 +20,29 @@ export default function HomeScreen() {
   const colors = useColors();
   const { activeTheme } = useTheme();
   const t = useT();
-  const { isOnline, radius, setOnline, setRadius } = useDriverStore();
+  const { isOnline, radius, setOnline, setRadius, activeTripId, setActiveTripId, setActiveTrip, setActiveTripStatus } = useDriverStore();
   const locationSub = useRef<Location.LocationSubscription | null>(null);
+
+  const handleResumeTrip = () => {
+    router.replace('/(driver)/trip');
+  };
+
+  const handleCancelActiveTrip = () => {
+    if (!activeTripId) return;
+    Alert.alert('Cancel trip', 'Are you sure you want to cancel this trip?', [
+      { text: 'No', style: 'cancel' },
+      {
+        text: 'Yes, cancel',
+        style: 'destructive',
+        onPress: async () => {
+          await api.driver.cancelTrip(activeTripId, 'driver_cancelled').catch(() => null);
+          setActiveTripId(null);
+          setActiveTrip(null);
+          setActiveTripStatus(null);
+        },
+      },
+    ]);
+  };
 
   // trip.request is handled by SocketBridge in _layout.tsx
 
@@ -32,17 +53,21 @@ export default function HomeScreen() {
     // Push current position immediately so dispatch can find this driver right away
     const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     const { latitude, longitude, heading } = current.coords;
-    api.driver.updateLocation(latitude, longitude, heading ?? 0).catch(() => null);
-    getSocket().emit('driver.location', { lat: latitude, lng: longitude, heading: heading ?? 0 });
+    if (latitude !== 0 || longitude !== 0) {
+      api.driver.updateLocation(latitude, longitude, heading ?? 0).catch(() => null);
+      getSocket().emit('driver.location', { lat: latitude, lng: longitude, heading: heading ?? 0 });
+    }
 
     locationSub.current = await Location.watchPositionAsync(
       { accuracy: Location.Accuracy.High, timeInterval: 5000, distanceInterval: 10 },
       (loc) => {
-        api.driver.updateLocation(loc.coords.latitude, loc.coords.longitude, loc.coords.heading ?? 0).catch(() => null);
+        const { latitude: lat, longitude: lng, heading: hdg } = loc.coords;
+        if (lat === 0 && lng === 0) return;
+        api.driver.updateLocation(lat, lng, hdg ?? 0).catch(() => null);
         getSocket().emit('driver.location', {
-          lat: loc.coords.latitude,
-          lng: loc.coords.longitude,
-          heading: loc.coords.heading ?? 0,
+          lat,
+          lng,
+          heading: hdg ?? 0,
         });
       },
     );
@@ -111,6 +136,29 @@ export default function HomeScreen() {
           <Text style={[styles.surgeText, { color: colors.surge }]}>1.4× surge · Bukit Bintang</Text>
         </View>
       </MapBackground>
+
+      {/* Active trip banner — shown whenever the driver has an active trip on this screen,
+          whether the app crashed (store restored from API) or they navigated back mid-trip */}
+      {activeTripId ? (
+        <View style={[styles.recoveryBanner, { backgroundColor: colors.accent + '18', borderColor: colors.accent }]}>
+          <Text style={[styles.recoveryTitle, { color: colors.text }]}>You have an active trip</Text>
+          <Text style={[styles.recoverySub, { color: colors.textSec }]}>Resume your trip or cancel it below.</Text>
+          <View style={styles.recoveryBtns}>
+            <TouchableOpacity
+              style={[styles.recoveryBtn, { backgroundColor: colors.accent }]}
+              onPress={handleResumeTrip}
+            >
+              <Text style={styles.recoveryBtnText}>Resume trip</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.recoveryBtn, { backgroundColor: colors.surfaceHigh, borderWidth: 1, borderColor: colors.danger }]}
+              onPress={handleCancelActiveTrip}
+            >
+              <Text style={[styles.recoveryBtnText, { color: colors.danger }]}>Cancel trip</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
 
       {/* Bottom Panel */}
       <View style={[styles.bottomPanel, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
@@ -234,6 +282,22 @@ const styles = StyleSheet.create({
   },
   surgeDot: { width: 7, height: 7, borderRadius: 4, marginRight: 6 },
   surgeText: { fontSize: 12, fontWeight: '700' },
+
+  recoveryBanner: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 16,
+  },
+  recoveryTitle: { fontSize: 15, fontWeight: '800', marginBottom: 4 },
+  recoverySub: { fontSize: 12, marginBottom: 12 },
+  recoveryBtns: { flexDirection: 'row', gap: 10 },
+  recoveryBtn: {
+    flex: 1, height: 44, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  recoveryBtnText: { color: '#000', fontSize: 14, fontWeight: '700' },
 
   bottomPanel: {
     borderTopWidth: 1,

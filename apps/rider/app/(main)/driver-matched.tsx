@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useTripStore } from '@teeko/api';
+import { routesApi, useTripStore } from '@teeko/api';
+import { useDirections } from '@teeko/maps';
 import type { BottomSheetHandle } from '@teeko/ui';
 import { Icon, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
@@ -23,7 +24,9 @@ export default function DriverMatchedScreen() {
   const driverPosition = useTripStore((s) => s.driverPosition);
   const driverHeading = useTripStore((s) => s.driverHeading);
   const cancel = useTripStore((s) => s.cancel);
+  const pollStatus = useTripStore((s) => s.pollStatus);
   const driverEtaMin = useTripStore((s) => s.driverEtaMin);
+  const restoreActiveTrip = useTripStore((s) => s.restoreActiveTrip);
 
   const cancelSheetRef = useRef<BottomSheetHandle>(null);
   const chatSheetRef = useRef<BottomSheetHandle>(null);
@@ -37,7 +40,34 @@ export default function DriverMatchedScreen() {
     }
   }, [status]);
 
-  if (!driver || !pickup || !destination) return null;
+  // Poll every 15 s as a fallback when socket events stop (e.g. driver app crashed)
+  useEffect(() => {
+    const iv = setInterval(() => { pollStatus(); }, 15_000);
+    return () => clearInterval(iv);
+  }, [pollStatus]);
+
+  // Recover missing store data (cold-start race: socket sets driver before REST restore completes)
+  useEffect(() => {
+    if (!pickup || !destination) {
+      restoreActiveTrip().catch(() => null);
+    }
+  }, []);
+
+  const { result: directions } = useDirections({
+    origin: pickup,
+    destination,
+    fetcher: routesApi.fetchDirections,
+    options: { mode: 'driving', departureTime: 'now' },
+    enabled: !!pickup && !!destination,
+  });
+
+  if (!driver || !pickup || !destination) {
+    return (
+      <View className="flex-1 items-center justify-center bg-surface">
+        <ActivityIndicator size="large" color="#E11D2E" />
+      </View>
+    );
+  }
 
   const etaLabel =
     status === 'arrived' ? 'Driver has arrived!' : `${driverEtaMin ?? '—'} min away`;
@@ -53,7 +83,7 @@ export default function DriverMatchedScreen() {
         phase="approach"
         bottomInset={280}
         topInset={60}
-        routePolyline={trip?.routePolyline}
+        routePolyline={directions?.polyline}
       />
 
       {/* Status pill */}
@@ -88,7 +118,7 @@ export default function DriverMatchedScreen() {
               </Text>
             </View>
             <Text tone="secondary" className="text-sm">
-              RM {trip?.fare.amountMyr.toFixed(2) ?? '—'}
+              RM {trip?.fare?.amountMyr?.toFixed(2) ?? '—'}
             </Text>
           </View>
 

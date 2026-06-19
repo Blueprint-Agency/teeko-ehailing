@@ -59,3 +59,22 @@ export async function cancel(tripId: string, reason?: string): Promise<{ cancell
 export async function history(): Promise<Trip[]> {
   return api<Trip[]>('/api/v1/rider/trips');
 }
+
+export type ActiveTripSession = {
+  tripId: string;
+  clientStatus: string;
+  rideType: string;
+  pickup: Place;
+  destination: Place;
+  fare: { rideType: string; amountMyr: number; etaMin: number };
+  driver: Driver | null;
+  paymentMethodId: string;
+  createdAt: string;
+};
+
+export async function getActive(): Promise<ActiveTripSession | null> {
+  const res = await api<{ ok: boolean; data: ActiveTripSession | null }>(
+    '/api/v1/rider/trips/active',
+  );
+  return res.data;
+}

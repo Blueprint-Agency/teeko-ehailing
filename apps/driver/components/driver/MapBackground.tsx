@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import MapView, { PROVIDER_GOOGLE, Circle } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE, Circle, Marker, Polyline } from 'react-native-maps';
 import * as Location from 'expo-location';
+import type { LatLngLiteral } from '@teeko/maps';
 import { useColors } from '../../constants/colors';
 
 const KL_REGION = {
@@ -11,7 +12,23 @@ const KL_REGION = {
   longitudeDelta: 0.05,
 };
 
-export default function MapBackground({ children, radius }: { children?: React.ReactNode; radius?: number }) {
+export default function MapBackground({
+  children,
+  radius,
+  routePolyline,
+  liveLocation,
+  followDriver = false,
+  pickupMarker,
+  destinationMarker,
+}: {
+  children?: React.ReactNode;
+  radius?: number;
+  routePolyline?: LatLngLiteral[];
+  liveLocation?: { lat: number; lng: number } | null;
+  followDriver?: boolean;
+  pickupMarker?: { lat: number; lng: number };
+  destinationMarker?: { lat: number; lng: number };
+}) {
   const mapRef = useRef<MapView>(null);
   const [location, setLocation] = React.useState<Location.LocationObject | null>(null);
   const colors = useColors();
@@ -22,9 +39,29 @@ export default function MapBackground({ children, radius }: { children?: React.R
       if (status !== 'granted') return;
 
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setLocation(loc);
+      if (loc.coords.latitude !== 0 || loc.coords.longitude !== 0) {
+        setLocation(loc);
+      }
     })();
   }, []);
+
+  // Auto-fit the camera to the full route when polyline changes
+  useEffect(() => {
+    if (!routePolyline || routePolyline.length < 2 || !mapRef.current) return;
+    mapRef.current.fitToCoordinates(
+      routePolyline,
+      { edgePadding: { top: 80, right: 50, bottom: 320, left: 50 }, animated: true },
+    );
+  }, [routePolyline]);
+
+  // Follow driver position when no active route is displayed (arrived/completed phases)
+  useEffect(() => {
+    if (!followDriver || !liveLocation || !mapRef.current) return;
+    mapRef.current.animateCamera(
+      { center: { latitude: liveLocation.lat, longitude: liveLocation.lng }, zoom: 16 },
+      { duration: 800 },
+    );
+  }, [liveLocation, followDriver]);
 
   // Smart Zoom: Adjust map zoom when radius changes
   useEffect(() => {
@@ -73,6 +110,26 @@ export default function MapBackground({ children, radius }: { children?: React.R
             strokeColor={colors.accent + '60'}
             strokeWidth={2}
             lineDashPattern={[5, 5]}
+          />
+        )}
+        {routePolyline && routePolyline.length >= 2 && (
+          <>
+            <Polyline coordinates={routePolyline} strokeColor="#FFFFFF" strokeWidth={14} />
+            <Polyline coordinates={routePolyline} strokeColor={colors.accent} strokeWidth={8} />
+          </>
+        )}
+        {pickupMarker && isFinite(pickupMarker.lat) && isFinite(pickupMarker.lng) && (
+          <Marker
+            coordinate={{ latitude: pickupMarker.lat, longitude: pickupMarker.lng }}
+            pinColor="#22C55E"
+            title="Pickup"
+          />
+        )}
+        {destinationMarker && isFinite(destinationMarker.lat) && isFinite(destinationMarker.lng) && (
+          <Marker
+            coordinate={{ latitude: destinationMarker.lat, longitude: destinationMarker.lng }}
+            pinColor={colors.accent}
+            title="Destination"
           />
         )}
       </MapView>

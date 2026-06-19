@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teeko",
     "slug": "teeko-rider",
-    "version": "0.0.1",
+    "version": "0.0.3",
     "orientation": "portrait",
     "scheme": "teeko",
     "userInterfaceStyle": "light",
@@ -55,6 +55,12 @@
       "expo-localization",
       "expo-font"
     ],
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/64dad399-68e0-4def-9640-6c1c718e4416"
+    },
     "experiments": {
       "typedRoutes": true
     },

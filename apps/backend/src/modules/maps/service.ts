@@ -1,10 +1,11 @@
 // modules/maps/service.ts
-// Google Places (New) proxy — autocomplete + details.
+// Google Places (New) + Directions proxy.
 // Routes call into this service; never import from routes.
 
 import { env } from '../../config/env';
 
 const PLACES_BASE = 'https://places.googleapis.com/v1';
+const DIRECTIONS_BASE = 'https://maps.googleapis.com/maps/api/directions/json';
 const REGION_CODE = 'MY';
 const DEFAULT_BIAS_RADIUS_M = 50_000;
 
@@ -31,6 +32,31 @@ export type AutocompleteInput = {
   near?: { lat: number; lng: number };
 };
 
+export type TravelMode = 'driving' | 'walking' | 'bicycling' | 'transit';
+
+export type DirectionsInput = {
+  origin: { lat: number; lng: number };
+  destination: { lat: number; lng: number };
+  mode?: TravelMode;
+  departureTime?: number | 'now';
+};
+
+export type DirectionsServiceResult = {
+  polyline: Array<[number, number]>;
+  distanceMeters: number;
+  durationSeconds: number;
+  durationInTrafficSeconds: number | null;
+  steps: Array<{
+    instruction: string;
+    distanceMeters: number;
+    durationSeconds: number;
+    maneuver?: string;
+    startLocation: { lat: number; lng: number };
+    endLocation: { lat: number; lng: number };
+  }>;
+  summary: string;
+};
+
 export type MapsPrediction = {
   id: string;
   name: string;
@@ -46,8 +72,23 @@ export type MapsPlaceDetails = {
 };
 
 // ---------------------------------------------------------------------------
-// Internal HTTP helper
+// Internal helpers
 // ---------------------------------------------------------------------------
+
+function decodePolyline(encoded: string): Array<[number, number]> {
+  const pts: Array<[number, number]> = [];
+  let idx = 0, lat = 0, lng = 0;
+  while (idx < encoded.length) {
+    let shift = 0, result = 0, b: number;
+    do { b = encoded.charCodeAt(idx++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+    shift = 0; result = 0;
+    do { b = encoded.charCodeAt(idx++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+    pts.push([lat / 1e5, lng / 1e5]);
+  }
+  return pts;
+}
 
 async function callGoogle(
   path: string,
@@ -114,6 +155,47 @@ export const mapsService = {
       });
     }
     return out;
+  },
+
+  async directions(input: DirectionsInput): Promise<DirectionsServiceResult> {
+    const { origin, destination, mode = 'driving', departureTime } = input;
+    const params = new URLSearchParams({
+      origin: `${origin.lat},${origin.lng}`,
+      destination: `${destination.lat},${destination.lng}`,
+      mode,
+      key: env.GOOGLE_MAPS_API_KEY,
+    });
+    if (departureTime !== undefined) {
+      params.set('departure_time', String(departureTime));
+      if (mode === 'driving') params.set('traffic_model', 'best_guess');
+    }
+    const res = await fetch(`${DIRECTIONS_BASE}?${params.toString()}`);
+    if (!res.ok) {
+      throw new MapsError(`google directions ${res.status}`, 502);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const json = (await res.json()) as any;
+    if (json.status !== 'OK') {
+      throw new MapsError(`google directions ${json.status as string}`, 422);
+    }
+    const route = json.routes[0];
+    const leg = route.legs[0];
+    return {
+      polyline: decodePolyline(route.overview_polyline.points as string),
+      distanceMeters: (leg.distance?.value as number) ?? 0,
+      durationSeconds: (leg.duration?.value as number) ?? 0,
+      durationInTrafficSeconds: (leg.duration_in_traffic?.value as number) ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      steps: (leg.steps as any[]).map((s) => ({
+        instruction: (s.html_instructions as string).replace(/<[^>]*>/g, ''),
+        distanceMeters: (s.distance?.value as number) ?? 0,
+        durationSeconds: (s.duration?.value as number) ?? 0,
+        maneuver: s.maneuver as string | undefined,
+        startLocation: s.start_location as { lat: number; lng: number },
+        endLocation: s.end_location as { lat: number; lng: number },
+      })),
+      summary: (route.summary as string) ?? '',
+    };
   },
 
   async placeDetails(placeId: string): Promise<MapsPlaceDetails> {

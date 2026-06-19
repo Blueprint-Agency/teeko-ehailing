@@ -18,8 +18,17 @@ export function getSocket(): Socket {
 
 export function connectSocket(token: string): Socket {
   const s = getSocket();
-  if (!s.connected) s.connect();
-  s.once('connect', () => s.emit('auth', { token }));
+  // Remove any stale listener so we don't stack handlers on repeated calls.
+  s.off('connect');
+  // Use persistent 'on' (not 'once') so auth is re-emitted after every
+  // socket.io auto-reconnect, keeping the backend session alive between trips.
+  s.on('connect', () => s.emit('auth', { token }));
+  if (!s.connected) {
+    s.connect();
+  } else {
+    // Already connected — send auth immediately.
+    s.emit('auth', { token });
+  }
   return s;
 }
 

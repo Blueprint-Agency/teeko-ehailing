@@ -1,20 +1,40 @@
+import type { DirectionsResult, FetchDirectionsOptions } from '@teeko/shared';
 import { useDriverStore } from '../store/useDriverStore';
 
 const BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000') + '/api/v1';
 
+// Async getter registered at boot by TokenSync. Falls back to the store so the
+// module works before registration (e.g. during Clerk initialization).
+let _tokenGetter: () => Promise<string | null> = async () =>
+  useDriverStore.getState().token;
+
+export function registerTokenGetter(fn: () => Promise<string | null>): void {
+  _tokenGetter = fn;
+}
+
 async function req<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
-  const token = useDriverStore.getState().token;
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers ?? {}),
-    },
-  });
+  const token = await _tokenGetter();
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...((options.headers as Record<string, string>) ?? {}),
+  };
+  const fullUrl = `${BASE_URL}${path}`;
+  console.log('[API] -->', options.method ?? 'GET', fullUrl);
+  console.log('[API] headers:', JSON.stringify(headers, null, 2));
+  if (options.body) console.log('[API] body:', options.body);
+  let res: Response;
+  try {
+    res = await fetch(fullUrl, { ...options, headers });
+  } catch (err) {
+    console.error('[API] network error on', fullUrl, err);
+    throw err;
+  }
+  console.log('[API] <--', res.status, fullUrl);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const msg = data?.error?.message ?? data?.error ?? `HTTP ${res.status}`;
+    const msg = data?.message ?? data?.error?.message ?? data?.error ?? `HTTP ${res.status}`;
     throw new Error(String(msg));
   }
   return data as T;
@@ -23,6 +43,8 @@ async function req<T = unknown>(path: string, options: RequestInit = {}): Promis
 export const api = {
   auth: {
     me: () => req<{ user: { id: string; email: string | null; fullName: string | null; status: string }; driverProfile: { approvalStatus: string } }>('/driver/auth/me'),
+    sendOtp: () => req<{ ok: true }>('/driver/auth/send-otp', { method: 'POST', body: JSON.stringify({}) }),
+    verifyOtp: (code: string) => req<{ ok: true }>('/driver/auth/verify-otp', { method: 'POST', body: JSON.stringify({ code }) }),
   },
   driver: {
     goOnline: () => req('/driver/status/online', { method: 'PUT' }),
@@ -41,5 +63,28 @@ export const api = {
     completeTrip: (tripId: string) => req(`/driver/trips/${tripId}/complete`, { method: 'POST' }),
     cancelTrip: (tripId: string, reasonCode = 'driver_cancelled') =>
       req(`/driver/trips/${tripId}/cancel`, { method: 'POST', body: JSON.stringify({ reasonCode }) }),
+    getActiveTrip: () =>
+      req<{
+        ok: boolean;
+        data: {
+          tripId: string;
+          status: string;
+          category: string;
+          pickup: { lat: number; lng: number; address: string };
+          destination: { lat: number; lng: number; address: string };
+          fareCents: number;
+          riderName: string;
+          countdownSeconds: number;
+        } | null;
+      }>('/driver/trips/active'),
+    directions: (
+      origin: { lat: number; lng: number },
+      destination: { lat: number; lng: number },
+      options?: FetchDirectionsOptions,
+    ) =>
+      req<DirectionsResult>('/driver/directions', {
+        method: 'POST',
+        body: JSON.stringify({ origin, destination, ...options }),
+      }),
   },
 };
