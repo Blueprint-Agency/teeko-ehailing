@@ -4,9 +4,11 @@ import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { CheckCircle2, Clock, Download, Smartphone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useOnboardingStore } from '@/stores/onboardingStore'
 
 export default function ConfirmationPage() {
   const { t } = useTranslation()
+  const reset = useOnboardingStore((s) => s.reset)
 
   const NEXT_STEPS = [
     {
@@ -107,7 +109,7 @@ export default function ConfirmationPage() {
       </div>
 
       <div className="text-center">
-        <Link href="/dashboard">
+        <Link href="/dashboard" onClick={() => reset()}>
           <Button variant="outline" size="lg">
             {t('dashboard.actionButton')}
           </Button>

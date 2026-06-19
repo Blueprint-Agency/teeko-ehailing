@@ -12,7 +12,15 @@ import { api } from '@/lib/api'
 export default function VehicleDocsPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { vehicleDocs, uploadVehicleDoc, setStep } = useOnboardingStore()
+  const {
+    vehicleDocs,
+    uploadVehicleDoc,
+    setStep,
+    markSubmitted,
+    vehicleDetails,
+    personalFiles,
+    vehicleFiles,
+  } = useOnboardingStore()
   const driverId = useWebAuthStore((s) => s.profile?.id ?? '')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -20,14 +28,33 @@ export default function VehicleDocsPage() {
   const allUploaded = vehicleDocs.every((d) => d.status !== 'empty')
 
   const handleUpload = (docId: string, file: File) => {
-    uploadVehicleDoc(docId, file, driverId).catch(console.error)
+    uploadVehicleDoc(docId, file)
   }
 
+  // Final step: commit everything (vehicle details + all document files) in one
+  // batch request. This is the only onboarding call that writes to the DB.
   const handleSubmit = async () => {
     setError(null)
+
+    if (!vehicleDetails) {
+      setError(t('onboarding.vehicleDocs.submitError'))
+      return
+    }
+
     setSubmitting(true)
     try {
-      await api.submitApplication(driverId)
+      await api.submitOnboarding(
+        driverId,
+        {
+          plateNumber: vehicleDetails.plateNumber,
+          make: vehicleDetails.make,
+          model: vehicleDetails.model,
+          year: Number(vehicleDetails.year),
+          colour: vehicleDetails.colour,
+        },
+        { ...personalFiles, ...vehicleFiles },
+      )
+      markSubmitted()
       setStep(4)
       router.push('/onboarding/confirmation')
     } catch (err) {

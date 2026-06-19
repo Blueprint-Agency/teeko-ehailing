@@ -7,6 +7,7 @@ import { evpRecords } from '../../db/schema/compliance';
 import { users } from '../../db/schema/identity';
 import { notificationInbox } from '../../db/schema/notifications-content';
 import { ensureEvpRecordForDriver, resolveDocumentDriverId } from '../../modules/onboarding';
+import { sendEmail } from '../../external/gmail-smtp';
 
 const DOC_LABELS: Record<string, string> = {
   nric_front: 'NRIC / MyKad (Front)',
@@ -242,6 +243,7 @@ export async function routes(app: FastifyInstance) {
       if (!application) return reply.code(404).send({ error: 'application_not_found' });
 
       const now = new Date();
+      const newlyActivated = application.state !== 'activated';
 
       await db.transaction(async (tx) => {
         await tx
@@ -249,7 +251,7 @@ export async function routes(app: FastifyInstance) {
           .set({ state: 'activated', approvedAt: application.approvedAt ?? now, updatedAt: now })
           .where(eq(driverApplications.driverId, record.driverId));
 
-        if (application.state !== 'activated') {
+        if (newlyActivated) {
           await tx.insert(notificationInbox).values({
             userId: record.driverId,
             category: 'evp',
@@ -259,6 +261,39 @@ export async function routes(app: FastifyInstance) {
           });
         }
       });
+
+      // Notify the driver by email that their account is live. Best-effort:
+      // a delivery failure (or a missing email on file) must not roll back the
+      // activation, so we send outside the transaction and swallow errors.
+      if (newlyActivated) {
+        const driver = await db.query.users.findFirst({
+          where: eq(users.id, record.driverId),
+          columns: { email: true, fullName: true },
+        });
+        const to = driver?.email ?? '';
+        if (to) {
+          const firstName = driver?.fullName?.split(' ')[0] ?? 'there';
+          try {
+            await sendEmail({
+              to,
+              subject: 'Your Teeko driver account is now active',
+              html: `
+                <p>Hi ${firstName},</p>
+                <p>Good news — your Teeko driver account has been activated. Your
+                e-hailing vehicle permit is approved and your account is now open.</p>
+                <p>You can start accepting trips right away. Download the Teeko Driver
+                app to get going.</p>
+                <p>Welcome aboard,<br/>The Teeko Team</p>
+              `,
+            });
+          } catch (err) {
+            // Logged inside sendEmail; don't fail the request.
+            req.log.error({ err, driverId: record.driverId }, 'account-activated email failed');
+          }
+        } else {
+          req.log.warn({ driverId: record.driverId }, 'no email on file; skipped activation email');
+        }
+      }
 
       return { ok: true, account: 'open' as const };
     },

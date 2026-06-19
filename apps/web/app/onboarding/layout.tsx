@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { OnboardingProgress } from '@/components/driver/OnboardingProgress'
 import { useWebAuthStore } from '@/stores/authStore'
+import { useOnboardingStore } from '@/stores/onboardingStore'
 import { api } from '@/lib/api'
 
 const STEP_MAP: Record<string, number> = {
@@ -24,12 +25,27 @@ const STEP_ROUTES = [
   '/onboarding/confirmation',
 ]
 
+// Drivers in these server-side states have already submitted — they shouldn't
+// re-run onboarding and are sent to the dashboard to track their review.
+const SUBMITTED_STATES = new Set(['in_review', 'rejected', 'activated'])
+
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
   const currentStep = pathname ? STEP_MAP[pathname] ?? 0 : 0
   const { isAuthenticated, profile } = useWebAuthStore()
+  const { agreementAccepted, personalDocs, vehicleDetails, submitted } = useOnboardingStore()
+
+  // Furthest step the local (client-side) progress allows access to. Because
+  // uploaded files are kept in memory only, a refresh resets doc progress and
+  // gates the user back to the docs step to re-select files.
+  const allPersonalUploaded = personalDocs.every((d) => d.status !== 'empty')
+  let furthestAllowed = 0
+  if (submitted) furthestAllowed = 4
+  else if (agreementAccepted && allPersonalUploaded && vehicleDetails) furthestAllowed = 3
+  else if (agreementAccepted && allPersonalUploaded) furthestAllowed = 2
+  else if (agreementAccepted) furthestAllowed = 1
 
   useEffect(() => {
     if (!isAuthenticated || !profile) {
@@ -37,38 +53,31 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
       return
     }
 
-    const driverId = profile.id
-    const path = pathname || ''
-    let isMounted = true
+    const routeStep = STEP_MAP[pathname || ''] ?? 0
 
-    async function checkStatus() {
-      try {
-        const appState = await api.getApplication(driverId)
-        if (!isMounted) return
-
-        if (appState.state === 'activated') {
-          router.push('/dashboard')
-          return
-        }
-
-        const targetStep = appState.currentStep
-        const currentRouteStep = STEP_MAP[path] ?? 0
-
-        // Redirect if attempting to skip ahead or on root /onboarding route
-        if (currentRouteStep > targetStep || !STEP_MAP.hasOwnProperty(path)) {
-          router.push(STEP_ROUTES[targetStep])
-        }
-      } catch (err) {
-        console.error('Failed to check onboarding status:', err)
-      }
+    // Forward-progress gating from local state (synchronous, no network).
+    if (routeStep > furthestAllowed) {
+      router.replace(STEP_ROUTES[furthestAllowed])
+      return
     }
 
-    checkStatus()
+    // Read-only guard: bounce already-submitted drivers out of onboarding. Skip
+    // when this is the local post-submit success page (route 4 + submitted).
+    if (submitted && routeStep === 4) return
+
+    let isMounted = true
+    api
+      .getApplication(profile.id)
+      .then((appState) => {
+        if (!isMounted) return
+        if (SUBMITTED_STATES.has(appState.state)) router.replace('/dashboard')
+      })
+      .catch((err) => console.error('Failed to check onboarding status:', err))
 
     return () => {
       isMounted = false
     }
-  }, [isAuthenticated, profile, pathname, router])
+  }, [isAuthenticated, profile, pathname, router, furthestAllowed, submitted])
 
   return (
     <div className="min-h-screen bg-[var(--color-surface)]">

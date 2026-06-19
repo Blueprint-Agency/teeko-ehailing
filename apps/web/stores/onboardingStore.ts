@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { DocumentState, VehicleDetails } from '@teeko/shared/types'
-import { api } from '@/lib/api'
 
 // Steps: 0=agreement, 1=personal-docs, 2=vehicle-details, 3=vehicle-docs, 4=confirmation
 type OnboardingStep = 0 | 1 | 2 | 3 | 4
@@ -16,18 +15,25 @@ interface OnboardingStore {
   currentStep: OnboardingStep
   agreementAccepted: boolean
   agreementTimestamp: string | null
+  submitted: boolean
 
   personalDocs: DocumentState[]
   vehicleDetails: VehicleDetails | null
   vehicleDocs: DocumentState[]
 
+  // Raw File objects held in memory only (not persisted — not serializable).
+  // Keyed by frontend doc id. Lost on refresh; the typed fields above survive.
+  personalFiles: Record<string, File>
+  vehicleFiles: Record<string, File>
+
   setStep: (step: OnboardingStep) => void
   acceptAgreement: () => void
   updatePersonalDoc: (id: string, updates: Partial<DocumentState>) => void
-  uploadPersonalDoc: (id: string, file: File, driverId: string) => Promise<void>
+  uploadPersonalDoc: (id: string, file: File) => void
   setVehicleDetails: (details: VehicleDetails) => void
   updateVehicleDoc: (id: string, updates: Partial<DocumentState>) => void
-  uploadVehicleDoc: (id: string, file: File, driverId: string) => Promise<void>
+  uploadVehicleDoc: (id: string, file: File) => void
+  markSubmitted: () => void
   reset: () => void
 }
 
@@ -53,9 +59,12 @@ export const useOnboardingStore = create<OnboardingStore>()(
       currentStep: 0,
       agreementAccepted: false,
       agreementTimestamp: null,
+      submitted: false,
       personalDocs: initialPersonalDocs,
       vehicleDetails: null,
       vehicleDocs: initialVehicleDocs,
+      personalFiles: {},
+      vehicleFiles: {},
 
       setStep: (step) => set({ currentStep: step }),
 
@@ -69,19 +78,17 @@ export const useOnboardingStore = create<OnboardingStore>()(
           ),
         })),
 
-      uploadPersonalDoc: async (id, file, driverId) => {
+      // Local-only: keep the File in memory and mark the slot uploaded. No
+      // network call — everything is sent at the final submit step.
+      uploadPersonalDoc: (id, file) =>
         set((state) => ({
+          personalFiles: { ...state.personalFiles, [id]: file },
           personalDocs: state.personalDocs.map((d) =>
             d.id === id
               ? { ...d, status: 'uploaded' as const, fileName: file.name, fileUrl: URL.createObjectURL(file), uploadedAt: new Date().toISOString() }
               : d
           ),
-        }))
-        const { url } = await api.uploadDocument(id, file, driverId)
-        set((state) => ({
-          personalDocs: state.personalDocs.map((d) => (d.id === id ? { ...d, fileUrl: url } : d)),
-        }))
-      },
+        })),
 
       setVehicleDetails: (details) => set({ vehicleDetails: details }),
 
@@ -92,28 +99,29 @@ export const useOnboardingStore = create<OnboardingStore>()(
           ),
         })),
 
-      uploadVehicleDoc: async (id, file, driverId) => {
+      uploadVehicleDoc: (id, file) =>
         set((state) => ({
+          vehicleFiles: { ...state.vehicleFiles, [id]: file },
           vehicleDocs: state.vehicleDocs.map((d) =>
             d.id === id
               ? { ...d, status: 'uploaded' as const, fileName: file.name, fileUrl: URL.createObjectURL(file), uploadedAt: new Date().toISOString() }
               : d
           ),
-        }))
-        const { url } = await api.uploadDocument(id, file, driverId)
-        set((state) => ({
-          vehicleDocs: state.vehicleDocs.map((d) => (d.id === id ? { ...d, fileUrl: url } : d)),
-        }))
-      },
+        })),
+
+      markSubmitted: () => set({ submitted: true }),
 
       reset: () =>
         set({
           currentStep: 0,
           agreementAccepted: false,
           agreementTimestamp: null,
+          submitted: false,
           personalDocs: initialPersonalDocs,
           vehicleDetails: null,
           vehicleDocs: initialVehicleDocs,
+          personalFiles: {},
+          vehicleFiles: {},
         }),
     }),
     {
@@ -122,6 +130,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
         agreementAccepted: state.agreementAccepted,
         agreementTimestamp: state.agreementTimestamp,
         vehicleDetails: state.vehicleDetails,
+        submitted: state.submitted,
       }),
     }
   )

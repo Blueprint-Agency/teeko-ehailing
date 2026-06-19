@@ -61,6 +61,36 @@ export const api = {
     return res.json() as Promise<{ ok: boolean; state: string; submittedAt: string | null }>
   },
 
+  // Batch onboarding submit: sends vehicle details + all document files in one
+  // multipart request. This is the only onboarding call that writes to the DB.
+  submitOnboarding: async (
+    driverId: string,
+    vehicle: {
+      plateNumber: string
+      make: string
+      model: string
+      year: number
+      colour: string
+    },
+    files: Record<string, File>,
+  ) => {
+    const formData = new FormData()
+    formData.append('vehicle', JSON.stringify(vehicle))
+    for (const [docId, file] of Object.entries(files)) {
+      formData.append(docId, file, file.name)
+    }
+    const res = await fetch(`${PREFIX}/application/onboard`, {
+      method: 'POST',
+      headers: { 'X-Teeko-User': driverId, 'X-Teeko-Role': 'driver' },
+      body: formData,
+    })
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}))
+      throw new Error(error.error || `POST /application/onboard → ${res.status}`)
+    }
+    return res.json() as Promise<{ ok: boolean; state: string; submittedAt: string | null }>
+  },
+
   acceptAgreement: (id: string) =>
     fetch(`${PREFIX}/agreement/accept`, {
       method: 'POST',
