@@ -10,11 +10,15 @@ import { UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { registerSchema, type RegisterFormData } from '@teeko/shared/schemas/auth'
+import { useWebAuthStore } from '@/stores/authStore'
+import mockProfile from '@/data/mock-driver-profile.json'
+import type { DriverProfile } from '@teeko/shared/types'
 import { api } from '@/lib/api'
 
 export default function RegisterPage() {
   const { t } = useTranslation()
   const router = useRouter()
+  const { login } = useWebAuthStore()
   const [loading, setLoading] = useState(false)
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormData>({
@@ -26,16 +30,17 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     setLoading(true)
     try {
-      const { devOtp } = await api.sendRegisterOtp(data.phone as string)
-      sessionStorage.setItem('teeko_pending_reg', JSON.stringify({
-        phone: data.phone,
-        fullName: data.fullName,
-      }))
-      const params = new URLSearchParams({ phone: data.phone as string, mode: 'register' })
-      if (devOtp) params.set('otp', devOtp)
-      router.push(`/auth/verify?${params.toString()}`)
+      const user = await api.registerDriver(data.email, data.password, data.fullName)
+      login({
+        ...mockProfile,
+        id: user.id,
+        fullName: user.fullName,
+        phone: user.phone ?? '',
+        email: user.email,
+      } as DriverProfile)
+      router.push('/onboarding/agreement')
     } catch (error: any) {
-      alert(error.message || 'Failed to send OTP')
+      alert(error.message || 'Failed to create account')
     } finally {
       setLoading(false)
     }
@@ -97,12 +102,22 @@ export default function RegisterPage() {
               {...register('fullName')}
             />
             <Input
-              label={t('auth.register.phoneLabel')}
-              type="tel"
-              placeholder={t('auth.register.phonePlaceholder')}
+              label={t('auth.register.emailLabel')}
+              type="email"
+              autoComplete="email"
+              placeholder="e.g. ahmad@example.com"
               required
-              error={errors.phone?.message}
-              {...register('phone')}
+              error={errors.email?.message}
+              {...register('email')}
+            />
+            <Input
+              label={t('auth.register.password')}
+              type="password"
+              autoComplete="new-password"
+              placeholder={t('auth.register.passwordHint')}
+              required
+              error={errors.password?.message}
+              {...register('password')}
             />
 
             {/* PDPA consent */}

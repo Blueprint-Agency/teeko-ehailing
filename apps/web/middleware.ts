@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 const PROTECTED = ['/onboarding', '/dashboard', '/profile']
-const AUTH_ROUTES = ['/auth/login', '/auth/verify', '/auth/register']
+const AUTH_ROUTES = ['/auth/login', '/auth/register']
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl

@@ -113,56 +113,41 @@ export const api = {
     return res.json() as Promise<{ url: string }>
   },
 
-  loginDriver: async (phone: string) => {
+  loginDriver: async (email: string, password: string) => {
     const res = await fetch(`${PREFIX}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ email, password }),
     })
     if (!res.ok) {
       const error = await res.json().catch(() => ({}))
       throw new Error(error.error || `POST /auth/login → ${res.status}`)
     }
-    return res.json() as Promise<{ message: string; devOtp?: string }>
+    return res.json() as Promise<{
+      id: string
+      phone: string | null
+      fullName: string
+      email: string
+      locale: string
+    }>
   },
 
-  verifyOtp: async (phone: string, code: string) => {
-    const res = await fetch(`${PREFIX}/auth/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, code }),
-    })
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}))
-      throw new Error(error.error || `POST /auth/verify → ${res.status}`)
-    }
-    return res.json() as Promise<{ id: string; phone: string; fullName: string; locale: string }>
-  },
-
-  sendRegisterOtp: async (phone: string) => {
+  registerDriver: async (email: string, password: string, fullName: string) => {
     const res = await fetch(`${PREFIX}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone }),
+      body: JSON.stringify({ email, password, fullName }),
     })
     if (!res.ok) {
       const error = await res.json().catch(() => ({}))
       throw new Error(error.error || `POST /auth/register → ${res.status}`)
     }
-    return res.json() as Promise<{ message: string; devOtp?: string }>
-  },
-
-  verifyRegister: async (phone: string, code: string, fullName: string) => {
-    const res = await fetch(`${PREFIX}/auth/register/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, code, fullName }),
-    })
-    if (!res.ok) {
-      const error = await res.json().catch(() => ({}))
-      throw new Error(error.error || `POST /auth/register/verify → ${res.status}`)
-    }
-    return res.json() as Promise<{ id: string; phone: string; fullName: string }>
+    return res.json() as Promise<{
+      id: string
+      phone: string | null
+      fullName: string
+      email: string
+    }>
   },
 
   addVehicle: async (driverId: string, details: {

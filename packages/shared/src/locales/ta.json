@@ -64,26 +64,14 @@
   "auth": {
     "login": {
       "title": "மீண்டும் வருக",
-      "subtitle": "தொடர உங்கள் மலேசிய மொபைல் எண்ணை உள்ளிடவும்",
-      "phonePlaceholder": "எ.கா. 011-23456789",
-      "phoneLabel": "மலேசிய மொபைல் எண்",
-      "sendOtp": "OTP அனுப்பு",
+      "subtitle": "தொடர உங்கள் மின்னஞ்சல் மற்றும் கடவுச்சொல்லுடன் உள்நுழையவும்",
+      "emailLabel": "மின்னஞ்சல் முகவரி",
+      "emailPlaceholder": "எ.கா. ahmad@example.com",
+      "passwordLabel": "கடவுச்சொல்",
+      "passwordPlaceholder": "உங்கள் கடவுச்சொல்லை உள்ளிடவும்",
+      "loginButton": "உள்நுழைய",
       "noAccount": "புதிய ஓட்டுநரா?",
       "registerLink": "இங்கே பதிவு செய்யுங்கள்"
-    },
-    "verify": {
-      "title": "உங்கள் எண்ணைச் சரிபார்க்கவும்",
-      "subtitle": "அனுப்பப்பட்ட 6-இலக்க குறியீட்டை உள்ளிடவும்",
-      "enterDigits": "அனைத்து 6 இலக்கங்களையும் உள்ளிடவும்",
-      "mockHint": "(In v0.1, any 6-digit code works)",
-      "button": "சரிபார்க்கவும்",
-      "resendTimer": "இல் குறியீட்டை மீண்டும் அனுப்பவும்",
-      "resendButton": "குறியீட்டை மீண்டும் அனுப்பவும்",
-      "wrongNumber": "தவறான எண்ணா?",
-      "otpLabel": "One-time password",
-      "resend": "Resend code",
-      "resendIn": "Resend in {{seconds}}s",
-      "verify": "Verify"
     },
     "register": {
       "title": "டீக்கோ ஓட்டுநர்-கூட்டாளராக உங்கள் பயணத்தைத் தொடங்குங்கள்.",

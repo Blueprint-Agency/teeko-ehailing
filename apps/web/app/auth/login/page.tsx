@@ -6,33 +6,38 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { ArrowRight, Phone } from 'lucide-react'
+import { ArrowRight, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { phoneSchema } from '@teeko/shared/schemas/auth'
+import { loginSchema, type LoginFormData } from '@teeko/shared/schemas/auth'
+import { useWebAuthStore } from '@/stores/authStore'
+import mockProfile from '@/data/mock-driver-profile.json'
+import type { DriverProfile } from '@teeko/shared/types'
 import { api } from '@/lib/api'
-
-const schema = z.object({ phone: phoneSchema })
-type FormData = z.infer<typeof schema>
 
 export default function LoginPage() {
   const { t } = useTranslation()
   const router = useRouter()
+  const { login } = useWebAuthStore()
   const [loading, setLoading] = useState(false)
-  const { register, handleSubmit, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(schema),
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
   })
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: LoginFormData) => {
     setLoading(true)
     try {
-      const { devOtp } = await api.loginDriver(data.phone as string)
-      const params = new URLSearchParams({ phone: data.phone as string })
-      if (devOtp) params.set('otp', devOtp)
-      router.push(`/auth/verify?${params.toString()}`)
+      const user = await api.loginDriver(data.email, data.password)
+      login({
+        ...mockProfile,
+        id: user.id,
+        fullName: user.fullName,
+        phone: user.phone ?? '',
+        email: user.email,
+      } as DriverProfile)
+      router.push('/dashboard')
     } catch (error: any) {
-      alert(error.message || 'Failed to send OTP')
+      alert(error.message || 'Failed to log in')
     } finally {
       setLoading(false)
     }
@@ -71,7 +76,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           <div className="mb-8 animate-fade-up">
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-lg)] bg-[var(--color-teal-light)]">
-              <Phone className="h-5 w-5 text-[var(--color-teal-dark)]" />
+              <Mail className="h-5 w-5 text-[var(--color-teal-dark)]" />
             </div>
             <h1 className="mb-2 font-display text-3xl text-[var(--color-navy)]">{t('auth.login.title')}</h1>
             <p className="text-[var(--color-muted)]">{t('auth.login.subtitle')}</p>
@@ -79,16 +84,26 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit(onSubmit)} className="animate-fade-up animate-delay-100 space-y-5">
             <Input
-              label={t('auth.login.phoneLabel')}
-              placeholder={t('auth.login.phonePlaceholder')}
-              type="tel"
+              label={t('auth.login.emailLabel')}
+              placeholder={t('auth.login.emailPlaceholder')}
+              type="email"
+              autoComplete="email"
               required
-              error={errors.phone?.message}
-              {...register('phone')}
+              error={errors.email?.message}
+              {...register('email')}
+            />
+            <Input
+              label={t('auth.login.passwordLabel')}
+              placeholder={t('auth.login.passwordPlaceholder')}
+              type="password"
+              autoComplete="current-password"
+              required
+              error={errors.password?.message}
+              {...register('password')}
             />
 
             <Button type="submit" size="lg" className="w-full" loading={loading}>
-              {t('auth.login.sendOtp')}
+              {t('auth.login.loginButton')}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>

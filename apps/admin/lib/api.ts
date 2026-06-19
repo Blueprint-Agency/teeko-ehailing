@@ -50,8 +50,15 @@ export interface DocReviewRow {
   driverName: string;
   docType: string;
   category: string;
+  fileUrl: string | null;
   uploadedAt: string | null;
   status: 'pending' | 'approved' | 'rejected';
+}
+
+/** Resolve a stored document path (e.g. `/uploads/...`) to a fully-qualified URL. */
+export function resolveFileUrl(fileUrl: string | null): string | null {
+  if (!fileUrl) return null;
+  return /^https?:\/\//.test(fileUrl) ? fileUrl : `${BASE}${fileUrl}`;
 }
 
 export const adminApi = {

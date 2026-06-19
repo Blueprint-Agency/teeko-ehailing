@@ -64,26 +64,14 @@
   "auth": {
     "login": {
       "title": "Welcome back",
-      "subtitle": "Enter your Malaysian mobile number to continue",
-      "phonePlaceholder": "e.g. 011-23456789",
-      "phoneLabel": "Malaysian mobile number",
-      "sendOtp": "Send OTP",
+      "subtitle": "Sign in with your email and password to continue",
+      "emailLabel": "Email address",
+      "emailPlaceholder": "e.g. ahmad@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "loginButton": "Log in",
       "noAccount": "New driver?",
       "registerLink": "Register here"
-    },
-    "verify": {
-      "title": "Verify your number",
-      "subtitle": "Enter the 6-digit code sent to",
-      "enterDigits": "Enter all 6 digits",
-      "mockHint": "(In v0.1, any 6-digit code works)",
-      "button": "Verify",
-      "resendTimer": "Resend code in",
-      "resendButton": "Resend code",
-      "wrongNumber": "Wrong number?",
-      "otpLabel": "One-time password",
-      "resend": "Resend code",
-      "resendIn": "Resend in {{seconds}}s",
-      "verify": "Verify"
     },
     "register": {
       "title": "Start your journey as a Teeko driver-partner.",

@@ -1,18 +1,26 @@
 import { z } from 'zod'
 
-// Malaysian phone: +60 followed by 9-10 digits (mobile starts with 01)
-export const phoneSchema = z
+export const emailSchema = z
   .string()
-  .regex(/^(\+?60|0)(1[0-9])[0-9]{7,8}$/, 'Enter a valid Malaysian mobile number')
+  .min(1, 'Email is required')
+  .email('Enter a valid email address')
 
-export const otpSchema = z
+export const passwordSchema = z
   .string()
-  .length(6, 'OTP must be 6 digits')
-  .regex(/^\d{6}$/, 'OTP must be numeric')
+  .min(8, 'Password must be at least 8 characters')
+  .max(72, 'Password is too long')
+
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Enter your password'),
+})
+
+export type LoginFormData = z.infer<typeof loginSchema>
 
 export const registerSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters').max(100),
-  phone: phoneSchema,
+  email: emailSchema,
+  password: passwordSchema,
   pdpaConsent: z.boolean().refine((v) => v === true, 'You must consent to data collection'),
 })
 

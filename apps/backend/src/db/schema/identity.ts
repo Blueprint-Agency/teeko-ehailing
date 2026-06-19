@@ -23,7 +23,8 @@ export const userRole = pgEnum('user_role', [
 export const users = pgTable('users', {
   id: uuid().primaryKey().defaultRandom(),
   phone: text().unique(),
-  email: text(),
+  email: text().unique(),
+  passwordHash: text(),
   emailVerified: boolean().notNull().default(false),
   fullName: text(),
   locale: localeEnum().notNull().default('en'),

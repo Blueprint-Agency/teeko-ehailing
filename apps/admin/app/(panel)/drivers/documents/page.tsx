@@ -5,7 +5,8 @@ import {
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useRbac } from '@/hooks/useRbac';
-import { adminApi, type DocReviewRow } from '@/lib/api';
+import { adminApi, resolveFileUrl, type DocReviewRow } from '@/lib/api';
+import Link from '@mui/material/Link';
 import { useEffect, useState } from 'react';
 
 export default function DocumentsPage() {
@@ -56,7 +57,17 @@ export default function DocumentsPage() {
   const columns: GridColDef[] = [
     { field: 'driverName', headerName: 'Driver', flex: 1, minWidth: 160 },
     { field: 'category', headerName: 'Category', width: 100 },
-    { field: 'docType', headerName: 'Document', width: 220 },
+    {
+      field: 'docType', headerName: 'Document', width: 220,
+      renderCell: ({ value, row }) => {
+        const href = resolveFileUrl(row.fileUrl);
+        return href ? (
+          <Link href={href} target="_blank" rel="noopener noreferrer" underline="hover">{value}</Link>
+        ) : (
+          value
+        );
+      },
+    },
     { field: 'uploadedAt', headerName: 'Uploaded', width: 180, valueGetter: (v) => (v ? new Date(v).toLocaleString() : '—') },
     {
       field: 'status', headerName: 'Status', width: 110,

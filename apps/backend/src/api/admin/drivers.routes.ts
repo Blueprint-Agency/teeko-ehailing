@@ -29,6 +29,7 @@ export async function routes(app: FastifyInstance) {
       .select({
         documentId: documents.id,
         kind: documents.kind,
+        gcsPath: documents.gcsPath,
         uploadedAt: documents.uploadedAt,
         reviewStatus: documentReviews.status,
         reviewedAt: documentReviews.reviewedAt,
@@ -59,6 +60,7 @@ export async function routes(app: FastifyInstance) {
       driverName: r.driverName ?? '—',
       docType: DOC_LABELS[r.kind] ?? r.kind,
       category: r.vehicleCategory ?? '—',
+      fileUrl: r.gcsPath,
       uploadedAt: r.uploadedAt?.toISOString() ?? null,
       status: r.reviewStatus ?? 'pending',
     }));

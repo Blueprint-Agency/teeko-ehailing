@@ -64,26 +64,14 @@
   "auth": {
     "login": {
       "title": "Selamat kembali",
-      "subtitle": "Masukkan nombor telefon bimbit Malaysia anda untuk teruskan",
-      "phonePlaceholder": "cth. 011-23456789",
-      "phoneLabel": "Nombor telefon bimbit Malaysia",
-      "sendOtp": "Hantar OTP",
+      "subtitle": "Log masuk dengan emel dan kata laluan anda untuk teruskan",
+      "emailLabel": "Alamat emel",
+      "emailPlaceholder": "cth. ahmad@example.com",
+      "passwordLabel": "Kata laluan",
+      "passwordPlaceholder": "Masukkan kata laluan anda",
+      "loginButton": "Log masuk",
       "noAccount": "Pemandu baharu?",
       "registerLink": "Daftar di sini"
-    },
-    "verify": {
-      "title": "Sahkan nombor anda",
-      "subtitle": "Masukkan kod 6-digit yang dihantar ke",
-      "enterDigits": "Masukkan semua 6 digit",
-      "mockHint": "(Dalam v0.1, sebarang kod 6-digit diterima)",
-      "button": "Sahkan",
-      "resendTimer": "Hantar semula kod dalam",
-      "resendButton": "Hantar semula kod",
-      "wrongNumber": "Nombor salah?",
-      "otpLabel": "Kata laluan sekali sahaja",
-      "resend": "Hantar semula kod",
-      "resendIn": "Hantar semula dalam {{seconds}}s",
-      "verify": "Sahkan"
     },
     "register": {
       "title": "Mulakan perjalanan anda sebagai rakan-pemandu Teeko.",

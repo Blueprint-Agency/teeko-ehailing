@@ -64,26 +64,14 @@
   "auth": {
     "login": {
       "title": "欢迎回来",
-      "subtitle": "输入您的马来西亚手机号码以继续",
-      "phonePlaceholder": "例如 011-23456789",
-      "phoneLabel": "马来西亚手机号码",
-      "sendOtp": "发送验证码",
+      "subtitle": "使用您的电子邮件和密码登录以继续",
+      "emailLabel": "电子邮件地址",
+      "emailPlaceholder": "例如 ahmad@example.com",
+      "passwordLabel": "密码",
+      "passwordPlaceholder": "输入您的密码",
+      "loginButton": "登录",
       "noAccount": "新司机？",
       "registerLink": "在此注册"
-    },
-    "verify": {
-      "title": "验证您的号码",
-      "subtitle": "输入发送至此号码的 6 位验证码",
-      "enterDigits": "请输入全部 6 位数字",
-      "mockHint": "(v0.1 版本中，任何 6 位数字均有效)",
-      "button": "验证",
-      "resendTimer": "秒后重新发送",
-      "resendButton": "重新发送验证码",
-      "wrongNumber": "号码错误？",
-      "otpLabel": "一次性验证码",
-      "resend": "重新发送",
-      "resendIn": "{{seconds}}秒后重新发送",
-      "verify": "验证"
     },
     "register": {
       "title": "开始您的 Teeko 司机伙伴之旅。",
