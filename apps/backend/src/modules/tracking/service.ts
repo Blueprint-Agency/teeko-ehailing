@@ -1,6 +1,7 @@
 import type { Socket } from 'socket.io';
 import { redis } from '../../config/redis';
 import { getDistanceMatrix } from '../../external/googleMaps';
+import { getIO } from '../../config/socketio';
 
 // In-memory socket maps — replaced by Redis adapter in multi-instance prod
 const driverSockets = new Map<string, Socket>();
@@ -50,6 +51,14 @@ export const trackingService = {
       .zrem('driver:locations', driverId)
       .exec()
       .catch(() => null);
+  },
+
+  // Fix 4: Clear the driver:online Redis key so dispatch stops treating a
+  // disconnected driver as available. Without this the key lives for its full
+  // 1-hour TTL even after the socket drops, causing dispatch to emit offers
+  // to a socket that no longer exists.
+  async clearDriverOnlineStatus(driverId: string): Promise<void> {
+    await redis.del(`driver:online:${driverId}`).catch(() => null);
   },
 
   async getDriverLocation(
@@ -120,6 +129,19 @@ export const trackingService = {
   },
 
   emitToRider(riderId: string, event: string, payload: unknown): void {
-    riderSockets.get(riderId)?.emit(event, payload);
+    const s = riderSockets.get(riderId);
+    const io = getIO();
+    console.log(`[tracking] emitToRider riderId=${riderId} event=${event} directSocketFound=${!!s} ioReady=${!!io}`);
+    if (s?.connected) {
+      // Direct socket emit — fastest path
+      s.emit(event, payload);
+    } else if (io) {
+      // Room-based fallback: gateway calls socket.join('rider:{id}') on auth,
+      // so this reaches the rider even if riderSockets map is stale or unpopulated.
+      console.log(`[tracking] emitToRider falling back to room rider:${riderId}`);
+      io.to(`rider:${riderId}`).emit(event, payload);
+    } else {
+      console.log(`[tracking] emitToRider DROPPED — no socket and no io instance`);
+    }
   },
 };

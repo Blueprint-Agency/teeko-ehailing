@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray, not } from 'drizzle-orm';
 import { db } from '../../db';
 import { trips, tripOffers, driverProfiles, driverRadiusSettings, fareQuotes, users } from '../../db/schema';
 import { redis } from '../../config/redis';
@@ -24,9 +24,40 @@ async function findOnlineDriverIds(): Promise<string[]> {
   return rows.map((r) => r.userId);
 }
 
+// Fix 1: Retry emitting to a driver whose socket auth handshake may not have
+// completed yet. Dispatch fires immediately after trip creation, so the driver
+// socket might not be in driverSockets when the first attempt is made.
+// We retry up to maxAttempts times with delayMs between each try.
+async function emitWithRetry(
+  driverId: string,
+  event: string,
+  payload: unknown,
+  maxAttempts = 4,
+  delayMs = 2_000,
+): Promise<boolean> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const s = trackingService.getDriverSocket(driverId);
+    if (s?.connected) {
+      s.emit(event, payload);
+      console.log(`[dispatch] emitWithRetry OK driverId=${driverId} event=${event} attempt=${attempt + 1}`);
+      return true;
+    }
+    console.log(`[dispatch] emitWithRetry no socket yet driverId=${driverId} attempt=${attempt + 1}/${maxAttempts}`);
+    if (attempt < maxAttempts - 1) {
+      await new Promise<void>((r) => setTimeout(r, delayMs));
+    }
+  }
+  return false;
+}
+
 const OFFER_TTL_SEC = 15;
 const DISPATCH_RADIUS_KM = 15;
 const SEARCH_TIMEOUT_MS = 60 * 1000;
+
+// Fix 3: Default to all supported categories so drivers without an explicit
+// driverRadiusSettings.categories value are eligible for every ride type,
+// not just 'go' (the old fallback that silently blocked comfort/xl/premium/bike).
+const ALL_CATEGORIES = ['go', 'comfort', 'xl', 'premium', 'bike'];
 
 export const dispatchService = {
   /** Called after a trip is created. Finds nearby online drivers and offers the trip. */
@@ -48,20 +79,38 @@ export const dispatchService = {
     // Filter to drivers online and matching category
     const eligible: string[] = [];
     for (const driverId of nearbyIds) {
-      const onlineFlag = await redis.get(`driver:online:${driverId}`).catch(() => null);
-      console.log(`[dispatch] driver=${driverId} redis:online=${onlineFlag}`);
-      if (!onlineFlag) continue;
-
+      // Use DB profile as the sole source of truth for online status.
+      // The previous Redis key check (driver:online:{id}) was removed because it
+      // caused a regression: Fix 4 deletes the key on socket disconnect, and any
+      // booking that arrived during the reconnect window found no key → driver
+      // skipped → trip cancelled immediately. The DB availability field is set by
+      // the explicit goOnline/goOffline REST calls and is authoritative; the Redis
+      // key was only a cache optimisation that created false negatives.
       const profile = await db.query.driverProfiles.findFirst({
         where: eq(driverProfiles.userId, driverId),
       });
       console.log(`[dispatch] driver=${driverId} profile.availability=${profile?.availability} approvalStatus=${profile?.approvalStatus}`);
       if (!profile || profile.availability !== 'online') continue;
 
+      // Skip drivers who already have an active trip — otherwise a driver who just
+      // accepted trip A can receive trip B immediately if trip A's offer timeout
+      // fires and the rider retries before the driver goes offline.
+      const activeTrip = await db.query.trips.findFirst({
+        where: and(
+          eq(trips.driverId, driverId),
+          not(inArray(trips.status, ['completed', 'cancelled', 'no_show'])),
+        ),
+      });
+      if (activeTrip) {
+        console.log(`[dispatch] driver=${driverId} has active trip ${activeTrip.id} (${activeTrip.status}), skipping`);
+        continue;
+      }
+
       const radius = await db.query.driverRadiusSettings.findFirst({
         where: eq(driverRadiusSettings.driverId, driverId),
       });
-      const cats = radius?.categories ?? ['go'];
+      // Fix 3: Fall back to ALL_CATEGORIES instead of just ['go'].
+      const cats = (radius?.categories as string[] | null | undefined) ?? ALL_CATEGORIES;
       console.log(`[dispatch] driver=${driverId} acceptedCategories=${JSON.stringify(cats)} tripCategory=${trip.category}`);
       if (!cats.includes(trip.category)) continue;
 
@@ -92,18 +141,28 @@ export const dispatchService = {
       }
     }, SEARCH_TIMEOUT_MS);
 
-    await dispatchService.offerToDriver(tripId, eligible, 0);
+    await dispatchService.offerToDriver(tripId, eligible, 0, pickupLat, pickupLng);
   },
 
-  async offerToDriver(tripId: string, queue: string[], index: number): Promise<void> {
+  async offerToDriver(
+    tripId: string,
+    queue: string[],
+    index: number,
+    pickupLat?: number,
+    pickupLng?: number,
+  ): Promise<void> {
     if (index >= queue.length) {
-      // All drivers declined/timed out
       const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
+      // Only cancel and notify if the trip is still waiting for a driver.
+      // If the trip was already matched (driver accepted during the offer window),
+      // this branch is stale — emitting trip.no_drivers here would incorrectly
+      // reset the rider's screen to "no drivers" even though a driver is en route.
+      if (trip?.status !== 'requested') return;
       await db
         .update(trips)
         .set({ status: 'cancelled', cancelReason: 'no_drivers_accepted', cancelledAt: new Date(), updatedAt: new Date() })
         .where(and(eq(trips.id, tripId), eq(trips.status, 'requested')));
-      if (trip?.riderId) {
+      if (trip.riderId) {
         trackingService.emitToRider(trip.riderId, 'trip.no_drivers', { trip_id: tripId });
       }
       return;
@@ -111,24 +170,29 @@ export const dispatchService = {
 
     const driverId = queue[index]!;
     const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
-    if (!trip || trip.status !== 'requested') return; // already matched or cancelled
+    if (!trip || trip.status !== 'requested') return;
 
-    // Record the offer
+    // Resolve pickup coords from explicit params (preferred) or DB
+    const pLat = pickupLat ?? extractPoint(trip.pickup).lat;
+    const pLng = pickupLng ?? extractPoint(trip.pickup).lng;
+
+    // Fix 2: Persist the full queue and pickup coords in the offer payload so
+    // handleDriverDecline can advance the queue correctly without re-querying
+    // Redis GEO (the old code called nearbyDrivers(0, 0, ...) — lat/lng both
+    // zero, which is in the Atlantic Ocean, returning no Malaysian drivers).
     const expiresAt = new Date(Date.now() + OFFER_TTL_SEC * 1000);
     await db.insert(tripOffers).values({
       tripId,
       driverId,
       status: 'pending',
       expiresAt,
-      payload: { queueIndex: index, queueLength: queue.length },
+      payload: { queueIndex: index, queueLength: queue.length, queue, pickupLat: pLat, pickupLng: pLng },
     });
 
-    // Store in Redis for timeout tracking
     await redis
       .set(`offer:${tripId}:current`, driverId, 'EX', OFFER_TTL_SEC)
       .catch(() => null);
 
-    const { lat: pickupLat, lng: pickupLng } = extractPoint(trip.pickup);
     const { lat: destLat, lng: destLng } = extractPoint(trip.dropoff);
 
     const [quote, rider] = await Promise.all([
@@ -138,16 +202,28 @@ export const dispatchService = {
       db.query.users.findFirst({ where: eq(users.id, trip.riderId) }),
     ]);
 
-    console.log(`[dispatch] emitting trip.request to driver=${driverId}`);
-    trackingService.emitToDriver(driverId, 'trip.request', {
+    const requestPayload = {
       trip_id: tripId,
-      pickup: { lat: pickupLat, lng: pickupLng, address: trip.pickupAddress },
+      pickup: { lat: pLat, lng: pLng, address: trip.pickupAddress },
       destination: { lat: destLat, lng: destLng, address: trip.dropoffAddress },
       category: trip.category,
       fare_cents: quote?.totalCents ?? 0,
       rider_name: rider?.fullName ?? 'Rider',
       outside_radius: false,
-    });
+    };
+
+    // Fix 1: Use retry wrapper instead of a fire-and-forget single emit.
+    // The driver socket may not have finished its auth handshake by the time
+    // dispatch runs (connect → async getToken → emit auth → server registers).
+    // We retry every 2s for up to 8s total; if the socket never appears we
+    // skip this driver and offer to the next one in the queue.
+    console.log(`[dispatch] offering trip.request to driver=${driverId} (with retry)`);
+    const delivered = await emitWithRetry(driverId, 'trip.request', requestPayload);
+    if (!delivered) {
+      console.log(`[dispatch] socket never became available for driver=${driverId}, skipping`);
+      await dispatchService.offerToDriver(tripId, queue, index + 1, pLat, pLng);
+      return;
+    }
 
     // Timeout: if driver doesn't respond in OFFER_TTL_SEC, move to next
     setTimeout(async () => {
@@ -158,7 +234,7 @@ export const dispatchService = {
           .update(tripOffers)
           .set({ status: 'terminal', outcome: 'timeout', resolvedAt: new Date() })
           .where(and(eq(tripOffers.tripId, tripId), eq(tripOffers.driverId, driverId)));
-        await dispatchService.offerToDriver(tripId, queue, index + 1);
+        await dispatchService.offerToDriver(tripId, queue, index + 1, pLat, pLng);
       }
     }, OFFER_TTL_SEC * 1000);
   },
@@ -176,15 +252,28 @@ export const dispatchService = {
 
     await redis.del(`offer:${tripId}:current`).catch(() => null);
 
-    // Retrieve queue from payload and advance
-    const payload = offer.payload as { queueIndex: number; queueLength: number };
-    const queueIndex = payload?.queueIndex ?? 0;
+    // Fix 2: Read the persisted queue and pickup coords from the offer payload
+    // instead of calling nearbyDrivers(0, 0, ...) which searched the Atlantic Ocean.
+    const payload = offer.payload as {
+      queueIndex: number;
+      queue: string[];
+      pickupLat: number;
+      pickupLng: number;
+    };
+    const queue = Array.isArray(payload?.queue) ? payload.queue : [];
+    const nextIndex = (payload?.queueIndex ?? 0) + 1;
 
-    // Re-fetch queue from Redis or re-dispatch; simplified: re-dispatch from next index
-    // For a production system this queue would be persisted in Redis
-    const nearbyIds = await trackingService.nearbyDrivers(0, 0, DISPATCH_RADIUS_KM).catch(() => []);
-    if (nearbyIds.length > queueIndex + 1) {
-      await dispatchService.offerToDriver(tripId, nearbyIds, queueIndex + 1);
+    if (nextIndex < queue.length) {
+      await dispatchService.offerToDriver(tripId, queue, nextIndex, payload.pickupLat, payload.pickupLng);
+    } else {
+      const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
+      await db
+        .update(trips)
+        .set({ status: 'cancelled', cancelReason: 'no_drivers_accepted', cancelledAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(trips.id, tripId), eq(trips.status, 'requested')));
+      if (trip?.riderId) {
+        trackingService.emitToRider(trip.riderId, 'trip.no_drivers', { trip_id: tripId });
+      }
     }
   },
 };

@@ -28,6 +28,7 @@ export function connectSocket(getToken: () => Promise<string | null>): Socket {
       if (token) s.emit('auth', { token });
     });
   } else {
+    s.off('connect'); // remove any previously registered connect listener before adding a new one
     s.on('connect', () => {
       console.log(`[socket] connected — fetching fresh token`);
       getToken().then((token) => {

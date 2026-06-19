@@ -95,6 +95,13 @@ function SocketBridge() {
 
       const s = connectSocket(getToken);
 
+      // Remove any stale listeners from a previous SocketBridge setup run before
+      // adding new ones. Without this, if hasConnectedRef resets (token briefly null
+      // then non-null), a second listener stacks on the singleton socket and the
+      // driver receives two popup navigations for every one trip.request event.
+      s.off('trip.request');
+      s.off('trip.request.timeout');
+
       s.on('trip.request', (data: {
         trip_id: string;
         category: string;

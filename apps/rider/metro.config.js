@@ -7,7 +7,6 @@ const monorepoRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
 
-// Monorepo: watch the whole repo and resolve node_modules from both app + root.
 config.watchFolders = [monorepoRoot];
 
 config.resolver.nodeModulesPaths = [
@@ -16,5 +15,12 @@ config.resolver.nodeModulesPaths = [
 ];
 
 config.resolver.disableHierarchicalLookup = true;
+
+config.resolver.blockList = [
+  /node_modules\/.*\/android\/build\/.*/,
+  /node_modules\/.*\/\.gradle\/.*/,
+  /android\/build\/.*/,
+  /android\/\.gradle\/.*/,
+];
 
 module.exports = withNativeWind(config, { input: "./global.css" });

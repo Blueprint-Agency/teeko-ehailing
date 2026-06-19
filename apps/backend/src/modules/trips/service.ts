@@ -1,8 +1,9 @@
 import { and, eq, inArray, not } from 'drizzle-orm';
 import { db } from '../../db';
-import { trips, tripEvents, fareQuotes, driverProfiles, vehicles, driverActiveVehicle, users } from '../../db/schema';
+import { trips, tripEvents, tripOffers, fareQuotes, driverProfiles, vehicles, driverActiveVehicle, users } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
 import { trackingService } from '../tracking/service';
+import { redis } from '../../config/redis';
 import { env } from '../../config/env';
 
 type Coords = { lat: number; lng: number };
@@ -154,6 +155,21 @@ export const tripsService = {
       eventType: 'accepted',
       actorId: driverId,
     });
+
+    // Clear the dispatch offer so the 15-second timeout doesn't fire after accept.
+    // Without this the timeout sees offer:current still set, emits trip.request.timeout
+    // to the driver and trip.no_drivers to the rider even though the trip is matched.
+    await Promise.all([
+      redis.del(`offer:${tripId}:current`).catch(() => null),
+      db.update(tripOffers)
+        .set({ status: 'terminal', outcome: 'accepted', resolvedAt: new Date() })
+        .where(and(
+          eq(tripOffers.tripId, tripId),
+          eq(tripOffers.driverId, driverId),
+          eq(tripOffers.status, 'pending'),
+        ))
+        .catch(() => null),
+    ]);
 
     // Fetch driver details to include in socket payload so rider can display them immediately
     const [driverUser, driverProfile, activeVehicleRow] = await Promise.all([

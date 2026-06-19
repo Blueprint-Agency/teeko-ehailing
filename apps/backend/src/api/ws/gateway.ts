@@ -6,6 +6,8 @@ import { trackingService } from '../../modules/tracking/service';
 import { db } from '../../db';
 import { trips, driverProfiles, users, vehicles, driverActiveVehicle } from '../../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
+import { redis } from '../../config/redis';
+import { setIO } from '../../config/socketio';
 
 let io: Server | null = null;
 
@@ -18,14 +20,29 @@ export function mountSocketIO(httpServer: HttpServer): Server {
     path: '/ws',
   });
 
+  setIO(io);
+
   io.on('connection', async (socket: Socket) => {
     console.log(`[WS] connect  sid=${socket.id}`);
 
     // --- auth handshake ---
     socket.on('auth', async ({ token }: { token: string }) => {
+      console.log(`[WS] auth received sid=${socket.id} tokenLen=${token?.length ?? 0}`);
       try {
-        // Accept tokens from either the rider or driver Clerk instance.
-        const claims = await verifyRiderClerkToken(token).catch(() => verifyDriverClerkToken(token));
+        let claims;
+        try {
+          claims = await verifyRiderClerkToken(token);
+          console.log(`[WS] auth verified via RIDER clerk sub=${claims.sub}`);
+        } catch (riderErr) {
+          console.log(`[WS] rider clerk verify failed (${riderErr instanceof Error ? riderErr.message : riderErr}), trying driver clerk`);
+          try {
+            claims = await verifyDriverClerkToken(token);
+            console.log(`[WS] auth verified via DRIVER clerk sub=${claims.sub}`);
+          } catch (driverErr) {
+            console.log(`[WS] driver clerk verify also failed: ${driverErr instanceof Error ? driverErr.message : driverErr}`);
+            throw driverErr;
+          }
+        }
         const user = await findUserByExternalId('clerk', claims.sub);
         console.log(`[WS] auth lookup clerkSub=${claims.sub} → dbUserId=${user?.id ?? 'NOT FOUND'} role=${user?.role}`);
         if (!user) { socket.disconnect(); return; }
@@ -38,6 +55,20 @@ export function mountSocketIO(httpServer: HttpServer): Server {
           socket.join(`driver:${user.id}`);
           socket.emit('auth.ok', { role: 'driver', userId: user.id });
           console.log(`[WS] auth.ok  driver userId=${user.id}`);
+
+          // Fix A: Restore the driver:online Redis key on every successful auth,
+          // not just on goOnline(). Fix 4 deletes this key on socket disconnect so
+          // that ghost drivers don't stay in the dispatch pool — but that means a
+          // brief network reconnect clears the key permanently until the driver
+          // manually toggles offline→online. We repair it here by checking the DB
+          // and re-setting the key if the driver is still marked online.
+          const driverProfile = await db.query.driverProfiles.findFirst({
+            where: eq(driverProfiles.userId, user.id),
+          });
+          if (driverProfile?.availability === 'online') {
+            await redis.set(`driver:online:${user.id}`, '1', 'EX', 3600).catch(() => null);
+            console.log(`[WS] restored driver:online key for userId=${user.id}`);
+          }
         } else {
           trackingService.registerRider(user.id, socket);
           socket.join(`rider:${user.id}`);
@@ -99,8 +130,10 @@ export function mountSocketIO(httpServer: HttpServer): Server {
       });
 
       if (activeTrip) {
-        const pickupLat = (activeTrip.pickup as unknown as { y: number }).y;
-        const pickupLng = (activeTrip.pickup as unknown as { x: number }).x;
+        // pickup is now a WKT string "POINT(lng lat)" after geographyPoint.fromDriver
+        const m = String(activeTrip.pickup).match(/POINT\(([^ ]+) ([^ )]+)\)/);
+        const pickupLng = m ? parseFloat(m[1]!) : 0;
+        const pickupLat = m ? parseFloat(m[2]!) : 0;
         const etaMin = await trackingService.getEtaMinutes(
           { lat, lng },
           { lat: pickupLat, lng: pickupLng },
@@ -117,6 +150,9 @@ export function mountSocketIO(httpServer: HttpServer): Server {
       if (role === 'driver') {
         trackingService.unregisterDriver(userId);
         await trackingService.removeDriverLocation(userId);
+        // Fix 4: Immediately delete the online flag so dispatch doesn't treat
+        // this driver as available for the remaining 1-hour TTL after they disconnect.
+        await trackingService.clearDriverOnlineStatus(userId);
       } else {
         trackingService.unregisterRider(userId);
       }

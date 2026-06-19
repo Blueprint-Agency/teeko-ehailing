@@ -64,6 +64,7 @@ export async function clerkAuthVerify(req: FastifyRequest, reply: FastifyReply) 
     const riderDetail = err instanceof Error ? err.message : String(err);
     return reply.code(401).send({ error: 'unauthorized', message: riderDetail });
   }
+  req.log.info({ clerkInstance: 'rider', sub: claims.sub }, 'clerk auth/me');
   req.clerkAuth = claims;
   const row = await findUserByExternalId('clerk', claims.sub);
   if (row) {
@@ -91,6 +92,7 @@ export async function driverClerkAuthVerify(req: FastifyRequest, reply: FastifyR
     const detail = err instanceof Error ? err.message : String(err);
     return reply.code(401).send({ error: 'unauthorized', message: detail });
   }
+  req.log.info({ clerkInstance: 'driver', sub: claims.sub }, 'clerk auth/me');
   req.clerkAuth = claims;
   const row = await findUserByExternalId('clerk', claims.sub);
   if (row) {

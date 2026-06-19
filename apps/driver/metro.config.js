@@ -15,4 +15,11 @@ config.resolver.nodeModulesPaths = [
 
 config.resolver.disableHierarchicalLookup = true;
 
+config.resolver.blockList = [
+  /node_modules\/.*\/android\/build\/.*/,
+  /node_modules\/.*\/\.gradle\/.*/,
+  /android\/build\/.*/,
+  /android\/\.gradle\/.*/,
+];
+
 module.exports = config;

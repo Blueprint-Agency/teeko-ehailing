@@ -37,11 +37,9 @@ function SocketBridge() {
       disconnectSocket();
       return;
     }
-    getToken().then((token) => {
-      if (!token) return;
-      const s = connectSocket(token);
-      connectTripSocket(s);
-    }).catch(() => null);
+    // Fix 5: Pass the getter function so each reconnect fetches a fresh token.
+    const s = connectSocket(getToken);
+    connectTripSocket(s);
 
     return () => {
       disconnectSocket();

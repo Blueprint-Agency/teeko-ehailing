@@ -86,6 +86,14 @@ export default function TripScreen() {
   ): Promise<DirectionsResult> =>
     api.driver.directions(o, d, opts) as Promise<DirectionsResult>;
 
+  // validDest must be declared BEFORE useDirections so the hook receives the
+  // real value on every render. Declaring it after (as it was) caused Babel to
+  // hoist it as `var`, making it `undefined` when passed to the hook, so
+  // directions were never fetched and the Bézier fallback always showed.
+  const validDest = directionsDestination && (directionsDestination.lat !== 0 || directionsDestination.lng !== 0)
+    ? directionsDestination
+    : null;
+
   const { result: directions } = useDirections({
     origin: driverLocation,
     destination: validDest,
@@ -141,10 +149,6 @@ export default function TripScreen() {
       },
     ]);
   };
-
-  const validDest = directionsDestination && (directionsDestination.lat !== 0 || directionsDestination.lng !== 0)
-    ? directionsDestination
-    : null;
 
   // Use the live directions polyline when available; fall back to a client-side
   // Bézier curve so the route is always visible even before the API responds.
