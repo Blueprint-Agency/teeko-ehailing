@@ -18,6 +18,7 @@ export default function DocumentsPage() {
   const [reason, setReason] = useState('');
   const [done, setDone] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [viewer, setViewer] = useState<{ open: boolean; row: DocReviewRow | null }>({ open: false, row: null });
 
   useEffect(() => {
     adminApi
@@ -62,7 +63,7 @@ export default function DocumentsPage() {
       renderCell: ({ value, row }) => {
         const href = resolveFileUrl(row.fileUrl);
         return href ? (
-          <Link href={href} target="_blank" rel="noopener noreferrer" underline="hover">{value}</Link>
+          <Link component="button" type="button" onClick={() => setViewer({ open: true, row })} underline="hover" textAlign="left">{value}</Link>
         ) : (
           value
         );
@@ -114,6 +115,31 @@ export default function DocumentsPage() {
             disabled={submitting || (dialog.action === 'reject' && !reason)}>
             {submitting ? 'Saving…' : 'Confirm'}
           </Button>
+        </DialogActions>
+      </Dialog>
+      <Dialog open={viewer.open} onClose={() => setViewer({ open: false, row: null })} maxWidth="lg" fullWidth>
+        <DialogTitle>
+          {viewer.row?.docType} — <strong>{viewer.row?.driverName}</strong>
+        </DialogTitle>
+        <DialogContent dividers sx={{ p: 0, bgcolor: 'grey.100' }}>
+          {(() => {
+            const href = viewer.row ? resolveFileUrl(viewer.row.fileUrl) : null;
+            if (!href) return null;
+            const isPdf = /\.pdf(\?|$)/i.test(href);
+            return isPdf ? (
+              <Box component="iframe" src={href} sx={{ width: '100%', height: '70vh', border: 0, display: 'block' }} />
+            ) : (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '40vh', p: 2 }}>
+                <Box component="img" src={href} alt={viewer.row?.docType} sx={{ maxWidth: '100%', maxHeight: '70vh', objectFit: 'contain' }} />
+              </Box>
+            );
+          })()}
+        </DialogContent>
+        <DialogActions>
+          {viewer.row && resolveFileUrl(viewer.row.fileUrl) && (
+            <Button component={Link} href={resolveFileUrl(viewer.row.fileUrl)!} target="_blank" rel="noopener noreferrer">Open in new tab</Button>
+          )}
+          <Button onClick={() => setViewer({ open: false, row: null })}>Close</Button>
         </DialogActions>
       </Dialog>
     </Box>
