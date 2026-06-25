@@ -3,6 +3,14 @@ import { z } from 'zod';
 
 import { MapsError, mapsService } from '../../modules/maps';
 import { ridersService } from '../../modules/riders';
+import { trackingService } from '../../modules/tracking/service';
+
+const NearbyDriversQuery = z.object({
+  lat: z.coerce.number().gte(-90).lte(90),
+  lng: z.coerce.number().gte(-180).lte(180),
+  radiusKm: z.coerce.number().gt(0).lte(10).optional().default(3),
+  limit: z.coerce.number().int().gt(0).lte(50).optional().default(20),
+});
 
 const DirectionsBody = z.object({
   origin: z.object({ lat: z.number().gte(-90).lte(90), lng: z.number().gte(-180).lte(180) }),
@@ -36,6 +44,21 @@ const DetailsQuery = z.object({
 });
 
 export async function routes(app: FastifyInstance) {
+  // ---- ambient online drivers near a point ----
+  // GET /api/v1/rider/nearby-drivers?lat=&lng=&radiusKm=&limit=
+  // Returns coarse positions of online drivers for the home-map "cars around
+  // you" effect. Driver IDs are deliberately NOT returned (privacy): the rider
+  // only needs dots, not identities.
+  app.get('/nearby-drivers', async (req) => {
+    const q = NearbyDriversQuery.parse(req.query);
+    const ids = await trackingService.nearbyDrivers(q.lat, q.lng, q.radiusKm, q.limit);
+    const located = await Promise.all(ids.map((id) => trackingService.getDriverLocation(id)));
+    const drivers = located
+      .filter((d): d is NonNullable<typeof d> => d !== null)
+      .map((d) => ({ lat: d.lat, lng: d.lng, heading: d.heading }));
+    return { ok: true, data: drivers };
+  });
+
   // ---- saved ----
   app.get('/places/saved', async (req) => {
     return ridersService.listSavedPlaces(req.user!.id);

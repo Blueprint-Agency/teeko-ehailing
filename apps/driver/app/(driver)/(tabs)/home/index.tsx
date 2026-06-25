@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
 } from 'react-native';
@@ -22,6 +22,13 @@ export default function HomeScreen() {
   const t = useT();
   const { isOnline, radius, setOnline, setRadius, activeTripId, setActiveTripId, setActiveTrip, setActiveTripStatus } = useDriverStore();
   const locationSub = useRef<Location.LocationSubscription | null>(null);
+  // Last known fix + a heartbeat timer. watchPositionAsync only fires when the
+  // device moves (distanceInterval), so a parked online driver would stop
+  // emitting and let the server's 30s presence TTL expire — making the car
+  // vanish from the rider map. The heartbeat re-pushes the last fix on a timer
+  // to keep that TTL alive while online.
+  const lastFix = useRef<{ lat: number; lng: number; heading: number } | null>(null);
+  const heartbeat = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const handleResumeTrip = () => {
     router.replace('/(driver)/trip');
@@ -50,12 +57,19 @@ export default function HomeScreen() {
     const { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') return;
 
+    // Push the last known fix to the server (HTTP + socket). Also records it so
+    // the heartbeat can re-send it while the driver is stationary.
+    const pushLocation = (lat: number, lng: number, hdg: number) => {
+      lastFix.current = { lat, lng, heading: hdg };
+      api.driver.updateLocation(lat, lng, hdg).catch(() => null);
+      getSocket().emit('driver.location', { lat, lng, heading: hdg });
+    };
+
     // Push current position immediately so dispatch can find this driver right away
     const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
     const { latitude, longitude, heading } = current.coords;
     if (latitude !== 0 || longitude !== 0) {
-      api.driver.updateLocation(latitude, longitude, heading ?? 0).catch(() => null);
-      getSocket().emit('driver.location', { lat: latitude, lng: longitude, heading: heading ?? 0 });
+      pushLocation(latitude, longitude, heading ?? 0);
     }
 
     locationSub.current = await Location.watchPositionAsync(
@@ -63,20 +77,32 @@ export default function HomeScreen() {
       (loc) => {
         const { latitude: lat, longitude: lng, heading: hdg } = loc.coords;
         if (lat === 0 && lng === 0) return;
-        api.driver.updateLocation(lat, lng, hdg ?? 0).catch(() => null);
-        getSocket().emit('driver.location', {
-          lat,
-          lng,
-          heading: hdg ?? 0,
-        });
+        pushLocation(lat, lng, hdg ?? 0);
       },
     );
+
+    // Heartbeat: re-emit the last fix every 10s so the server's 30s presence TTL
+    // never lapses while the driver is online but not moving. No-op until the
+    // first real fix lands.
+    heartbeat.current = setInterval(() => {
+      const f = lastFix.current;
+      if (f) pushLocation(f.lat, f.lng, f.heading);
+    }, 10_000);
   };
 
   const stopLocationTracking = () => {
     locationSub.current?.remove();
     locationSub.current = null;
+    if (heartbeat.current) {
+      clearInterval(heartbeat.current);
+      heartbeat.current = null;
+    }
+    lastFix.current = null;
   };
+
+  // Stop the GPS watch + heartbeat if this screen unmounts while still online,
+  // so the interval/subscription don't leak. Refs only — safe to run once.
+  useEffect(() => stopLocationTracking, []);
 
   const handleToggleOnline = async () => {
     if (isOnline) {

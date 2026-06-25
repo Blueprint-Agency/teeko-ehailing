@@ -65,7 +65,9 @@ export const trackingService = {
     await redis
       .pipeline()
       .hset(`driver:location:${driverId}`, { lat, lng, heading, ts: Date.now() })
-      .expire(`driver:location:${driverId}`, 30)
+      // Presence TTL. Drivers heartbeat every ~10s (even when parked), so 45s
+      // gives ~4 missed beats of margin before a driver is treated as stale.
+      .expire(`driver:location:${driverId}`, 45)
       .geoadd('driver:locations', lng, lat, driverId)
       .exec()
       .catch(() => null); // Redis optional — degrade gracefully

@@ -9,6 +9,7 @@ export {
   placesApi,
   paymentsApi,
   tripsApi,
+  driversApi,
   routesApi,
   api,
   ApiError,
