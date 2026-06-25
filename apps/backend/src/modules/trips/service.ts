@@ -1,6 +1,6 @@
 import { and, eq, inArray, not } from 'drizzle-orm';
 import { db } from '../../db';
-import { trips, tripEvents, tripOffers, fareQuotes, driverProfiles, vehicles, driverActiveVehicle, users } from '../../db/schema';
+import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, driverProfiles, vehicles, driverActiveVehicle, users } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
 import { trackingService } from '../tracking/service';
 import { redis } from '../../config/redis';
@@ -430,5 +430,36 @@ export const tripsService = {
       orderBy: (t, { desc }) => [desc(t.createdAt)],
       limit: 50,
     });
+  },
+
+  // ---- trip route (recorded breadcrumbs) ----
+  // Returns the ordered GPS breadcrumbs persisted during the trip. `requesterId`
+  // must be the trip's rider or driver (admin callers pass requireOwner=false).
+  async getTripRoute(tripId: string, requesterId: string, requireOwner = true) {
+    const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
+    if (!trip) throw new DomainError('TRIP_NOT_FOUND', 'Trip not found.', 404);
+    if (requireOwner && trip.riderId !== requesterId && trip.driverId !== requesterId) {
+      throw new DomainError('FORBIDDEN', 'You do not have access to this trip.', 403);
+    }
+
+    const points = await db.query.tripLocationPoints.findMany({
+      where: eq(tripLocationPoints.tripId, tripId),
+      orderBy: (p, { asc }) => [asc(p.recordedAt)],
+    });
+
+    return {
+      tripId,
+      status: trip.status,
+      points: points.map((p) => {
+        const { lat, lng } = parsePoint(p.location);
+        return {
+          lat,
+          lng,
+          heading: p.heading !== null ? Number(p.heading) : null,
+          speed: p.speed !== null ? Number(p.speed) : null,
+          recordedAt: p.recordedAt.toISOString(),
+        };
+      }),
+    };
   },
 };

@@ -130,6 +130,10 @@ export function mountSocketIO(httpServer: HttpServer): Server {
       });
 
       if (activeTrip) {
+        // Persist a sampled breadcrumb (self-throttled to ~5s/~25m) for route
+        // replay, fare-dispute, and APAD/insurance audit. Only during a trip.
+        await trackingService.persistTripLocation(activeTrip.id, driverId, lat, lng, heading);
+
         // pickup is now a WKT string "POINT(lng lat)" after geographyPoint.fromDriver
         const m = String(activeTrip.pickup).match(/POINT\(([^ ]+) ([^ )]+)\)/);
         const pickupLng = m ? parseFloat(m[1]!) : 0;

@@ -6,6 +6,7 @@ import { db } from '../../db';
 import { fareQuotes } from '../../db/schema';
 import { tripsService } from '../../modules/trips/service';
 import { dispatchService } from '../../modules/dispatch/service';
+import { DomainError } from '../../shared/errors';
 
 const RideCategoryZ = z.enum(['go', 'comfort', 'xl', 'premium', 'bike'] satisfies [RideCategory, ...RideCategory[]]);
 
@@ -125,6 +126,20 @@ export async function routes(app: FastifyInstance) {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
     const data = await tripsService.getRiderActiveTrip(req.user.id);
     return { ok: true, data: data ?? null };
+  });
+
+  // GET /api/v1/rider/trips/:id/route — recorded GPS breadcrumbs for route replay
+  app.get<{ Params: { id: string } }>('/:id/route', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    try {
+      const data = await tripsService.getTripRoute(req.params.id, req.user.id);
+      return { ok: true, data };
+    } catch (err) {
+      if (err instanceof DomainError) {
+        return reply.code(err.statusCode).send({ ok: false, error: { code: err.code, message: err.message } });
+      }
+      throw err;
+    }
   });
 
   // GET /api/v1/rider/trips — trip history (mock empty)

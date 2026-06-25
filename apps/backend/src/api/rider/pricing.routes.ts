@@ -38,7 +38,6 @@ function mockFares(pickupLat: number, pickupLng: number, destLat: number, destLn
 export async function routes(app: FastifyInstance) {
   // POST /api/v1/rider/quotes
   app.post('/', async (req, reply) => {
-    console.log('haha')
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
     const body = QuoteBody.parse(req.body);
     const dest = body.destination ?? body.dest!;

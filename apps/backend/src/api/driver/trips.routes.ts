@@ -14,6 +14,20 @@ export async function routes(app: FastifyInstance) {
     return { ok: true, data: data ?? null };
   });
 
+  // GET /api/v1/driver/trips/:id/route — recorded GPS breadcrumbs for route replay
+  app.get<{ Params: { id: string } }>('/:id/route', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    try {
+      const data = await tripsService.getTripRoute(req.params.id, req.user.id);
+      return { ok: true, data };
+    } catch (err) {
+      if (err instanceof DomainError) {
+        return reply.code(err.statusCode).send({ ok: false, error: { code: err.code, message: err.message } });
+      }
+      throw err;
+    }
+  });
+
   // POST /api/v1/driver/trips/:id/accept
   app.post<{ Params: { id: string } }>('/:id/accept', async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });

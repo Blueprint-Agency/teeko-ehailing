@@ -2,6 +2,7 @@ import {
   bigserial,
   boolean,
   char,
+  index,
   integer,
   jsonb,
   numeric,
@@ -157,6 +158,24 @@ export const pickupArrivalEvents = pgTable('pickup_arrival_events', {
   geofencePass: boolean().notNull(),
   recordedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
+
+// Sampled GPS breadcrumbs for an in-progress trip — used for route replay,
+// fare/distance dispute resolution, and APAD/insurance audit. Written by the
+// tracking service at most once per ~5s / ~30m moved (see persistTripLocation),
+// NOT on every WebSocket location event.
+export const tripLocationPoints = pgTable(
+  'trip_location_points',
+  {
+    id: bigserial({ mode: 'number' }).primaryKey(),
+    tripId: uuid().notNull().references(() => trips.id, { onDelete: 'cascade' }),
+    driverId: uuid().notNull().references(() => users.id),
+    location: geographyPoint().notNull(),
+    heading: numeric({ precision: 5, scale: 2 }),
+    speed: numeric({ precision: 6, scale: 2 }),
+    recordedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('trip_location_points_trip_recorded_idx').on(t.tripId, t.recordedAt)],
+);
 
 export const tripPins = pgTable('trip_pins', {
   tripId: uuid().primaryKey().references(() => trips.id, { onDelete: 'cascade' }),

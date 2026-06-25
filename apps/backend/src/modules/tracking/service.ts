@@ -2,10 +2,37 @@ import type { Socket } from 'socket.io';
 import { redis } from '../../config/redis';
 import { getDistanceMatrix } from '../../external/googleMaps';
 import { getIO } from '../../config/socketio';
+import { db } from '../../db';
+import { tripLocationPoints } from '../../db/schema';
+import { wktPoint } from '../../shared/geo';
 
 // In-memory socket maps — replaced by Redis adapter in multi-instance prod
 const driverSockets = new Map<string, Socket>();
 const riderSockets = new Map<string, Socket>();
+
+// ---- trip breadcrumb sampling ----
+// Persist at most one DB row per driver per ~5s AND ~25m moved, so live
+// WebSocket streaming (every few seconds) stays decoupled from durable writes.
+// 5s keeps route fidelity through turns; the distance gate drops the duplicate
+// rows a driver would otherwise emit while idling at a light or in a jam.
+const MIN_PERSIST_INTERVAL_MS = 5_000;
+const MIN_PERSIST_DISTANCE_M = 25;
+
+type PersistState = { tripId: string; ts: number; lat: number; lng: number };
+const lastPersist = new Map<string, PersistState>();
+
+// Haversine distance in metres between two coordinates.
+function distanceMeters(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(bLat - aLat);
+  const dLng = toRad(bLng - aLng);
+  const lat1 = toRad(aLat);
+  const lat2 = toRad(bLat);
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
 
 export const trackingService = {
   // ---- socket registry ----
@@ -45,12 +72,46 @@ export const trackingService = {
   },
 
   async removeDriverLocation(driverId: string): Promise<void> {
+    lastPersist.delete(driverId);
     await redis
       .pipeline()
       .del(`driver:location:${driverId}`)
       .zrem('driver:locations', driverId)
       .exec()
       .catch(() => null);
+  },
+
+  /** Persist a sampled GPS breadcrumb for an active trip into Postgres.
+   *  Throttled to ~5s AND ~25m moved per driver (always records the first point
+   *  of a trip). Safe to call on every WebSocket location event — it self-gates
+   *  and never throws (a failed write degrades to a dropped breadcrumb). */
+  async persistTripLocation(
+    tripId: string,
+    driverId: string,
+    lat: number,
+    lng: number,
+    heading: number,
+  ): Promise<void> {
+    const prev = lastPersist.get(driverId);
+    const now = Date.now();
+
+    if (prev && prev.tripId === tripId) {
+      const elapsed = now - prev.ts;
+      const moved = distanceMeters(prev.lat, prev.lng, lat, lng);
+      if (elapsed < MIN_PERSIST_INTERVAL_MS || moved < MIN_PERSIST_DISTANCE_M) return;
+    }
+
+    lastPersist.set(driverId, { tripId, ts: now, lat, lng });
+
+    await db
+      .insert(tripLocationPoints)
+      .values({
+        tripId,
+        driverId,
+        location: wktPoint({ lat, lng }),
+        heading: String(heading),
+      })
+      .catch(() => null); // durable breadcrumb is best-effort — never block tracking
   },
 
   // Fix 4: Clear the driver:online Redis key so dispatch stops treating a

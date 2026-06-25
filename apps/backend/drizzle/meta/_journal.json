@@ -43,6 +43,13 @@
       "when": 1781856521114,
       "tag": "0005_secret_randall",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782394850601,
+      "tag": "0006_medical_vapor",
+      "breakpoints": true
     }
   ]
 }
