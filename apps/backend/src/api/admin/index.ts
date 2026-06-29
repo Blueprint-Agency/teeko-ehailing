@@ -4,6 +4,7 @@ import { requireAdminRole } from '../../http/middleware/requireRole';
 
 import { routes as auth } from './auth.routes';
 import { routes as users } from './users.routes';
+import { routes as riders } from './riders.routes';
 import { routes as drivers } from './drivers.routes';
 import { routes as trips } from './trips.routes';
 import { routes as payments } from './payments.routes';
@@ -18,6 +19,7 @@ export async function adminRoutes(app: FastifyInstance) {
 
   await app.register(auth);
   await app.register(users, { prefix: '/users' });
+  await app.register(riders, { prefix: '/riders' });
   await app.register(drivers, { prefix: '/drivers' });
   await app.register(trips, { prefix: '/trips' });
   await app.register(payments, { prefix: '/payments' });

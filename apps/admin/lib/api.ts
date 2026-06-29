@@ -30,6 +30,20 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface Rider {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  city: string;
+  status: string;
+  trips: number;
+  joinDate: string | null;
+  escalation: number;
+  rating: number;
+  totalSpent: number;
+}
+
 export interface EvpRecord {
   id: string;
   driverId: string;
@@ -62,6 +76,8 @@ export function resolveFileUrl(fileUrl: string | null): string | null {
 }
 
 export const adminApi = {
+  getRiders: () => get<Rider[]>('/riders'),
+
   getEvpRecords: () => get<EvpRecord[]>('/drivers/evp'),
 
   getDocumentQueue: () => get<DocReviewRow[]>('/drivers/documents'),
