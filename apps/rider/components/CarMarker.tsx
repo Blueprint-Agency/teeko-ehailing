@@ -21,12 +21,12 @@ export function CarMarker({
   const isNearby = variant === 'nearby';
 
   if (isNearby) {
-    // White circular badge + red car. Background circle and the lucide car are
-    // both SVG-backed and sit fully inside the wrapper's bounds, so Android's
-    // Marker bitmap snapshot captures them without clipping. `collapsable={false}`
-    // keeps RN Android from flattening the wrapper away.
+    // Solid red car glyph, no badge. The lucide car is SVG-backed and sits
+    // fully inside the wrapper's bounds, so Android's Marker bitmap snapshot
+    // captures it without clipping. `collapsable={false}` keeps RN Android from
+    // flattening the wrapper away. We fill the car so it reads as a solid icon
+    // rather than an outline at small map scale.
     const badge = sizeProp ?? 28;
-    const r = badge / 2;
     return (
       <View
         collapsable={false}
@@ -38,18 +38,12 @@ export function CarMarker({
           backgroundColor: 'transparent',
         }}
       >
-        <Svg
-          width={badge}
-          height={badge}
-          viewBox={`0 0 ${badge} ${badge}`}
-          style={{ position: 'absolute', top: 0, left: 0 }}
-        >
-          {/* soft drop shadow */}
-          <Circle cx={r} cy={r + 0.5} r={r - 1} fill="rgba(0,0,0,0.16)" />
-          {/* white badge */}
-          <Circle cx={r} cy={r} r={r - 2} fill="#FFFFFF" />
-        </Svg>
-        <Car size={Math.round(badge * 0.58)} color="#E11D2E" strokeWidth={2.25} />
+        <Car
+          size={Math.round(badge * 0.92)}
+          color="#E11D2E"
+          fill="#E11D2E"
+          strokeWidth={1.5}
+        />
       </View>
     );
   }

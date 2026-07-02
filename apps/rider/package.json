@@ -4,7 +4,7 @@
   "private": true,
   "main": "expo-router/entry",
   "scripts": {
-    "dev": "expo start",
+    "dev": "expo start --port 8081",
     "dev:web": "expo start --web",
     "android": "expo run:android --port 8081 --device \"Pixel_10_Pro\"",
     "ios": "expo run:ios",
