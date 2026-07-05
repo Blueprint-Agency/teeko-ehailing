@@ -85,7 +85,7 @@ Existing e-hailing platforms in Malaysia (Grab, inDriver, Bolt) charge riders hi
 
 #### Payments
 - Credit/Debit card (Visa, Mastercard)
-- E-wallets: Touch 'n Go eWallet, GrabPay
+- E-wallet: Touch 'n Go eWallet
 - Receipts sent via email/in-app
 
 #### Safety
@@ -210,7 +210,7 @@ All UI strings, notifications, and customer support to be localised in all four 
 | Real-time | WebSockets / Socket.io (driver location, ride status) |
 | Database | PostgreSQL (relational data) + Redis (sessions, live location cache) |
 | Maps & Navigation | Google Maps Platform (Places API, Directions API, Distance Matrix) |
-| Payments | Stripe (card) + Touch 'n Go / GrabPay SDKs |
+| Payments | Stripe (card) + Touch 'n Go SDK |
 | Auth | Phone OTP (Firebase Auth or Twilio Verify) |
 | File Storage | AWS S3 or equivalent (driver documents, photos) |
 | Push Notifications | Firebase Cloud Messaging (FCM) |

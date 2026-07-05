@@ -11,7 +11,7 @@
 // rider trips routes ship. Phase E's NotImplementedScreen prevents UI from
 // reaching these in the meantime.
 
-import type { Driver, Fare, Place, RideCategory, Trip } from '@teeko/shared';
+import type { Driver, Fare, Place, RideCategory, Trip, TripReceipt } from '@teeko/shared';
 
 import { api } from './_fetch';
 
@@ -58,6 +58,21 @@ export async function cancel(tripId: string, reason?: string): Promise<{ cancell
 
 export async function history(): Promise<Trip[]> {
   return api<Trip[]>('/api/v1/rider/trips');
+}
+
+export async function detail(tripId: string): Promise<TripReceipt> {
+  return api<TripReceipt>(`/api/v1/rider/trips/${encodeURIComponent(tripId)}`);
+}
+
+export async function rate(
+  tripId: string,
+  rating: number,
+  comment?: string,
+): Promise<{ rating: number | null; comment: string | null }> {
+  return api('/api/v1/rider/ratings', {
+    method: 'POST',
+    body: JSON.stringify({ tripId, rating, comment }),
+  });
 }
 
 export type ActiveTripSession = {

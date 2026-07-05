@@ -628,11 +628,11 @@ async function rateRide(riderId: string, tripId: string, stars: number, comment?
 
 ### 5.4 Payment Methods
 
-Payment tokens are created **on the device** using the Stripe mobile SDK (or TNG/GrabPay SDK), then the token is sent to the backend for storage. The backend never handles raw card numbers.
+Payment tokens are created **on the device** using the Stripe mobile SDK (or TNG eWallet SDK), then the token is sent to the backend for storage. The backend never handles raw card numbers.
 
 ```typescript
 // POST /rider/payment-methods
-// body: { type: 'card' | 'tng' | 'grabpay' | 'google_pay', token: string }
+// body: { type: 'card' | 'tng' | 'google_pay', token: string }
 async function addPaymentMethod(riderId: string, type: string, token: string) {
   let externalId: string;
   let label: string;
@@ -644,9 +644,9 @@ async function addPaymentMethod(riderId: string, type: string, token: string) {
     externalId = pm.id;
     label = `${pm.card!.brand.toUpperCase()} •••• ${pm.card!.last4}`;
   } else {
-    // TNG / GrabPay tokens stored as-is; charged at trip completion
+    // TNG token stored as-is; charged at trip completion
     externalId = token;
-    label = type === 'tng' ? 'Touch \'n Go eWallet' : 'GrabPay';
+    label = 'Touch \'n Go eWallet';
   }
 
   const isFirst = (await prisma.paymentMethod.count({ where: { user_id: riderId } })) === 0;
@@ -1173,7 +1173,7 @@ CREATE INDEX idx_trips_status  ON trips(status);
 CREATE TABLE payment_methods (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
-  type        VARCHAR(20) NOT NULL,  -- 'card' | 'tng' | 'grabpay' | 'google_pay'
+  type        VARCHAR(20) NOT NULL,  -- 'card' | 'tng' | 'google_pay'
   external_id TEXT NOT NULL,
   label       VARCHAR(100),
   is_default  BOOLEAN DEFAULT false,

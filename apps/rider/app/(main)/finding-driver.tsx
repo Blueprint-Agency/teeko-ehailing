@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,21 +13,47 @@ export default function FindingDriverScreen() {
   const status = useTripStore((s) => s.status);
   const cancel = useTripStore((s) => s.cancel);
   const destination = useTripStore((s) => s.destination);
+  const pollStatus = useTripStore((s) => s.pollStatus);
+
+  // Set when the rider taps Cancel, so their own cancellation goes straight home
+  // instead of surfacing the "no drivers" screen.
+  const manualCancelRef = useRef(false);
+
+  // Fallback for a missed socket event. When no driver is online the backend
+  // cancels the trip synchronously — often before the rider's socket has joined
+  // its room, so trip.no_drivers never arrives and this screen would otherwise
+  // hang on the spinner forever. Poll the active-trip endpoint: a cancelled/gone
+  // trip drops out of /active → pollStatus sets status 'cancelled', which surfaces
+  // the "no drivers" screen below. Poll once immediately so a dead trip resolves fast.
+  useEffect(() => {
+    pollStatus();
+    const iv = setInterval(() => { pollStatus(); }, 3_000);
+    return () => clearInterval(iv);
+  }, [pollStatus]);
 
   useEffect(() => {
     if (status === 'matched') {
       router.replace('/(main)/driver-matched');
-    } else if (status === 'cancelled' || status === 'idle') {
+    } else if (status === 'idle') {
+      router.replace('/(main)/(tabs)');
+    } else if (status === 'cancelled' && manualCancelRef.current) {
       router.replace('/(main)/(tabs)');
     }
   }, [status]);
 
   const handleCancel = async () => {
+    manualCancelRef.current = true;
     await cancel('changedPlans');
     router.replace('/(main)/(tabs)');
   };
 
-  if (status === 'no_drivers') {
+  // Show the "no drivers" screen when the search ended without a match: either the
+  // trip.no_drivers socket event arrived, or the poll saw the trip cancelled
+  // server-side (and it wasn't the rider's own cancel).
+  const noDrivers =
+    status === 'no_drivers' || (status === 'cancelled' && !manualCancelRef.current);
+
+  if (noDrivers) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-surface px-8 gap-4">
         <View className="h-20 w-20 items-center justify-center rounded-full bg-muted">

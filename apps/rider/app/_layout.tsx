@@ -1,7 +1,7 @@
 import '@expo/metro-runtime';
 import '../global.css';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Nunito_400Regular,
   Nunito_600SemiBold,
@@ -9,6 +9,7 @@ import {
   useFonts,
 } from '@expo-google-fonts/nunito';
 import { ClerkLoaded, ClerkProvider, useAuth } from '@clerk/clerk-expo';
+import { StripeProvider } from '@stripe/stripe-react-native';
 import type { Locale } from '@teeko/shared';
 import { useAuthStore, useLocationStore, useTripStore, setApiUnauthorizedHandler } from '@teeko/api';
 import { initI18n, setLocale } from '@teeko/i18n';
@@ -55,6 +56,18 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
   const clearProfile = useAuthStore((s) => s.clear);
   const restoreActiveTrip = useTripStore((s) => s.restoreActiveTrip);
 
+  // Keep the latest Clerk token getter in a ref so the auth effect below can
+  // depend only on `isSignedIn`. Clerk hands back a new getToken identity on
+  // many re-renders (e.g. an i18n language change re-rendering the tree); if
+  // that identity were an effect dependency it would re-run fetchProfile() and
+  // briefly stomp a just-selected language with the server's stale value.
+  const getTokenRef = useRef(clerkGetToken);
+  getTokenRef.current = clerkGetToken;
+
+  useEffect(() => {
+    setTokenGetter(async () => getTokenRef.current());
+  }, []);
+
   useEffect(() => {
     setApiUnauthorizedHandler(() => {
       signOut().finally(() => router.replace('/(auth)/login'));
@@ -62,8 +75,6 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
   }, [signOut]);
 
   useEffect(() => {
-    setTokenGetter(async () => clerkGetToken());
-
     if (isSignedIn) {
       fetchProfile().catch(() => {
         router.replace('/(auth)/login');
@@ -80,7 +91,7 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
     } else if (isSignedIn === false) {
       clearProfile();
     }
-  }, [isSignedIn, clerkGetToken, fetchProfile, clearProfile]);
+  }, [isSignedIn, fetchProfile, clearProfile]);
 
   return <>{children}</>;
 }
@@ -144,14 +155,19 @@ export default function RootLayout() {
       <ClerkLoaded>
         <ClerkBridge>
           <SocketBridge />
-          <SafeAreaProvider>
-            <StatusBar style="dark" />
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(main)" />
-              <Stack.Screen name="(auth)" />
-            </Stack>
-          </SafeAreaProvider>
+          <StripeProvider
+            publishableKey={process.env.EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ''}
+            merchantIdentifier="merchant.com.teeko.rider"
+          >
+            <SafeAreaProvider>
+              <StatusBar style="dark" />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="index" />
+                <Stack.Screen name="(main)" />
+                <Stack.Screen name="(auth)" />
+              </Stack>
+            </SafeAreaProvider>
+          </StripeProvider>
         </ClerkBridge>
       </ClerkLoaded>
     </ClerkProvider>

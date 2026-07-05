@@ -187,7 +187,7 @@ Admin can override escalation step at their discretion.
 | Fare | Total fare (RM) |
 | Surge multiplier | If surge was active |
 | Commission deducted | RM amount |
-| Payment method | Card / TNG / GrabPay / Google Pay |
+| Payment method | Card / TNG / Google Pay |
 | Cancellation reason | If cancelled |
 | SOS triggered | Yes / No |
 

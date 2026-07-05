@@ -82,7 +82,31 @@
     "title": "Rides",
     "emptyTitle": "No rides yet.",
     "emptyBody": "Tap Home to book your first ride.",
+    "upcoming": "Upcoming",
+    "past": "Past",
+    "completed": "Completed",
+    "inProgress": "In progress",
     "cancelled": "Cancelled"
+  },
+  "receipt": {
+    "title": "Receipt",
+    "fareBreakdown": "Fare breakdown",
+    "total": "Total",
+    "paymentMethod": "Payment",
+    "cancellationFee": "Cancellation fee",
+    "yourRating": "Your rating",
+    "notRated": "You didn't rate this trip.",
+    "driver": "Driver",
+    "loadError": "Couldn't load this trip.",
+    "lines": {
+      "base": "Base fare",
+      "distance": "Distance",
+      "time": "Time",
+      "surge": "Surge",
+      "toll": "Toll",
+      "airport": "Airport",
+      "tip": "Tip"
+    }
   },
   "account": {
     "title": "Account",
@@ -104,7 +128,11 @@
     "signIn": "Log in",
     "signUp": "Sign up",
     "guestCta": "Sign in to save places and track rides.",
-    "addPlace": "Add place"
+    "addPlace": "Add place",
+    "editPlaceTitle": "Edit saved place",
+    "changeAddress": "Change address",
+    "removePlace": "Remove",
+    "removePlaceFailed": "Couldn't remove this place. Please try again."
   },
   "trip": {
     "cancelTitle": "Cancel this trip?",

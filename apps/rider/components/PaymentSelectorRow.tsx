@@ -11,8 +11,7 @@ export interface PaymentSelectorRowProps {
 const kindIcon: Record<PaymentMethod['kind'], IconName> = {
   card: 'credit-card',
   tng: 'account-balance-wallet',
-  grabpay: 'account-balance-wallet',
-  googlepay: 'account-balance-wallet',
+  google_pay: 'account-balance-wallet',
   cash: 'payments',
 };
 

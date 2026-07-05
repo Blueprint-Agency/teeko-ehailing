@@ -28,7 +28,7 @@
 11. [Primary Database — PostgreSQL](#9-primary-database--postgresql)
 12. [Cache & Sessions — Redis](#10-cache--sessions--redis)
 13. [Maps & Location — Google Maps Platform (Full)](#11-maps--location--google-maps-platform-full)
-14. [Payments — Stripe + TNG + GrabPay + Google Pay](#12-payments--stripe--tng--grabpay--google-pay)
+14. [Payments — Stripe + TNG + Google Pay](#12-payments--stripe--tng--google-pay)
 15. [Authentication — Clerk vs Firebase Auth](#13-authentication--clerk-vs-firebase-auth)
 16. [File Storage — Google Cloud Storage](#14-file-storage--google-cloud-storage)
 17. [Push Notifications — Firebase Cloud Messaging](#15-push-notifications--firebase-cloud-messaging-fcm)
@@ -77,7 +77,7 @@ React Native is a JavaScript framework that lets one team write a single codebas
 - **One codebase, two platforms.** Writing separate Swift (iOS) and Kotlin (Android) apps would require two separate teams and double the development time — incompatible with a 1-month MVP.
 - **Large talent pool.** React Native developers are widely available in Malaysia. React/JavaScript skills transfer directly.
 - **Expo removes native complexity.** No need to touch Xcode or Android Studio config files. `npx expo start` and you're developing.
-- **Mature ecosystem.** Has production-proven SDKs for Google Maps, Firebase, Stripe, TNG, and GrabPay — all required for Teeko.
+- **Mature ecosystem.** Has production-proven SDKs for Google Maps, Firebase, Stripe, and TNG — all required for Teeko.
 
 ### Why not the alternatives
 
@@ -98,7 +98,7 @@ Handles screen-to-screen navigation in the app — e.g. home → booking → rid
 ### Why Expo Router
 - **File-based routing.** Works like Next.js — create a file, get a route. Familiar to web developers.
 - **Built into Expo.** No extra installation or config. Ships with the Expo SDK.
-- **Deep linking support.** Required later for payment app callbacks (TNG, GrabPay returning to Teeko after payment).
+- **Deep linking support.** Required later for payment app callbacks (TNG returning to Teeko after payment).
 - **Type-safe.** Full TypeScript support for route parameters.
 
 ### Why not the alternatives
@@ -353,20 +353,21 @@ Extends the v0.1 Maps SDK usage with server-side API calls:
 
 ---
 
-## 12. Payments — Stripe + TNG + GrabPay + Google Pay
+## 12. Payments — Stripe + TNG + Google Pay
 
 ### What it does
 Handles all rider payment flows — charging for trips, processing refunds, and managing payment methods.
 
 - **Stripe** — credit/debit card processing (Visa, Mastercard)
-- **Touch 'n Go eWallet SDK** — Malaysia's most widely used e-wallet
-- **GrabPay SDK** — second most popular e-wallet in Malaysia
+- **Touch 'n Go eWallet SDK** — Malaysia's most widely used e-wallet (the sole e-wallet in v1.0)
 - **Google Pay SDK** — card-on-file payments via Google Pay
 
 ### Why this combination
 - **Market coverage.** In Malaysia, cash is declining but card penetration is moderate. TNG eWallet has over 20 million users — it is the dominant payment method for many Malaysians. Offering only card payments would exclude a large segment of the target market.
 - **Stripe for cards.** Stripe is the gold standard for card processing globally — PCI DSS compliant, excellent developer experience, supports MYR, and handles fraud detection.
-- **TNG and GrabPay are table stakes.** Competing e-hailing apps in Malaysia (including Grab itself) offer both. Not supporting them is a competitive disadvantage.
+- **TNG is table stakes.** As Malaysia's dominant e-wallet, TNG support is essential. GrabPay is deliberately deferred post-MVP — v1.0 ships one e-wallet to keep the integration surface lean; adding another later is a single new payment-method branch.
+
+> See `teeko-payment-system.md` for the full payment architecture (off-session charging, Stripe Connect driver payouts, refunds, and the money data model).
 
 ### Why not the alternatives
 
@@ -621,7 +622,7 @@ Automates the build, test, and deployment pipeline:
 | Cache / sessions | Redis (Memorystore) | ~$35/mo (basic tier) |
 | Maps | Google Maps Platform | $200/mo free credit |
 | Card payments | Stripe | 2.9% + $0.30/txn |
-| E-wallets | TNG + GrabPay + Google Pay | Integration cost only |
+| E-wallet | TNG + Google Pay | Integration cost only |
 | Auth | Clerk ($25/mo) or Firebase Auth (free) | $0–$25/mo |
 | File storage | Google Cloud Storage | ~$0.02/GB/mo |
 | Push notifications | Firebase FCM | Free |

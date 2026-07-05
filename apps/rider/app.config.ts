@@ -47,6 +47,14 @@ const config: ExpoConfig = {
     'expo-notifications',
     'expo-localization',
     'expo-font',
+    [
+      '@stripe/stripe-react-native',
+      {
+        // Apple Pay merchant id (used later; harmless placeholder for now).
+        merchantIdentifier: 'merchant.com.teeko.rider',
+        enableGooglePay: true,
+      },
+    ],
   ],
   updates: {
     url: 'https://u.expo.dev/64dad399-68e0-4def-9640-6c1c718e4416',

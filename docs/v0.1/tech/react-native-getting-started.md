@@ -129,7 +129,7 @@ For day-to-day development, you do not need EAS Build, TestFlight, or an Apple D
 - Push notifications (via `expo-notifications`)
 
 **What does NOT work in Expo Go:**
-- Third-party native SDKs that are not part of the Expo SDK (TNG eWallet SDK, GrabPay SDK)
+- Third-party native SDKs that are not part of the Expo SDK (e.g. TNG eWallet SDK)
 - Custom native modules you write yourself
 - Any library that requires linking custom native code
 
@@ -230,7 +230,7 @@ The only times platforms diverge are:
 
 | Situation | What happens |
 |---|---|
-| Adding a new native SDK (e.g. TNG, GrabPay) | Requires separate config steps for Android and iOS — usually a few hours of setup per platform |
+| Adding a new native SDK (e.g. TNG) | Requires separate config steps for Android and iOS — usually a few hours of setup per platform |
 | Fixing a platform-specific bug | One developer fixes it in a platform config file; the other platform is unaffected |
 | Submitting to app stores | Android and iOS submissions are independent processes running in parallel |
 
@@ -285,7 +285,6 @@ These must be set up before development starts. They take time to approve.
 | Apple Developer Program | Native Config owner | USD 99/year | Before native SDK integration (~week 3) | Takes 1–2 days to approve. Required for TestFlight and App Store. **Not needed for Expo Go development.** |
 | Google Play Developer | Native Config owner | USD 25 one-time | Before Play Store submission | Approved within hours. |
 | TNG Developer Portal | Native Config owner | Free | Before payment integration | Required to integrate TNG eWallet SDK. |
-| GrabPay Developer Portal | Native Config owner | Free | Before payment integration | Required to integrate GrabPay SDK. |
 
 ---
 

@@ -1,10 +1,12 @@
 import { and, eq, inArray, not } from 'drizzle-orm';
 import { db } from '../../db';
-import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, driverProfiles, vehicles, driverActiveVehicle, users } from '../../db/schema';
+import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, vehicles, driverActiveVehicle, users } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
 import { trackingService } from '../tracking/service';
+import { paymentsService } from '../payments/service';
 import { redis } from '../../config/redis';
 import { env } from '../../config/env';
+import { logger } from '../../config/logger';
 
 type Coords = { lat: number; lng: number };
 
@@ -278,6 +280,25 @@ export const tripsService = {
 
     await db.insert(tripEvents).values({ tripId, eventType: 'completed', actorId: driverId });
 
+    // Charge the rider off-session and write the ledger + driver earnings
+    // (spec §8). Never let a charge failure block completion — a decline
+    // becomes rider debt while the driver is still paid (spec §11).
+    await paymentsService
+      .chargeTripFare(
+        {
+          id: trip.id,
+          riderId: trip.riderId,
+          driverId: trip.driverId,
+          paymentMethodId: trip.paymentMethodId,
+          category: trip.category,
+        },
+        finalFareCents,
+      )
+      .catch((err) => {
+        logger.error({ err, tripId }, 'trip fare charge errored');
+        return null;
+      });
+
     // Increment driver total trips
     await db
       .update(driverProfiles)
@@ -424,12 +445,179 @@ export const tripsService = {
   },
 
   // ---- rider: trip history ----
+  // Returns the rider's 50 most recent trips mapped to the shared `Trip` shape
+  // consumed by @teeko/api (client/trips.ts `history()` → trip-store `history`).
   async getRiderTrips(riderId: string) {
-    return db.query.trips.findMany({
+    const rows = await db.query.trips.findMany({
       where: eq(trips.riderId, riderId),
       orderBy: (t, { desc }) => [desc(t.createdAt)],
       limit: 50,
     });
+    if (rows.length === 0) return [];
+
+    // Batch-load fare quotes so we can show the quoted total when a trip has no
+    // final fare yet (e.g. cancelled before completion).
+    const quoteIds = [...new Set(rows.map((r) => r.fareQuoteId).filter((id): id is string => !!id))];
+    const quotes = quoteIds.length
+      ? await db.query.fareQuotes.findMany({ where: inArray(fareQuotes.id, quoteIds) })
+      : [];
+    const quoteById = new Map(quotes.map((q) => [q.id, q]));
+
+    const CLIENT_STATUS: Record<string, string> = {
+      requested: 'searching',
+      matched: 'matched',
+      driver_arrived: 'arrived',
+      in_trip: 'in_trip',
+      completed: 'completed',
+      cancelled: 'cancelled',
+      no_show: 'cancelled',
+    };
+
+    return rows.map((trip) => {
+      const pickup = parsePoint(trip.pickup);
+      const dropoff = parsePoint(trip.dropoff);
+      const quote = trip.fareQuoteId ? quoteById.get(trip.fareQuoteId) : null;
+      const fareCents = trip.finalFareCents ?? quote?.totalCents ?? 0;
+      return {
+        id: trip.id,
+        status: CLIENT_STATUS[trip.status] ?? trip.status,
+        riderId: trip.riderId,
+        pickup: { id: '', name: trip.pickupAddress ?? '', address: trip.pickupAddress ?? '', lat: pickup.lat, lng: pickup.lng },
+        destination: { id: '', name: trip.dropoffAddress ?? '', address: trip.dropoffAddress ?? '', lat: dropoff.lat, lng: dropoff.lng },
+        rideType: trip.category,
+        fare: { rideType: trip.category, amountMyr: fareCents / 100, etaMin: 0 },
+        paymentMethodId: trip.paymentMethodId ?? '',
+        routePolyline: [],
+        createdAt: trip.createdAt.toISOString(),
+        completedAt: trip.completedAt?.toISOString(),
+        cancelledAt: trip.cancelledAt?.toISOString(),
+        cancelReason: trip.cancelReason ?? undefined,
+        rating: trip.riderRating ?? undefined,
+        comment: trip.riderComment ?? undefined,
+      };
+    });
+  },
+
+  // ---- rider: trip detail / receipt ----
+  // Returns full receipt data (fare breakdown, driver, payment, rating) for a
+  // single trip the rider owns. Shape matches shared `TripReceipt`.
+  async getRiderTripDetail(tripId: string, riderId: string) {
+    const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
+    if (!trip) throw new DomainError('TRIP_NOT_FOUND', 'Trip not found.', 404);
+    if (trip.riderId !== riderId) {
+      throw new DomainError('FORBIDDEN', 'You do not have access to this trip.', 403);
+    }
+
+    const [quote, driverUser, driverProfile, pm, cancellation, noShow] = await Promise.all([
+      trip.fareQuoteId
+        ? db.query.fareQuotes.findFirst({ where: eq(fareQuotes.id, trip.fareQuoteId) })
+        : Promise.resolve(null),
+      trip.driverId
+        ? db.query.users.findFirst({ where: eq(users.id, trip.driverId) })
+        : Promise.resolve(null),
+      trip.driverId
+        ? db.query.driverProfiles.findFirst({ where: eq(driverProfiles.userId, trip.driverId) })
+        : Promise.resolve(null),
+      trip.paymentMethodId
+        ? db.query.paymentMethods.findFirst({ where: eq(paymentMethods.id, trip.paymentMethodId) })
+        : Promise.resolve(null),
+      db.query.cancellations.findFirst({ where: eq(cancellations.tripId, tripId) }),
+      db.query.noShowFees.findFirst({ where: eq(noShowFees.tripId, tripId) }),
+    ]);
+
+    // Vehicle: prefer the one recorded on the trip, else the driver's active one.
+    let vehicle = trip.vehicleId
+      ? await db.query.vehicles.findFirst({ where: eq(vehicles.id, trip.vehicleId) })
+      : null;
+    if (!vehicle && trip.driverId) {
+      const activeVehicleRow = await db.query.driverActiveVehicle.findFirst({
+        where: eq(driverActiveVehicle.driverId, trip.driverId),
+      });
+      vehicle = activeVehicleRow
+        ? (await db.query.vehicles.findFirst({ where: eq(vehicles.id, activeVehicleRow.vehicleId) })) ?? null
+        : null;
+    }
+
+    // Fare breakdown: prefer per-trip lines, fall back to the quote's lines.
+    let lines = await db.query.fareLines.findMany({ where: eq(fareLines.tripId, tripId) });
+    if (lines.length === 0 && trip.fareQuoteId) {
+      lines = await db.query.fareLines.findMany({ where: eq(fareLines.quoteId, trip.fareQuoteId) });
+    }
+
+    const pickup = parsePoint(trip.pickup);
+    const dropoff = parsePoint(trip.dropoff);
+    const fareCents = trip.finalFareCents ?? quote?.totalCents ?? 0;
+
+    const fareLineItems = lines.length
+      ? lines.map((l) => ({ kind: l.kind, amountMyr: l.amountCents / 100 }))
+      : [{ kind: 'base' as const, amountMyr: fareCents / 100 }];
+    if (trip.tipCents > 0 && !lines.some((l) => l.kind === 'tip')) {
+      fareLineItems.push({ kind: 'tip', amountMyr: trip.tipCents / 100 });
+    }
+
+    const CLIENT_STATUS: Record<string, string> = {
+      requested: 'searching',
+      matched: 'matched',
+      driver_arrived: 'arrived',
+      in_trip: 'in_trip',
+      completed: 'completed',
+      cancelled: 'cancelled',
+      no_show: 'cancelled',
+    };
+
+    const feeCents = cancellation?.feeCents || noShow?.amountCents || 0;
+
+    return {
+      id: trip.id,
+      status: CLIENT_STATUS[trip.status] ?? trip.status,
+      rideType: trip.category,
+      pickup: { id: '', name: trip.pickupAddress ?? '', address: trip.pickupAddress ?? '', lat: pickup.lat, lng: pickup.lng },
+      destination: { id: '', name: trip.dropoffAddress ?? '', address: trip.dropoffAddress ?? '', lat: dropoff.lat, lng: dropoff.lng },
+      fareMyr: fareCents / 100,
+      fareLines: fareLineItems,
+      paymentLabel: pm?.label ?? (pm?.type ? pm.type : 'Cash'),
+      cancellationFeeMyr: feeCents > 0 ? feeCents / 100 : undefined,
+      driver: trip.driverId && driverUser
+        ? {
+            id: trip.driverId,
+            name: driverUser.fullName ?? 'Driver',
+            photoUrl: `https://i.pravatar.cc/150?u=${trip.driverId}`,
+            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+            vehicle: vehicle
+              ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
+              : { model: 'Vehicle', colour: '', seats: 4, category: trip.category },
+            plate: vehicle?.plateNumber ?? '',
+            languages: ['ms', 'en'],
+            phone: driverUser.phone ?? '',
+          }
+        : undefined,
+      rating: trip.riderRating ?? undefined,
+      comment: trip.riderComment ?? undefined,
+      createdAt: trip.createdAt.toISOString(),
+      completedAt: trip.completedAt?.toISOString(),
+      cancelledAt: trip.cancelledAt?.toISOString(),
+      cancelReason: trip.cancelReason ?? undefined,
+    };
+  },
+
+  // ---- rider: rate a completed trip ----
+  async rateTrip(riderId: string, tripId: string, rating: number, comment?: string) {
+    const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
+    if (!trip) throw new DomainError('TRIP_NOT_FOUND', 'Trip not found.', 404);
+    if (trip.riderId !== riderId) {
+      throw new DomainError('FORBIDDEN', 'You do not have access to this trip.', 403);
+    }
+    if (trip.status !== 'completed') {
+      throw new DomainError('TRIP_NOT_COMPLETED', 'You can only rate a completed trip.', 422);
+    }
+
+    const [updated] = await db
+      .update(trips)
+      .set({ riderRating: rating, riderComment: comment ?? null, ratedAt: new Date(), updatedAt: new Date() })
+      .where(eq(trips.id, tripId))
+      .returning();
+
+    return { rating: updated!.riderRating, comment: updated!.riderComment };
   },
 
   // ---- trip route (recorded breadcrumbs) ----

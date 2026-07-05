@@ -18,6 +18,7 @@
     "@expo/metro-runtime": "~6.1.2",
     "@gorhom/bottom-sheet": "^5.0.6",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@stripe/stripe-react-native": "0.50.3",
     "@teeko/api": "workspace:*",
     "@teeko/i18n": "workspace:*",
     "@teeko/maps": "workspace:*",

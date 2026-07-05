@@ -15,7 +15,9 @@ export type TripStatus =
   | 'completed'
   | 'cancelled';
 
-export type PaymentKind = 'card' | 'tng' | 'grabpay' | 'googlepay' | 'cash';
+// Mirrors the backend rider payment-method enum
+// (apps/backend/src/api/rider/payments.routes.ts / modules/payments/repo.ts).
+export type PaymentKind = 'cash' | 'card' | 'tng' | 'google_pay';
 
 export interface Rider {
   id: string;
@@ -93,6 +95,35 @@ export interface Trip {
   cancelReason?: string;
   rating?: number;
   comment?: string;
+}
+
+// ─── Trip receipt / detail ────────────────────────────────────────────────────
+
+export type FareLineKind = 'base' | 'distance' | 'time' | 'surge' | 'toll' | 'airport' | 'tip';
+
+export interface FareLineItem {
+  kind: FareLineKind;
+  amountMyr: number;
+}
+
+/** Full trip detail shown on the receipt screen (GET /rider/trips/:id). */
+export interface TripReceipt {
+  id: string;
+  status: TripStatus;
+  rideType: RideCategory;
+  pickup: Place;
+  destination: Place;
+  fareMyr: number;
+  fareLines: FareLineItem[];
+  paymentLabel: string;
+  cancellationFeeMyr?: number;
+  driver?: Driver;
+  rating?: number;
+  comment?: string;
+  createdAt: string;
+  completedAt?: string;
+  cancelledAt?: string;
+  cancelReason?: string;
 }
 
 // ─── Directions / Routing ─────────────────────────────────────────────────────

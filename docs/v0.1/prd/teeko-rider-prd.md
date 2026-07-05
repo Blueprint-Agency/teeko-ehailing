@@ -160,7 +160,7 @@ Review pin on map → Adjust if needed → Tap "Confirm destination"
 - Price shown as a single fixed amount (e.g., "RM 25") — no range
 
 4. **Payment selector** — Bottom of list, shows current payment method with dropdown arrow
-   - Options: Credit/Debit Card, Touch 'n Go eWallet, GrabPay, Google Pay
+   - Options: Credit/Debit Card, Touch 'n Go eWallet, Google Pay
    - Tapping opens payment method picker
 
 5. **CTA button** — Full-width, red: "Select Teeko Go" (dynamically updates with selected type)
@@ -383,7 +383,6 @@ Tap "Cancel" → "Are you sure you want to cancel?" confirmation dialog
 |--------|-------|
 | Credit / Debit Card (Visa, Mastercard) | Add card number, expiry, CVV |
 | Touch 'n Go eWallet | Link via TNG SDK |
-| GrabPay | Link via GrabPay SDK |
 | Google Pay | Link via Google Pay SDK |
 
 **Default payment:** Last used method is pre-selected on next booking.

@@ -6,6 +6,7 @@ import { db } from '../../db';
 import { fareQuotes } from '../../db/schema';
 import { tripsService } from '../../modules/trips/service';
 import { dispatchService } from '../../modules/dispatch/service';
+import { paymentsService } from '../../modules/payments/service';
 import { DomainError } from '../../shared/errors';
 
 const RideCategoryZ = z.enum(['go', 'comfort', 'xl', 'premium', 'bike'] satisfies [RideCategory, ...RideCategory[]]);
@@ -70,6 +71,9 @@ export async function routes(app: FastifyInstance) {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
     const body = BookBody.parse(req.body);
     const { pickup, destination, rideType, fare, paymentMethodId } = body;
+
+    // Block booking while the rider has an unpaid balance (spec §11).
+    await paymentsService.assertNoOutstandingDebt(req.user.id);
 
     const totalCents = Math.round(fare.amountMyr * 100);
     const [quote] = await db.insert(fareQuotes).values({
@@ -142,10 +146,23 @@ export async function routes(app: FastifyInstance) {
     }
   });
 
-  // GET /api/v1/rider/trips — trip history (mock empty)
+  // GET /api/v1/rider/trips — trip history
   app.get('/', async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
-    return [];
+    return tripsService.getRiderTrips(req.user.id);
+  });
+
+  // GET /api/v1/rider/trips/:id — trip detail / receipt
+  app.get<{ Params: { id: string } }>('/:id', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    try {
+      return await tripsService.getRiderTripDetail(req.params.id, req.user.id);
+    } catch (err) {
+      if (err instanceof DomainError) {
+        return reply.code(err.statusCode).send({ ok: false, error: { code: err.code, message: err.message } });
+      }
+      throw err;
+    }
   });
 
   // DELETE /api/v1/rider/trips/:id — cancel ride

@@ -157,6 +157,11 @@ export const useTripStore = create<TripState>((set, get) => ({
       set({ status: 'idle' });
       return;
     }
+    // Persist the rating to the backend (best-effort — the local history update
+    // below keeps the UI responsive even if the network call fails).
+    if (trip.id) {
+      tripsApi.rate(trip.id, rating, comment).catch(() => null);
+    }
     const rated: Trip = { ...trip, status: 'completed', rating, comment };
     set((s) => ({
       status: 'idle',

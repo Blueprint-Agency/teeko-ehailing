@@ -117,6 +117,9 @@ jobs:
               # value coerces to 0 (Zod .default() only fires on undefined, not "").
               echo "COMMISSION_RATE=${{ vars.COMMISSION_RATE }}"
               echo "CANCELLATION_FEE_CENTS=${{ vars.CANCELLATION_FEE_CENTS }}"
+              # Payments — Stripe                                        
+              echo "STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }}"
+              echo "STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }}"
               # Storage — R2 is the active adapter for driver-web document uploads
               # (src/lib/storage/r2.adapter.ts reads these directly). STORAGE selects
               # the adapter ("r2"); a blank value falls back to the local adapter.

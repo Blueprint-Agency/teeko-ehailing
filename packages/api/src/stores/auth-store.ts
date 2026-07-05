@@ -9,7 +9,7 @@ export type AuthState = {
 
   fetchProfile: () => Promise<void>;
   updateProfile: (patch: { fullName?: string; locale?: Locale }) => Promise<void>;
-  setLanguage: (locale: Locale) => void;
+  setLanguage: (locale: Locale) => Promise<void>;
   clear: () => void;
 };
 
@@ -36,8 +36,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  setLanguage(languagePref) {
+  async setLanguage(languagePref) {
+    // Switch immediately for instant UI feedback (and to cover guests, who have
+    // no server profile to persist to).
     set({ languagePref });
+    // Persist for signed-in riders — otherwise the next fetchProfile() would
+    // reset languagePref to the server's stale value and revert the UI.
+    const current = get().rider;
+    if (!current) return;
+    try {
+      await authApi.updateMe({ locale: languagePref });
+      set({ rider: { ...current, languagePref } });
+    } catch (err) {
+      console.warn('[auth] setLanguage persist failed', err);
+      // Local switch stays in effect; will retry on the next change.
+    }
   },
 
   clear() {

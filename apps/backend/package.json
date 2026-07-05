@@ -20,7 +20,9 @@
     "db:postgis": "tsx scripts/enable-postgis.ts",
     "db:seed": "tsx scripts/seed.ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "stripe:listen": "stripe listen --forward-to localhost:3000/api/webhooks/stripe",
+    "stripe:trigger": "stripe trigger"
   },
   "dependencies": {
     "@teeko/shared": "workspace:*",
@@ -42,6 +44,7 @@
     "postgres": "^3.4.5",
     "resend": "^6.12.2",
     "socket.io": "^4.8.3",
+    "stripe": "^17.5.0",
     "svix": "^1.92.2",
     "zod": "^3.23.8"
   },

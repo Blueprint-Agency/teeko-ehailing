@@ -42,6 +42,27 @@ const schema = z.object({
   // Commission & fees
   COMMISSION_RATE: z.coerce.number().default(0.10),
   CANCELLATION_FEE_CENTS: z.coerce.number().int().default(300),
+  // Share of a cancellation fee paid to the driver as compensation (spec §9).
+  CANCELLATION_DRIVER_SHARE: z.coerce.number().default(0.5),
+
+  // Payments — Stripe (charging + Connect payouts). Optional in v0.1: when
+  // unset, the backend runs against the built-in mock gateway (external/stripe.ts)
+  // so the flow works end-to-end locally with no real money. Set these in v1.0.
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_CONNECT_CLIENT_ID: z.string().optional(),
+
+  // Payments — TNG eWallet (the sole e-wallet in v1.0). Optional → mock.
+  TNG_MERCHANT_ID: z.string().optional(),
+  TNG_API_KEY: z.string().optional(),
+
+  // Payout / cashout rules (spec §12, §20).
+  CASHOUT_COOLDOWN_HOURS: z.coerce.number().int().default(24),
+  MIN_CASHOUT_CENTS: z.coerce.number().int().default(1000),
+
+  // App base URL (Connect onboarding return/refresh deep links) + currency.
+  APP_URL: z.string().default('https://app.teeko.my'),
+  CURRENCY: z.string().default('myr'),
 
   // Storage adapter: 'r2' | 'gcs' | unset (local)
   STORAGE: z.enum(['r2', 'gcs', 'local']).optional(),

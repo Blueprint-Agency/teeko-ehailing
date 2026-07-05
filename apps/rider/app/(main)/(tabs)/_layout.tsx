@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { BottomTabBar } from '@react-navigation/bottom-tabs';
+import { useT } from '@teeko/i18n';
 import { Tabs } from 'expo-router';
 import { View } from 'react-native';
 
@@ -11,6 +12,7 @@ const ACTIVE = '#E11D2E';
 const INACTIVE = '#9CA3AF';
 
 export default function TabsLayout() {
+  const t = useT();
   return (
     <Tabs
       initialRouteName="index"
@@ -33,15 +35,15 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Home', tabBarIcon: ({ color, focused }) => icon('home', color, focused) }}
+        options={{ title: t('tabs.home'), tabBarIcon: ({ color, focused }) => icon('home', color, focused) }}
       />
       <Tabs.Screen
         name="rides"
-        options={{ title: 'Rides', tabBarIcon: ({ color, focused }) => icon('schedule', color, focused) }}
+        options={{ title: t('tabs.rides'), tabBarIcon: ({ color, focused }) => icon('schedule', color, focused) }}
       />
       <Tabs.Screen
         name="account"
-        options={{ title: 'Account', tabBarIcon: ({ color, focused }) => icon('person', color, focused) }}
+        options={{ title: t('tabs.account'), tabBarIcon: ({ color, focused }) => icon('person', color, focused) }}
       />
     </Tabs>
   );

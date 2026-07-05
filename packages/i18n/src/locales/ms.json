@@ -67,7 +67,31 @@
     "title": "Perjalanan",
     "emptyTitle": "Belum ada perjalanan.",
     "emptyBody": "Ketik Utama untuk tempah perjalanan pertama anda.",
+    "upcoming": "Akan datang",
+    "past": "Lepas",
+    "completed": "Selesai",
+    "inProgress": "Sedang berlangsung",
     "cancelled": "Dibatalkan"
+  },
+  "receipt": {
+    "title": "Resit",
+    "fareBreakdown": "Perincian tambang",
+    "total": "Jumlah",
+    "paymentMethod": "Pembayaran",
+    "cancellationFee": "Yuran pembatalan",
+    "yourRating": "Penilaian anda",
+    "notRated": "Anda tidak menilai perjalanan ini.",
+    "driver": "Pemandu",
+    "loadError": "Tidak dapat memuatkan perjalanan ini.",
+    "lines": {
+      "base": "Tambang asas",
+      "distance": "Jarak",
+      "time": "Masa",
+      "surge": "Lonjakan",
+      "toll": "Tol",
+      "airport": "Lapangan terbang",
+      "tip": "Tip"
+    }
   },
   "account": {
     "title": "Akaun",
@@ -89,7 +113,11 @@
     "signIn": "Log masuk",
     "signUp": "Daftar",
     "guestCta": "Log masuk untuk menyimpan tempat dan menjejak perjalanan.",
-    "addPlace": "Tambah tempat"
+    "addPlace": "Tambah tempat",
+    "editPlaceTitle": "Edit tempat disimpan",
+    "changeAddress": "Tukar alamat",
+    "removePlace": "Buang",
+    "removePlaceFailed": "Tidak dapat membuang tempat ini. Sila cuba lagi."
   },
   "trip": {
     "cancelTitle": "Batalkan perjalanan ini?",

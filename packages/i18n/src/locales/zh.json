@@ -67,7 +67,31 @@
     "title": "行程",
     "emptyTitle": "暂无行程。",
     "emptyBody": "点击首页预订您的第一个行程。",
+    "upcoming": "即将到来",
+    "past": "历史",
+    "completed": "已完成",
+    "inProgress": "进行中",
     "cancelled": "已取消"
+  },
+  "receipt": {
+    "title": "收据",
+    "fareBreakdown": "费用明细",
+    "total": "总计",
+    "paymentMethod": "支付方式",
+    "cancellationFee": "取消费用",
+    "yourRating": "您的评分",
+    "notRated": "您未对此行程评分。",
+    "driver": "司机",
+    "loadError": "无法加载此行程。",
+    "lines": {
+      "base": "基本车费",
+      "distance": "距离",
+      "time": "时间",
+      "surge": "高峰加价",
+      "toll": "过路费",
+      "airport": "机场费",
+      "tip": "小费"
+    }
   },
   "account": {
     "title": "账户",
@@ -89,7 +113,11 @@
     "signIn": "登录",
     "signUp": "注册",
     "guestCta": "登录以保存地点并追踪行程。",
-    "addPlace": "添加地点"
+    "addPlace": "添加地点",
+    "editPlaceTitle": "编辑已保存地点",
+    "changeAddress": "更改地址",
+    "removePlace": "移除",
+    "removePlaceFailed": "无法移除此地点，请重试。"
   },
   "trip": {
     "cancelTitle": "取消此行程？",

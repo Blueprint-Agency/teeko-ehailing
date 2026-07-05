@@ -29,6 +29,8 @@ export const users = pgTable('users', {
   fullName: text(),
   locale: localeEnum().notNull().default('en'),
   status: userStatus().notNull().default('active'),
+  // Rider-side Stripe Customer, created lazily on first payment-method add.
+  stripeCustomerId: text().unique(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 

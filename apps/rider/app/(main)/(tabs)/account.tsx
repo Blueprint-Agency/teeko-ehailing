@@ -27,6 +27,7 @@ export default function AccountTab() {
   const { signOut } = useClerk();
   const saved = usePlacesStore((s) => s.saved);
   const loadSaved = usePlacesStore((s) => s.loadSaved);
+  const removeSaved = usePlacesStore((s) => s.removeSaved);
   const languageSheetRef = useRef<BottomSheetHandle>(null);
 
   const onLogout = () => {
@@ -72,6 +73,35 @@ export default function AccountTab() {
   const onCustomPress = (place: NonNullable<typeof home>) => {
     setDestination(place);
     router.push('/(main)/confirm-destination');
+  };
+
+  const onEditPlace = (
+    place: NonNullable<typeof home>,
+    kind: 'home' | 'work' | 'custom',
+  ) => {
+    Alert.alert(t('account.editPlaceTitle'), place.address, [
+      {
+        text: t('account.changeAddress'),
+        onPress: () =>
+          router.push({
+            pathname: '/(main)/search',
+            params:
+              kind === 'custom'
+                ? { intent: 'saveCustom', replaceId: place.id }
+                : { intent: kind === 'home' ? 'saveHome' : 'saveWork' },
+          }),
+      },
+      {
+        text: t('account.removePlace'),
+        style: 'destructive',
+        onPress: () => {
+          removeSaved(place.id).catch(() =>
+            Alert.alert(t('account.removePlaceFailed')),
+          );
+        },
+      },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
   };
 
   return (
@@ -158,12 +188,28 @@ export default function AccountTab() {
             title={home?.address ? t('account.home') : t('account.enterHome')}
             subtitle={home?.address}
             onPress={() => onShortcutPress(home, 'saveHome')}
+            trailing={
+              home ? (
+                <EditButton
+                  label={t('account.editPlaceTitle')}
+                  onPress={() => onEditPlace(home, 'home')}
+                />
+              ) : undefined
+            }
           />
           <ListRow
             leadingIcon="work"
             title={work?.address ? t('account.work') : t('account.enterWork')}
             subtitle={work?.address}
             onPress={() => onShortcutPress(work, 'saveWork')}
+            trailing={
+              work ? (
+                <EditButton
+                  label={t('account.editPlaceTitle')}
+                  onPress={() => onEditPlace(work, 'work')}
+                />
+              ) : undefined
+            }
           />
           {customPlaces.map((p) => (
             <ListRow
@@ -171,6 +217,12 @@ export default function AccountTab() {
               leadingIcon="place"
               title={p.address}
               onPress={() => onCustomPress(p)}
+              trailing={
+                <EditButton
+                  label={t('account.editPlaceTitle')}
+                  onPress={() => onEditPlace(p, 'custom')}
+                />
+              }
             />
           ))}
           <ListRow
@@ -219,6 +271,27 @@ export default function AccountTab() {
         }}
       />
     </ScreenContainer>
+  );
+}
+
+function EditButton({
+  onPress,
+  label,
+}: {
+  onPress: () => void;
+  label: string;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      haptic="selection"
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={8}
+      className="-mr-1 p-2"
+    >
+      <Icon name="edit" size={20} color="#9CA3AF" />
+    </Pressable>
   );
 }
 

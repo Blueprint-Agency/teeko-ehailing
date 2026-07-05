@@ -187,7 +187,7 @@ packages/shared/src/
 │   ├── user.ts                     # User, Rider, Driver, DriverStatus, OnboardingStep
 │   ├── trip.ts                     # Trip, TripStatus, RideCategory, CancellationReason
 │   ├── vehicle.ts                  # Vehicle, VehicleDocument, DocumentType, DocumentStatus
-│   ├── payment.ts                  # PaymentMethod, PaymentType (CARD, TNG, GRABPAY, GOOGLE_PAY)
+│   ├── payment.ts                  # PaymentMethod, PaymentType (CARD, TNG, GOOGLE_PAY)
 │   ├── location.ts                 # Coordinate, Address, Place, Region
 │   ├── rating.ts                   # Rating, Review
 │   ├── earnings.ts                 # Earnings, Payout, PayoutStatus, Commission, Incentive
@@ -239,7 +239,6 @@ enum RideCategory {
 enum PaymentType {
   CARD = "CARD",
   TNG = "TNG",
-  GRABPAY = "GRABPAY",
   GOOGLE_PAY = "GOOGLE_PAY",
 }
 

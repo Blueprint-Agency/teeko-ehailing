@@ -17,6 +17,7 @@ export type PlacesState = {
     category: 'home' | 'work' | 'custom',
     place: Place,
   ) => Promise<void>;
+  removeSaved: (id: string) => Promise<void>;
   clearResults: () => void;
 };
 
@@ -82,6 +83,19 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
         ? get().saved
         : get().saved.filter((p) => p.category !== category);
     set({ saved: [saved, ...others] });
+  },
+
+  async removeSaved(id) {
+    // Optimistic local removal, then persist. Restore on failure.
+    const prev = get().saved;
+    set({ saved: prev.filter((p) => p.id !== id) });
+    try {
+      await placesApi.deleteSavedPlace(id);
+    } catch (err) {
+      console.warn('[places] removeSaved failed', err);
+      set({ saved: prev });
+      throw err;
+    }
   },
 
   clearResults() {

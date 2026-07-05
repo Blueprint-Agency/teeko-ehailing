@@ -13,7 +13,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './identity';
 import { trips } from './trips';
-import { driverPayouts } from './payments';
+import { payouts } from './payments';
 import { geographyPolygon } from './_types';
 
 export const referralStatus = pgEnum('referral_status', ['pending', 'earned', 'expired']);
@@ -96,7 +96,7 @@ export const driverIncentiveProgress = pgTable(
     driverId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
     progressCount: integer().notNull().default(0),
     completedAt: timestamp({ withTimezone: true }),
-    paidPayoutId: uuid().references(() => driverPayouts.id),
+    paidPayoutId: uuid().references(() => payouts.id),
     updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.campaignId, t.driverId] })],

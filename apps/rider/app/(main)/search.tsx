@@ -13,7 +13,10 @@ type SearchIntent = 'saveHome' | 'saveWork' | 'saveCustom' | undefined;
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { intent: intentParam } = useLocalSearchParams<{ intent?: string }>();
+  const { intent: intentParam, replaceId } = useLocalSearchParams<{
+    intent?: string;
+    replaceId?: string;
+  }>();
   const intent: SearchIntent =
     intentParam === 'saveHome' ||
     intentParam === 'saveWork' ||
@@ -33,6 +36,7 @@ export default function SearchScreen() {
   const selectPrediction = usePlacesStore((s) => s.selectPrediction);
   const pushRecent = usePlacesStore((s) => s.pushRecent);
   const saveHomeOrWork = usePlacesStore((s) => s.saveHomeOrWork);
+  const removeSaved = usePlacesStore((s) => s.removeSaved);
 
   const [query, setQuery] = useState('');
   const [resolving, setResolving] = useState(false);
@@ -82,7 +86,16 @@ export default function SearchScreen() {
       return;
     }
     if (intent === 'saveCustom') {
+      // Save the new place first, then drop the one being edited (if any) so a
+      // cancelled edit never loses the original.
       await saveHomeOrWork('custom', resolved);
+      if (replaceId) {
+        try {
+          await removeSaved(replaceId);
+        } catch {
+          // Non-fatal — the new place is saved; leave the old one in place.
+        }
+      }
       router.back();
       return;
     }
