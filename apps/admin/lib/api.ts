@@ -30,6 +30,18 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+async function del<T>(path: string): Promise<T> {
+  const res = await fetch(`${PREFIX}${path}`, {
+    method: 'DELETE',
+    headers: headers(),
+  });
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.error || `DELETE ${path} → ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
 export interface Rider {
   id: string;
   name: string;
@@ -75,8 +87,18 @@ export function resolveFileUrl(fileUrl: string | null): string | null {
   return /^https?:\/\//.test(fileUrl) ? fileUrl : `${BASE}${fileUrl}`;
 }
 
+export interface NewRider {
+  name: string;
+  phone?: string;
+  email?: string;
+}
+
 export const adminApi = {
   getRiders: () => get<Rider[]>('/riders'),
+
+  createRider: (input: NewRider) => post<Rider>('/riders', input),
+
+  deleteRider: (id: string) => del<{ ok: boolean }>(`/riders/${id}`),
 
   getEvpRecords: () => get<EvpRecord[]>('/drivers/evp'),
 

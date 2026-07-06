@@ -30,6 +30,9 @@ export const users = pgTable('users', {
   locale: localeEnum().notNull().default('en'),
   status: userStatus().notNull().default('active'),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  // Soft-delete marker — non-null means the account was removed by an admin but
+  // its rows are retained for audit/trip-history integrity.
+  deletedAt: timestamp({ withTimezone: true }),
 });
 
 export const userRoles = pgTable(

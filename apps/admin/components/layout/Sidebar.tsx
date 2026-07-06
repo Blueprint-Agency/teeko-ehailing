@@ -9,7 +9,8 @@ import {
   Campaign, Settings, ExpandLess, ExpandMore,
   AssignmentTurnedIn, Policy, Speed,
 } from '@mui/icons-material';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRbac } from '@/hooks/useRbac';
 
@@ -25,7 +26,6 @@ interface NavItem {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
   const { can, isRole } = useRbac();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     drivers: true, trips: false,
@@ -112,8 +112,9 @@ export function Sidebar() {
                     {item.children.map((child) => (
                       <ListItemButton
                         key={child.href}
+                        component={Link}
+                        href={child.href}
                         selected={isActive(child.href)}
-                        onClick={() => router.push(child.href)}
                         sx={{ pl: 4.5, borderRadius: 1, mb: 0.25 }}
                       >
                         <ListItemText primary={child.label} primaryTypographyProps={{ fontSize: 12 }} />
@@ -128,8 +129,9 @@ export function Sidebar() {
           return (
             <ListItemButton
               key={item.href}
+              component={Link}
+              href={item.href!}
               selected={isActive(item.href!)}
-              onClick={() => router.push(item.href!)}
               sx={{ borderRadius: 1, mb: 0.25 }}
             >
               <ListItemIcon sx={{ minWidth: 32 }}>{item.icon}</ListItemIcon>

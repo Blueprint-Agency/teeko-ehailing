@@ -1,8 +1,8 @@
 'use client';
 import { create } from 'zustand';
-import { adminApi, type Rider } from '@/lib/api';
+import { adminApi, type NewRider, type Rider } from '@/lib/api';
 
-export type { Rider };
+export type { NewRider, Rider };
 
 interface RiderState {
   riders: Rider[];
@@ -13,6 +13,8 @@ interface RiderState {
   loadRiders: (force?: boolean) => Promise<void>;
   selectRider: (id: string | null) => void;
   updateRiderStatus: (id: string, status: string) => void;
+  createRider: (input: NewRider) => Promise<void>;
+  deleteRider: (id: string) => Promise<void>;
 }
 
 export const useRiderStore = create<RiderState>()((set, get) => ({
@@ -39,4 +41,12 @@ export const useRiderStore = create<RiderState>()((set, get) => ({
     set((s) => ({
       riders: s.riders.map((r) => (r.id === id ? { ...r, status } : r)),
     })),
+  createRider: async (input) => {
+    const rider = await adminApi.createRider(input);
+    set((s) => ({ riders: [rider, ...s.riders] }));
+  },
+  deleteRider: async (id) => {
+    await adminApi.deleteRider(id);
+    set((s) => ({ riders: s.riders.filter((r) => r.id !== id) }));
+  },
 }));
