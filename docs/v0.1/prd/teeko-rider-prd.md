@@ -42,11 +42,11 @@ Bottom navigation bar with 3 tabs:
 
 | Tab | Icon | Label | Default |
 |-----|------|-------|---------|
-| 1 | Home icon | Home | — |
-| 2 | Clock/car icon | Rides | Default landing tab |
+| 1 | Home icon | Home | Default landing tab |
+| 2 | Clock/car icon | Rides | — |
 | 3 | Person icon | Account | — |
 
-> **Note:** The Rides tab is the default screen when the app opens.
+> **Note:** The Home tab (the "Where to?" booking entry) is the default screen when the app opens. It is a search-first screen with **no map** — surrounding drivers are not shown here.
 
 ---
 
@@ -67,7 +67,7 @@ App opens → Location permission prompt (immediately) → Enter phone number
 | **Auth method** | Phone number + OTP |
 | **Location permission** | Requested immediately on first open, before sign-up |
 | **Language** | Auto-detected from phone system settings; changeable in Account |
-| **Post sign-up** | User lands on the default Rides tab (Home screen) |
+| **Post sign-up** | User lands on the default Home tab (the "Where to?" booking screen) |
 
 **Screen layout:**
 - Teeko logo/wordmark (centered, top)
@@ -97,6 +97,8 @@ App opens → Location permission prompt (immediately) → Enter phone number
    - Tapping a recent place pre-fills the destination
 
 **No hamburger menu.** All navigation via bottom tabs.
+
+> **No live driver map on Home (by design).** The Home tab is a search/booking entry point, not a live map of surrounding drivers. Nearby-driver data is fetched **only when the rider actively enters the booking flow** (confirming a destination / requesting a trip) and released when they leave it. This keeps the app calm for the rider and — critically for v1.0 — avoids every open app continuously polling the backend for driver locations. See the "Nearby-Driver Queries & Backend Load" scaling note in `teeko-tech-stack.md`.
 
 ---
 
@@ -286,8 +288,6 @@ Review pin on map → Adjust if needed → Tap "Confirm destination"
 ### 4.12 Rides Tab
 
 **Purpose:** View past ride history.
-
-**Default tab** when the app opens.
 
 **Layout:**
 - **Header:** "Rides" (large, bold, left-aligned)

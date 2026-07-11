@@ -56,7 +56,9 @@
     "work": "公司",
     "setHome": "设置住家",
     "setWork": "设置公司",
-    "recent": "最近"
+    "recent": "最近",
+    "addPayment": "添加付款方式",
+    "addPaymentSubtitle": "添加银行卡以预订您的首次行程"
   },
   "tabs": {
     "home": "首页",

@@ -56,7 +56,9 @@
     "work": "Kerja",
     "setHome": "Tetapkan rumah",
     "setWork": "Tetapkan kerja",
-    "recent": "Terkini"
+    "recent": "Terkini",
+    "addPayment": "Tambah kaedah pembayaran",
+    "addPaymentSubtitle": "Tambah kad untuk menempah perjalanan pertama anda"
   },
   "tabs": {
     "home": "Utama",

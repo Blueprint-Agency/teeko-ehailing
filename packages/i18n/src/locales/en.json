@@ -71,7 +71,9 @@
     "work": "Work",
     "setHome": "Set home",
     "setWork": "Set work",
-    "recent": "Recent"
+    "recent": "Recent",
+    "addPayment": "Add a payment method",
+    "addPaymentSubtitle": "Add a card to book your first ride"
   },
   "tabs": {
     "home": "Home",

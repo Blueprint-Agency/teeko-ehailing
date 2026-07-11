@@ -273,6 +273,30 @@ WebSockets enable a persistent, two-way connection between the server and the ap
 | **Firebase Realtime Database / Firestore** | Good for simpler real-time use cases. However, using Firebase as the primary real-time layer creates vendor lock-in and adds cost at scale. Socket.io on owned infrastructure is more cost-effective long-term. |
 | **gRPC streaming** | More complex to implement and debug. Overkill for this use case. Limited browser/React Native support compared to WebSockets. |
 
+### Scaling Note — Nearby-Driver Queries & Backend Load
+
+Showing live nearby drivers is the single heaviest read pattern in an e-hailing backend: if every rider's map continuously fetches surrounding drivers, load grows with `riders × drivers × poll-frequency` and overwhelms the backend as the user base grows. Teeko controls this with two decisions — **on-demand querying** and **push-not-poll** — plus supporting techniques:
+
+**1. On-demand, not always-on (primary lever).**
+The rider app does **not** open on a live driver map, and the map does not query drivers in the background. This aligns with the Rider PRD: the default landing screen is the **Home** tab — a search-first "Where to?" entry with **no map** and no live driver feed. Nearby-driver data is fetched **only when the rider actively moves toward booking** (confirms a destination / opens the booking map / requests a trip), then released when they leave that flow. A rider sitting on Home or browsing history generates zero driver-location load. This alone removes the vast majority of would-be traffic.
+
+**2. Push, don't poll.**
+Once a rider is in the booking flow, the app subscribes to a geohash "room" via **Socket.io** for the visible map area. The server pushes driver position deltas only when they change — the client never asks "any updates?" on a timer. Panning to a new area swaps rooms instead of refetching everything.
+
+**3. Redis GEO as the hot store.**
+Drivers write location to **Redis** (`GEOADD`); riders read via `GEOSEARCH` in-memory — never hitting PostgreSQL for live position. Postgres persistence is reserved for trip route recording, not per-ping writes.
+
+**4. Throttle at both ends.**
+Drivers emit location every 3–5s or on meaningful movement (>~20–30m), not continuously. Rider map-region changes are debounced (~500ms after the pan settles) and capped to the nearest ~10–15 drivers. Only fetch while the app is foregrounded on the booking screen.
+
+**5. Coalesce and cache.**
+A short-TTL (1–2s) cache on "drivers near cell X" lets many riders viewing the same area share one computed result. Cosmetic nearby-driver markers tolerate slight staleness — they signal availability, not trip-precision tracking.
+
+**6. Switch to 1:1 during an active trip.**
+After matching, the rider and driver communicate on a dedicated channel (higher frequency), and the rider drops out of the general nearby-driver broadcast.
+
+> **v0.1 impact:** none — the mockup uses local mock data and animates driver markers with `setInterval` (no backend). These decisions define the **v1.0 contract** so the real-time layer is built load-aware from day one. Items 1–2 eliminate the bulk of the load; 3–6 keep the remainder cheap.
+
 ---
 
 ## 9. Primary Database — PostgreSQL
