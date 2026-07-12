@@ -14,8 +14,8 @@ import type { Place } from '@teeko/shared';
 import { Icon, Pressable, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
+import { DestinationMapCard } from '../../../components/DestinationMapCard';
 import { RecentPlaceRow } from '../../../components/RecentPlaceRow';
-import { WhereToBar } from '../../../components/WhereToBar';
 
 export default function HomeTab() {
   const router = useRouter();
@@ -38,10 +38,10 @@ export default function HomeTab() {
     });
   }, [loadRecent, loadSaved, loadPayments]);
 
-  // One-shot location read to warm the pickup for the booking flow. Home is a
-  // search-first screen with no map, so we do NOT query nearby drivers here —
-  // driver-location fetches happen only once the rider enters the booking flow
-  // (see "Nearby-Driver Queries & Backend Load" in teeko-tech-stack.md).
+  // One-shot location read to warm the pickup for the booking flow and to seed
+  // the destination map card's initial region. We still do NOT query nearby
+  // drivers here — driver-location fetches happen only once the rider enters the
+  // booking flow (see "Nearby-Driver Queries & Backend Load" in teeko-tech-stack.md).
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -88,6 +88,11 @@ export default function HomeTab() {
     router.push('/(main)/confirm-destination');
   };
 
+  const onPinDestination = (p: Place) => {
+    setDestination(p);
+    router.push('/(main)/confirm-destination');
+  };
+
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-surface">
       <ScrollView
@@ -98,8 +103,15 @@ export default function HomeTab() {
           {t('home.tagline')}
         </Text>
 
-        <View className="px-gutter">
-          <WhereToBar onPress={goToSearch} placeholder={t('home.whereTo')} />
+        <View className="mt-4">
+          <DestinationMapCard
+            onConfirm={onPinDestination}
+            onSearchPress={goToSearch}
+            searchPlaceholder={t('home.whereTo')}
+            hint={t('home.mapHint')}
+            confirmLabel={t('home.setDestination')}
+            locatingLabel={t('home.locating')}
+          />
         </View>
 
         <View className="mt-3 flex-row gap-3 px-gutter">

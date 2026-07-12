@@ -58,7 +58,10 @@
     "setWork": "设置公司",
     "recent": "最近",
     "addPayment": "添加付款方式",
-    "addPaymentSubtitle": "添加银行卡以预订您的首次行程"
+    "addPaymentSubtitle": "添加银行卡以预订您的首次行程",
+    "mapHint": "移动地图以设置您的目的地",
+    "setDestination": "设置目的地",
+    "locating": "定位中…"
   },
   "tabs": {
     "home": "首页",

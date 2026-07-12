@@ -58,7 +58,10 @@
     "setWork": "Tetapkan kerja",
     "recent": "Terkini",
     "addPayment": "Tambah kaedah pembayaran",
-    "addPaymentSubtitle": "Tambah kad untuk menempah perjalanan pertama anda"
+    "addPaymentSubtitle": "Tambah kad untuk menempah perjalanan pertama anda",
+    "mapHint": "Gerakkan peta untuk menetapkan destinasi anda",
+    "setDestination": "Tetapkan destinasi",
+    "locating": "Mencari lokasi…"
   },
   "tabs": {
     "home": "Utama",

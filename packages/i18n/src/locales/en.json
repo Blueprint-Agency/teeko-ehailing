@@ -73,7 +73,10 @@
     "setWork": "Set work",
     "recent": "Recent",
     "addPayment": "Add a payment method",
-    "addPaymentSubtitle": "Add a card to book your first ride"
+    "addPaymentSubtitle": "Add a card to book your first ride",
+    "mapHint": "Move the map to set your destination",
+    "setDestination": "Set destination",
+    "locating": "Locating…"
   },
   "tabs": {
     "home": "Home",
