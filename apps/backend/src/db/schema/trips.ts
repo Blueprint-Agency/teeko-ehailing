@@ -197,3 +197,39 @@ export const lostItemReports = pgTable('lost_item_reports', {
   resolvedAt: timestamp({ withTimezone: true }),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
+
+// Rider-raised disputes on a finished trip (fare overcharge, wrong payment,
+// driver conduct, safety, lost item, other). Surfaces in the admin Disputes
+// Queue for resolution. Money is stored as integer sen (amountCents), matching
+// the payment ledger convention. See docs/v0.1/prd/teeko-rider-disputes.md.
+export const disputeCategory = pgEnum('dispute_category', [
+  'overcharge',
+  'payment',
+  'service',
+  'safety',
+  'lost_item',
+  'other',
+]);
+export const disputeStatus = pgEnum('dispute_status', [
+  'open',
+  'under_review',
+  'resolved',
+  'rejected',
+]);
+
+export const disputes = pgTable(
+  'disputes',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    tripId: uuid().notNull().references(() => trips.id, { onDelete: 'cascade' }),
+    riderId: uuid().notNull().references(() => users.id),
+    category: disputeCategory().notNull(),
+    status: disputeStatus().notNull().default('open'),
+    amountCents: integer(),
+    description: text().notNull(),
+    resolution: text(),
+    resolvedAt: timestamp({ withTimezone: true }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('disputes_trip_idx').on(t.tripId), index('disputes_rider_idx').on(t.riderId)],
+);

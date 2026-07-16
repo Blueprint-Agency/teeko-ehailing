@@ -59,6 +59,7 @@
     "recent": "Terkini",
     "addPayment": "Tambah kaedah pembayaran",
     "addPaymentSubtitle": "Tambah kad untuk menempah perjalanan pertama anda",
+    "paymentMethod": "Kaedah pembayaran",
     "mapHint": "Gerakkan peta untuk menetapkan destinasi anda",
     "setDestination": "Tetapkan destinasi",
     "locating": "Mencari lokasi…"
@@ -97,6 +98,32 @@
       "airport": "Lapangan terbang",
       "tip": "Tip"
     }
+  },
+  "dispute": {
+    "sectionTitle": "Bantuan & pertikaian",
+    "prompt": "Ada masalah dengan perjalanan ini? Beritahu kami dan pasukan kami akan menyemaknya.",
+    "reportIssue": "Laporkan masalah",
+    "title": "Laporkan masalah",
+    "subtitle": "Pilih apa yang tidak kena dan tambah sedikit butiran.",
+    "categoryLabel": {
+      "overcharge": "Caj berlebihan / tambang salah",
+      "payment": "Masalah pembayaran",
+      "service": "Masalah pemandu atau perkhidmatan",
+      "safety": "Kebimbangan keselamatan",
+      "lost_item": "Barang hilang",
+      "other": "Lain-lain"
+    },
+    "amountLabel": "Jumlah dipertikaikan",
+    "descriptionLabel": "Apa yang berlaku?",
+    "descriptionPlaceholder": "Terangkan masalah dalam beberapa ayat…",
+    "submit": "Hantar pertikaian",
+    "submitSuccess": "Pertikaian dihantar. Kami akan menyemaknya tidak lama lagi.",
+    "submitError": "Tidak dapat menghantar pertikaian anda. Sila cuba lagi.",
+    "resolutionLabel": "Penyelesaian",
+    "statusOpen": "Terbuka",
+    "statusUnderReview": "Dalam semakan",
+    "statusResolved": "Selesai",
+    "statusRejected": "Ditolak"
   },
   "account": {
     "title": "Akaun",

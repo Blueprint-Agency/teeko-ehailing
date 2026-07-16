@@ -74,6 +74,7 @@
     "recent": "Recent",
     "addPayment": "Add a payment method",
     "addPaymentSubtitle": "Add a card to book your first ride",
+    "paymentMethod": "Payment method",
     "mapHint": "Move the map to set your destination",
     "setDestination": "Set destination",
     "locating": "Locating…"
@@ -112,6 +113,32 @@
       "airport": "Airport",
       "tip": "Tip"
     }
+  },
+  "dispute": {
+    "sectionTitle": "Help & disputes",
+    "prompt": "Something wrong with this trip? Let us know and our team will review it.",
+    "reportIssue": "Report an issue",
+    "title": "Report an issue",
+    "subtitle": "Pick what went wrong and add a few details.",
+    "categoryLabel": {
+      "overcharge": "Overcharged / wrong fare",
+      "payment": "Payment problem",
+      "service": "Driver or service issue",
+      "safety": "Safety concern",
+      "lost_item": "Lost item",
+      "other": "Something else"
+    },
+    "amountLabel": "Disputed amount",
+    "descriptionLabel": "What happened?",
+    "descriptionPlaceholder": "Describe the issue in a few sentences…",
+    "submit": "Submit dispute",
+    "submitSuccess": "Dispute submitted. We'll review it shortly.",
+    "submitError": "Couldn't submit your dispute. Please try again.",
+    "resolutionLabel": "Resolution",
+    "statusOpen": "Open",
+    "statusUnderReview": "Under review",
+    "statusResolved": "Resolved",
+    "statusRejected": "Rejected"
   },
   "account": {
     "title": "Account",

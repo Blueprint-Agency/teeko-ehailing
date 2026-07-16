@@ -1,11 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { tripsApi } from '@teeko/api';
+import { tripsApi, useDisputeStore, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
-import type { TripReceipt } from '@teeko/shared';
-import { Icon, Pressable, ScreenContainer, Spinner, Text } from '@teeko/ui';
+import type { DisputeStatus, RiderDispute, TripReceipt } from '@teeko/shared';
+import { Button, type BottomSheetHandle, Icon, Pressable, ScreenContainer, Spinner, Text } from '@teeko/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+
+import { DisputeSheet, type DisputeSubmitInput } from '../../../components/DisputeSheet';
+
+// Trip statuses that can be disputed (finished trips only).
+const DISPUTABLE: TripReceipt['status'][] = ['completed', 'cancelled'];
+
+const DISPUTE_STATUS_I18N: Record<DisputeStatus, string> = {
+  open: 'dispute.statusOpen',
+  under_review: 'dispute.statusUnderReview',
+  resolved: 'dispute.statusResolved',
+  rejected: 'dispute.statusRejected',
+};
 
 function money(myr: number): string {
   return `RM ${myr.toFixed(2)}`;
@@ -33,6 +45,13 @@ export default function ReceiptScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const disputeSheetRef = useRef<BottomSheetHandle>(null);
+  const disputes = useDisputeStore((s) => (id ? s.byTrip[id] : undefined));
+  const submitting = useDisputeStore((s) => s.submitting);
+  const loadDisputes = useDisputeStore((s) => s.loadForTrip);
+  const submitDispute = useDisputeStore((s) => s.submit);
+  const pushToast = useUIStore((s) => s.pushToast);
+
   useEffect(() => {
     let active = true;
     if (!id) return;
@@ -54,7 +73,26 @@ export default function ReceiptScreen() {
     };
   }, [id]);
 
+  // Load any existing disputes so the receipt shows a status row instead of the
+  // "Report an issue" button when the rider has already raised one.
+  useEffect(() => {
+    if (id) loadDisputes(id);
+  }, [id, loadDisputes]);
+
   const cancelled = receipt?.status === 'cancelled';
+  const existingDispute: RiderDispute | undefined = disputes?.[0];
+  const canDispute = receipt != null && DISPUTABLE.includes(receipt.status);
+
+  const handleSubmitDispute = async (input: DisputeSubmitInput) => {
+    if (!id) return;
+    const result = await submitDispute({ tripId: id, ...input });
+    disputeSheetRef.current?.dismiss();
+    pushToast(
+      result
+        ? { kind: 'success', message: t('dispute.submitSuccess') }
+        : { kind: 'error', message: t('dispute.submitError') },
+    );
+  };
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
@@ -181,9 +219,68 @@ export default function ReceiptScreen() {
               </Text>
             )}
           </Section>
+
+          {/* Dispute / report an issue */}
+          {canDispute ? (
+            <Section title={t('dispute.sectionTitle')}>
+              {existingDispute ? (
+                <View className="px-gutter py-3">
+                  <View className="flex-row items-center justify-between">
+                    <Text weight="medium" className="text-base">
+                      {t(`dispute.categoryLabel.${existingDispute.category}`)}
+                    </Text>
+                    <DisputeStatusPill status={existingDispute.status} label={t(DISPUTE_STATUS_I18N[existingDispute.status])} />
+                  </View>
+                  <Text tone="secondary" className="mt-1 text-sm">
+                    {existingDispute.description}
+                  </Text>
+                  {existingDispute.resolution ? (
+                    <Text tone="secondary" className="mt-2 text-sm">
+                      {`${t('dispute.resolutionLabel')}: ${existingDispute.resolution}`}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : (
+                <View className="px-gutter py-3">
+                  <Text tone="secondary" className="mb-3 text-sm">
+                    {t('dispute.prompt')}
+                  </Text>
+                  <Button
+                    label={t('dispute.reportIssue')}
+                    variant="ghost"
+                    leadingIcon="error-outline"
+                    onPress={() => disputeSheetRef.current?.present()}
+                  />
+                </View>
+              )}
+            </Section>
+          ) : null}
         </ScrollView>
       )}
+
+      <DisputeSheet
+        ref={disputeSheetRef}
+        fareMyr={receipt?.fareMyr}
+        submitting={submitting}
+        onConfirm={handleSubmitDispute}
+      />
     </ScreenContainer>
+  );
+}
+
+function DisputeStatusPill({ status, label }: { status: DisputeStatus; label: string }) {
+  const tone =
+    status === 'resolved'
+      ? 'bg-primary-50 text-primary'
+      : status === 'rejected'
+        ? 'bg-muted text-ink-secondary'
+        : 'bg-muted text-ink-primary';
+  return (
+    <View className={`rounded-full px-3 py-1 ${tone.split(' ')[0]}`}>
+      <Text weight="medium" className={`text-xs ${tone.split(' ')[1]}`}>
+        {label}
+      </Text>
+    </View>
   );
 }
 

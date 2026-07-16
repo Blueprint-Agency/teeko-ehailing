@@ -59,6 +59,7 @@
     "recent": "最近",
     "addPayment": "添加付款方式",
     "addPaymentSubtitle": "添加银行卡以预订您的首次行程",
+    "paymentMethod": "付款方式",
     "mapHint": "移动地图以设置您的目的地",
     "setDestination": "设置目的地",
     "locating": "定位中…"
@@ -97,6 +98,32 @@
       "airport": "机场费",
       "tip": "小费"
     }
+  },
+  "dispute": {
+    "sectionTitle": "帮助与申诉",
+    "prompt": "此行程有问题吗？告诉我们，我们的团队会进行审核。",
+    "reportIssue": "报告问题",
+    "title": "报告问题",
+    "subtitle": "选择出了什么问题并补充一些细节。",
+    "categoryLabel": {
+      "overcharge": "多收费 / 车费有误",
+      "payment": "支付问题",
+      "service": "司机或服务问题",
+      "safety": "安全问题",
+      "lost_item": "遗失物品",
+      "other": "其他"
+    },
+    "amountLabel": "争议金额",
+    "descriptionLabel": "发生了什么？",
+    "descriptionPlaceholder": "用几句话描述问题…",
+    "submit": "提交申诉",
+    "submitSuccess": "申诉已提交，我们会尽快审核。",
+    "submitError": "无法提交您的申诉，请重试。",
+    "resolutionLabel": "处理结果",
+    "statusOpen": "待处理",
+    "statusUnderReview": "审核中",
+    "statusResolved": "已解决",
+    "statusRejected": "已驳回"
   },
   "account": {
     "title": "账户",

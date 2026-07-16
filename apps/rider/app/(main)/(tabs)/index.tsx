@@ -15,6 +15,7 @@ import { Icon, Pressable, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
 import { DestinationMapCard } from '../../../components/DestinationMapCard';
+import { PaymentSelectorRow } from '../../../components/PaymentSelectorRow';
 import { RecentPlaceRow } from '../../../components/RecentPlaceRow';
 
 export default function HomeTab() {
@@ -28,6 +29,7 @@ export default function HomeTab() {
   const setCurrent = useLocationStore((s) => s.setCurrent);
   const setPermission = useLocationStore((s) => s.setPermission);
   const paymentMethods = usePaymentsStore((s) => s.methods);
+  const defaultPaymentId = usePaymentsStore((s) => s.defaultId);
   const loadPayments = usePaymentsStore((s) => s.load);
 
   useEffect(() => {
@@ -71,6 +73,10 @@ export default function HomeTab() {
 
   const homePlace = saved.find((p) => p.category === 'home');
   const workPlace = saved.find((p) => p.category === 'work');
+  // Once a rider has set a payment method, surface the one in use (the default,
+  // falling back to the first) instead of the "add payment" prompt.
+  const currentPayment =
+    paymentMethods.find((m) => m.id === defaultPaymentId) ?? paymentMethods[0] ?? null;
 
   const goToSearch = () => router.push('/(main)/search');
 
@@ -127,7 +133,20 @@ export default function HomeTab() {
           />
         </View>
 
-        {paymentMethods.length === 0 ? (
+        {currentPayment ? (
+          <View className="mt-3 px-gutter">
+            <Text
+              weight="bold"
+              className="pb-2 text-xs uppercase tracking-wide text-ink-secondary"
+            >
+              {t('home.paymentMethod')}
+            </Text>
+            <PaymentSelectorRow
+              method={currentPayment}
+              onPress={() => router.push('/(main)/account/payments' as never)}
+            />
+          </View>
+        ) : (
           <View className="mt-3 px-gutter">
             <Pressable
               onPress={() => router.push('/(main)/account/add-card' as never)}
@@ -150,7 +169,7 @@ export default function HomeTab() {
               <Icon name="add" size={22} color="#111111" />
             </Pressable>
           </View>
-        ) : null}
+        )}
 
         {recent.length > 0 ? (
           <View className="mt-6">

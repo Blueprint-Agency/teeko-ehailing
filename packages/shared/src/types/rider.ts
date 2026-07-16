@@ -126,6 +126,40 @@ export interface TripReceipt {
   cancelReason?: string;
 }
 
+// ─── Disputes ─────────────────────────────────────────────────────────────────
+
+export type DisputeCategory =
+  | 'overcharge'
+  | 'payment'
+  | 'service'
+  | 'safety'
+  | 'lost_item'
+  | 'other';
+
+export type DisputeStatus = 'open' | 'under_review' | 'resolved' | 'rejected';
+
+/** A rider-raised dispute on a finished trip (POST/GET /rider/disputes). */
+export interface RiderDispute {
+  id: string;
+  tripId: string;
+  category: DisputeCategory;
+  status: DisputeStatus;
+  /** Present only for money categories (overcharge / payment). */
+  amountMyr?: number;
+  description: string;
+  /** Filled by an admin once the dispute is resolved or rejected. */
+  resolution?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface CreateDisputeInput {
+  tripId: string;
+  category: DisputeCategory;
+  amountMyr?: number;
+  description: string;
+}
+
 // ─── Directions / Routing ─────────────────────────────────────────────────────
 
 export type TravelMode = 'driving' | 'walking' | 'bicycling' | 'transit';

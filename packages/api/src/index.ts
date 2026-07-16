@@ -11,6 +11,7 @@ export {
   tripsApi,
   driversApi,
   routesApi,
+  disputesApi,
   api,
   ApiError,
   setApiTokenGetter,
@@ -22,6 +23,7 @@ export { useLocationStore, type LocationState } from './stores/location-store';
 export { usePlacesStore, type PlacesState } from './stores/places-store';
 export { usePaymentsStore, type PaymentsState } from './stores/payments-store';
 export { useTripStore, type TripState } from './stores/trip-store';
+export { useDisputeStore, type DisputeState } from './stores/dispute-store';
 export { useUIStore, type UIState, type Toast } from './stores/ui-store';
 
 export const API_PACKAGE_VERSION = '0.2.0';
