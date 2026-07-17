@@ -6,31 +6,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This repo contains the product requirements, technical specs, and docs web app for **Teeko**, a Malaysian e-hailing app. Source of truth for scope, UX, and architecture lives here — application code (Expo rider/driver apps) lives in sibling repos; the docs site in `docs/` renders the markdown to a Vercel-deployed reader.
 
-## Folder Structure
-
-```
-docs/                                 — Next.js app (Vercel) that renders the markdown below
-  app/, lib/, next.config.mjs …       — Docs viewer source
-  v0.1/                               — ACTIVE version (mockup phase, frontend-only)
-    claude-code/
-      claude-code-guide.md            — Workflow for building Teeko features with Claude Code
-    prd/
-      teeko-prd.md                    — Core product requirements (single source of truth)
-      teeko-rider-prd.md              — Rider (passenger) app flows & screens
-      teeko-driver-prd.md             — Driver mobile app flows & screens
-      teeko-driver-web-prd.md         — Driver web portal (onboarding / fleet ops)
-      teeko-admin-prd.md              — Admin panel (web) requirements
-      teeko-deferred.md               — Features deferred post-MVP
-    tech/
-      teeko-tech-stack.md             — Phased stack (v0.1 mockup → v1.0 production)
-      teeko-frontend-architecture.md  — Monorepo layout (rider + driver Expo apps)
-      teeko-driver-frontend-tech-stack.md
-      teeko-driver-web-frontend-tech-stack.md
-      react-native-getting-started.md
-```
-
-> The older `docs/prd/` and `docs/tech/` directories are gone — everything is under `docs/v0.1/`.
-
 ## GitHub
 
 - Remote repo: https://github.com/Blueprint-Agency/teeko-ehailing
