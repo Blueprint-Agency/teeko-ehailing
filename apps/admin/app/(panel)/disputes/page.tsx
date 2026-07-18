@@ -100,9 +100,6 @@ export default function DisputeQueuePage() {
                   </Button>
                 )}
                 <Button variant="outlined" color="error" disabled={busy || !note} onClick={() => act('reject', 'rejected')}>Reject Dispute</Button>
-                {selected.status !== 'escalated' && (
-                  <Button variant="outlined" disabled={busy} onClick={() => act('escalate', 'escalated')}>Escalate to Super Admin</Button>
-                )}
               </Stack>
             ) : (
               <Alert severity="info">You don&apos;t have permission to resolve disputes.</Alert>
