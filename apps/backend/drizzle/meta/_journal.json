@@ -50,6 +50,34 @@
       "when": 1782736323353,
       "tag": "0006_hesitant_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1783343692157,
+      "tag": "0007_add_admin_role",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1752311928000,
+      "tag": "0008_commission_rate",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1784100000000,
+      "tag": "0009_surge_zone_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784346959340,
+      "tag": "0010_add_feedback_disputes",
+      "breakpoints": true
     }
   ]
 }

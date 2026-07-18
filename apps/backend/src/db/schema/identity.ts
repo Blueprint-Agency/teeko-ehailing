@@ -16,6 +16,9 @@ export const userRole = pgEnum('user_role', [
   'rider',
   'driver',
   'admin_super',
+  // Generic back-office admin — can do everything a super admin can except
+  // deactivate other admins. `admin_super` is the only role allowed to do that.
+  'admin',
   'admin_ops',
   'admin_finance',
 ]);

@@ -11,7 +11,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     user?: {
       id: string;
-      role: 'rider' | 'driver' | 'admin_super' | 'admin_ops' | 'admin_finance';
+      role: 'rider' | 'driver' | 'admin_super' | 'admin' | 'admin_ops' | 'admin_finance';
       clerkUserId: string;
     };
     clerkAuth?: ClerkClaims;
@@ -20,7 +20,7 @@ declare module 'fastify' {
 
 const DEV_TOKEN = 'dev-bypass-token';
 const DEV_USER_ID = process.env.DEV_USER_ID ?? 'dev-driver-001';
-const DEV_ROLE = (process.env.DEV_ROLE ?? 'driver') as 'rider' | 'driver' | 'admin_super' | 'admin_ops' | 'admin_finance';
+const DEV_ROLE = (process.env.DEV_ROLE ?? 'driver') as 'rider' | 'driver' | 'admin_super' | 'admin' | 'admin_ops' | 'admin_finance';
 
 export async function clerkAuthVerify(req: FastifyRequest, reply: FastifyReply) {
   // Development mode bypass: allow authenticating via X-Teeko-User / X-Teeko-Role headers.

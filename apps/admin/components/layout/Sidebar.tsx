@@ -21,7 +21,7 @@ interface NavItem {
   icon: React.ReactNode;
   href?: string;
   permission?: string;
-  children?: { label: string; href: string; permission?: string }[];
+  children?: { label: string; href: string; permission?: string; exact?: boolean }[];
 }
 
 export function Sidebar() {
@@ -53,7 +53,15 @@ export function Sidebar() {
         { label: 'Trip History', href: '/trips' },
       ],
     },
-    { label: 'Disputes', icon: <Gavel fontSize="small" />, href: '/disputes' },
+    {
+      label: 'Feedbacks & Disputes', icon: <Gavel fontSize="small" />,
+      children: [
+        { label: 'Feedback',           href: '/disputes/feedback' },
+        { label: 'Dispute Queue',      href: '/disputes', exact: true },
+        { label: 'Refund Queue',       href: '/disputes/refunds' },
+        { label: 'Dispute Completion', href: '/disputes/completed' },
+      ],
+    },
     { label: 'Surge Control', icon: <Speed fontSize="small" />, href: '/surge', permission: 'manage_surge' },
     { label: 'Commissions', icon: <TrendingUp fontSize="small" />, href: '/commissions', permission: 'adjust_commission' },
     { label: 'Incentives', icon: <Campaign fontSize="small" />, href: '/incentives', permission: 'manage_incentives' },
@@ -66,8 +74,10 @@ export function Sidebar() {
     { label: 'Admin Users', icon: <Settings fontSize="small" />, href: '/settings/admins', permission: 'manage_admins' },
   ];
 
-  const isActive = (href: string) =>
-    href === '/dashboard' ? pathname === '/dashboard' : (pathname ?? '').startsWith(href);
+  const isActive = (href: string, exact = false) =>
+    exact || href === '/dashboard'
+      ? pathname === href
+      : (pathname ?? '').startsWith(href);
 
   const groupKey = (label: string) => label.toLowerCase();
 
@@ -99,7 +109,7 @@ export function Sidebar() {
           if (item.children) {
             const key = groupKey(item.label);
             const open = openGroups[key] ?? false;
-            const anyActive = item.children.some((c) => isActive(c.href));
+            const anyActive = item.children.some((c) => isActive(c.href, c.exact));
             return (
               <Box key={item.label}>
                 <ListItemButton onClick={() => toggle(key)} sx={{ borderRadius: 1, mb: 0.25 }} selected={anyActive && !open}>
@@ -114,7 +124,7 @@ export function Sidebar() {
                         key={child.href}
                         component={Link}
                         href={child.href}
-                        selected={isActive(child.href)}
+                        selected={isActive(child.href, child.exact)}
                         sx={{ pl: 4.5, borderRadius: 1, mb: 0.25 }}
                       >
                         <ListItemText primary={child.label} primaryTypographyProps={{ fontSize: 12 }} />

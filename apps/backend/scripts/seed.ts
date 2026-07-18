@@ -5,12 +5,14 @@ import { riderProfiles } from '../src/db/schema/riders';
 import { trips } from '../src/db/schema/trips';
 import { driverApplications, documents, documentReviews } from '../src/db/schema/onboarding';
 import { notificationInbox } from '../src/db/schema/notifications-content';
+import { feedback, disputes } from '../src/db/schema/feedback-disputes';
 
 // Fixed UUIDs so the frontend can reference them via env var
 export const MOCK_DRIVER_ID = '00000000-0000-0000-0000-000000000001';
 export const MOCK_VEHICLE_ID = '00000000-0000-0000-0000-000000000002';
 export const MOCK_APPLICATION_ID = '00000000-0000-0000-0000-000000000003';
 export const MOCK_ADMIN_ID = '00000000-0000-0000-0000-0000000000a0';
+export const MOCK_ADMIN_STAFF_ID = '00000000-0000-0000-0000-0000000000a1';
 
 async function seed() {
   console.log('Seeding mock driver...');
@@ -43,6 +45,21 @@ async function seed() {
   await db.insert(userRoles).values({
     userId: MOCK_ADMIN_ID,
     role: 'admin_super',
+  }).onConflictDoNothing();
+
+  // ── Generic admin (no super-admin privileges — cannot deactivate admins) ────
+  await db.insert(users).values({
+    id: MOCK_ADMIN_STAFF_ID,
+    phone: '+60100000001',
+    email: 'staff@teeko.my',
+    fullName: 'Admin',
+    locale: 'en',
+    status: 'active',
+  }).onConflictDoNothing();
+
+  await db.insert(userRoles).values({
+    userId: MOCK_ADMIN_STAFF_ID,
+    role: 'admin',
   }).onConflictDoNothing();
 
   // ── Driver profile ────────────────────────────────────────────────────────
@@ -279,6 +296,74 @@ async function seedRiders() {
   }
 
   console.log(`  Seeded ${riders.length} riders.`);
+
+  await seedFeedbackAndDisputes();
+}
+
+// Feedback + disputes reference the deterministic rider/trip UUIDs minted above.
+async function seedFeedbackAndDisputes() {
+  console.log('Seeding feedback & disputes...');
+
+  const riderId = (n: number) => `50000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
+  const tripId = (n: number, t: number) =>
+    `6000${String(n).padStart(4, '0')}-0000-0000-0000-${String(t).padStart(12, '0')}`;
+  const uid = (kind: string, n: number) =>
+    `${kind}000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
+
+  // ── Feedback (general, not formal disputes) ─────────────────────────────────
+  const feedbacks = [
+    { n: 1, userId: riderId(1), tripId: tripId(1, 2), role: 'rider' as const, category: 'driver' as const,     rating: 5, message: 'Driver was super friendly and the car was spotless. Great ride!' },
+    { n: 2, userId: riderId(2), tripId: tripId(2, 1), role: 'rider' as const, category: 'app' as const,        rating: 3, message: 'The map took a while to load when I opened the app. Otherwise fine.' },
+    { n: 3, userId: riderId(3), tripId: tripId(3, 1), role: 'rider' as const, category: 'ride' as const,       rating: 4, message: 'Smooth trip but pickup point was a little hard to find.' },
+    { n: 4, userId: riderId(1), tripId: null,          role: 'rider' as const, category: 'suggestion' as const, rating: null, message: 'Would love to be able to schedule recurring rides to work.' },
+    { n: 5, userId: MOCK_DRIVER_ID, tripId: tripId(2, 1), role: 'driver' as const, category: 'payment' as const, rating: 2, message: 'Payout for last week came in a day late.' },
+  ];
+  for (const f of feedbacks) {
+    await db.insert(feedback).values({
+      id: uid('fb', f.n),
+      userId: f.userId,
+      tripId: f.tripId,
+      role: f.role,
+      category: f.category,
+      rating: f.rating,
+      message: f.message,
+      createdAt: new Date(2025, 5, f.n, 10, 0),
+    }).onConflictDoNothing();
+  }
+
+  // ── Disputes across every queue ─────────────────────────────────────────────
+  //   open / escalated       → Dispute Queue
+  //   refund_pending/...      → Refund Queue
+  //   refund_completed/reject → Dispute Completion
+  const disputeRows = [
+    { n: 1, tripId: tripId(1, 1), raisedById: riderId(1), raisedByRole: 'rider' as const,  category: 'overcharge' as const,       status: 'open' as const,              amountCents: 1500, description: 'Charged RM15 more than the quoted fare shown before booking.' },
+    { n: 2, tripId: tripId(2, 1), raisedById: riderId(2), raisedByRole: 'rider' as const,  category: 'route_issue' as const,      status: 'open' as const,              amountCents: 800,  description: 'Driver took a much longer route via the tolled highway without asking.' },
+    { n: 3, tripId: tripId(3, 1), raisedById: riderId(3), raisedByRole: 'rider' as const,  category: 'driver_behaviour' as const, status: 'escalated' as const,         amountCents: 0,    description: 'Driver was rude and refused to turn on the air-conditioning.' },
+    { n: 4, tripId: tripId(1, 3), raisedById: riderId(1), raisedByRole: 'rider' as const,  category: 'payment_error' as const,    status: 'refund_pending' as const,    amountCents: 2200, description: 'Double charged for a single trip.', resolutionNote: 'Verified duplicate charge — refund approved.' },
+    { n: 5, tripId: tripId(2, 2), raisedById: riderId(2), raisedByRole: 'rider' as const,  category: 'overcharge' as const,       status: 'refund_processing' as const, amountCents: 1200, description: 'Surge applied but there was no surge at the time.', resolutionNote: 'Refund approved.', refundRef: 'RF-2025-0012' },
+    { n: 6, tripId: tripId(1, 4), raisedById: riderId(1), raisedByRole: 'rider' as const,  category: 'cleanliness' as const,      status: 'refund_completed' as const,  amountCents: 900,  description: 'Seats were wet and stained. Requested a partial refund.', resolutionNote: 'Partial refund approved.', refundRef: 'RF-2025-0008' },
+    { n: 7, tripId: tripId(3, 2), raisedById: riderId(3), raisedByRole: 'rider' as const,  category: 'other' as const,            status: 'rejected' as const,          amountCents: 0,    description: 'Claimed forgotten item but lost-item report already resolved.', resolutionNote: 'No refundable amount; handled via lost-item flow.' },
+  ];
+  for (const d of disputeRows) {
+    const terminal = d.status === 'refund_completed' || d.status === 'rejected';
+    await db.insert(disputes).values({
+      id: uid('d5', d.n),
+      tripId: d.tripId,
+      raisedById: d.raisedById,
+      raisedByRole: d.raisedByRole,
+      category: d.category,
+      status: d.status,
+      amountCents: d.amountCents,
+      description: d.description,
+      resolutionNote: d.resolutionNote ?? null,
+      refundRef: d.refundRef ?? null,
+      handledBy: terminal || d.status.startsWith('refund_') ? MOCK_ADMIN_ID : null,
+      resolvedAt: terminal ? new Date(2025, 5, 20 + d.n, 14, 0) : null,
+      createdAt: new Date(2025, 5, 10 + d.n, 9, 0),
+    }).onConflictDoNothing();
+  }
+
+  console.log(`  Seeded ${feedbacks.length} feedback + ${disputeRows.length} disputes.`);
 }
 
 seed()
