@@ -7,7 +7,7 @@ import { users } from '../../db/schema/identity';
 // ── Constants ────────────────────────────────────────────────────────────────
 // Which statuses belong to each admin queue.
 const QUEUE_STATUSES = {
-  dispute: ['open', 'escalated'],
+  dispute: ['open'],
   refund: ['refund_pending', 'refund_processing', 'refund_failed'],
   completed: ['refund_completed', 'rejected'],
 } as const;
@@ -73,7 +73,6 @@ export async function routes(app: FastifyInstance) {
   // Act on a dispute in the Dispute Queue.
   //   action 'reject'         → rejected (terminal, shown in Completion)
   //   action 'approve_refund' → refund_pending (moves to the Refund Queue)
-  //   action 'escalate'       → escalated (stays in the Dispute Queue)
   app.post<{ Params: { id: string }; Body: { action?: string; note?: string } }>(
     '/:id/resolve',
     async (req, reply) => {
@@ -107,18 +106,9 @@ export async function routes(app: FastifyInstance) {
         return { ok: true, dispute: serialize(row!) };
       }
 
-      if (action === 'escalate') {
-        const [row] = await db
-          .update(disputes)
-          .set({ status: 'escalated', resolution: note ?? null, handledBy })
-          .where(eq(disputes.id, id))
-          .returning();
-        return { ok: true, dispute: serialize(row!) };
-      }
-
       return reply.code(400).send({
         error: 'invalid_action',
-        validActions: ['reject', 'approve_refund', 'escalate'],
+        validActions: ['reject', 'approve_refund'],
       });
     },
   );

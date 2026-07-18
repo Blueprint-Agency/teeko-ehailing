@@ -333,7 +333,7 @@ async function seedFeedbackAndDisputes() {
   }
 
   // ── Disputes across every queue ─────────────────────────────────────────────
-  //   open / escalated       → Dispute Queue
+  //   open                    → Dispute Queue
   //   refund_pending/...      → Refund Queue
   //   refund_completed/reject → Dispute Completion
   // Categories are mapped onto staging's rider dispute enum
@@ -341,7 +341,7 @@ async function seedFeedbackAndDisputes() {
   const disputeRows = [
     { n: 1, tripId: tripId(1, 1), riderId: riderId(1), category: 'overcharge' as const, status: 'open' as const,              amountCents: 1500, description: 'Charged RM15 more than the quoted fare shown before booking.' },
     { n: 2, tripId: tripId(2, 1), riderId: riderId(2), category: 'service' as const,    status: 'open' as const,              amountCents: 800,  description: 'Driver took a much longer route via the tolled highway without asking.' },
-    { n: 3, tripId: tripId(3, 1), riderId: riderId(3), category: 'service' as const,    status: 'escalated' as const,         amountCents: 0,    description: 'Driver was rude and refused to turn on the air-conditioning.' },
+    { n: 3, tripId: tripId(3, 1), riderId: riderId(3), category: 'service' as const,    status: 'open' as const,              amountCents: 0,    description: 'Driver was rude and refused to turn on the air-conditioning.' },
     { n: 4, tripId: tripId(1, 3), riderId: riderId(1), category: 'payment' as const,    status: 'refund_pending' as const,    amountCents: 2200, description: 'Double charged for a single trip.', resolution: 'Verified duplicate charge — refund approved.' },
     { n: 5, tripId: tripId(2, 2), riderId: riderId(2), category: 'overcharge' as const, status: 'refund_processing' as const, amountCents: 1200, description: 'Surge applied but there was no surge at the time.', resolution: 'Refund approved.', refundRef: 'RF-2025-0012' },
     { n: 6, tripId: tripId(1, 4), riderId: riderId(1), category: 'service' as const,    status: 'refund_completed' as const,  amountCents: 900,  description: 'Seats were wet and stained. Requested a partial refund.', resolution: 'Partial refund approved.', refundRef: 'RF-2025-0008' },

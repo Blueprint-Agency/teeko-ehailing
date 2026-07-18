@@ -185,7 +185,6 @@ export interface FeedbackRow {
 
 export type DisputeStatus =
   | 'open'
-  | 'escalated'
   | 'refund_pending'
   | 'refund_processing'
   | 'refund_completed'
@@ -211,7 +210,7 @@ export interface DisputeRow {
 }
 
 export type DisputeQueue = 'dispute' | 'refund' | 'completed';
-export type DisputeAction = 'reject' | 'approve_refund' | 'escalate';
+export type DisputeAction = 'reject' | 'approve_refund';
 export type RefundStatus = 'refund_processing' | 'refund_completed' | 'refund_failed';
 
 export const adminApi = {

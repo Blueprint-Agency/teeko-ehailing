@@ -69,19 +69,19 @@ export default function DashboardPage() {
   const todayRevenue = trips
     .filter((t) => t.date.startsWith('2026-05-14') && t.status === 'completed')
     .reduce((s, t) => s + t.fare, 0);
-  const openDisputes = disputes.filter((d) => d.status === 'open' || d.status === 'escalated').length;
+  const openDisputes = disputes.filter((d) => d.status === 'open').length;
 
   const metrics: Metric[] = [
     { label: 'Active Trips', value: activeTrips, delta: `+${tick % 3} last 10 min`, positive: true, icon: <LocalTaxi sx={{ fontSize: 32 }} />, color: '#1A56DB' },
     { label: 'Drivers Online', value: onlineDrivers, delta: `of ${activeDrivers} active`, positive: true, icon: <DirectionsCar sx={{ fontSize: 32 }} />, color: '#7E3AF2' },
     { label: "Today's Trips", value: todayTrips, delta: '+12% vs yesterday', positive: true, icon: <TrendingUp sx={{ fontSize: 32 }} />, color: '#057A55' },
     { label: "Today's Revenue", value: `RM ${todayRevenue.toFixed(2)}`, delta: '+8.4% vs yesterday', positive: true, icon: <AttachMoney sx={{ fontSize: 32 }} />, color: '#FF5A1F' },
-    { label: 'Open Disputes', value: openDisputes, delta: '2 escalated', positive: false, icon: <Warning sx={{ fontSize: 32 }} />, color: '#E02424' },
+    { label: 'Open Disputes', value: openDisputes, delta: 'needs review', positive: false, icon: <Warning sx={{ fontSize: 32 }} />, color: '#E02424' },
     { label: 'Total Riders', value: riders.length, delta: '+3 this week', positive: true, icon: <People sx={{ fontSize: 32 }} />, color: '#057A55' },
   ];
 
   const recentAlerts = [
-    { id: 1, msg: 'Dispute #dis4 escalated — double charge confirmed', sev: 'error' as const },
+    { id: 1, msg: 'Dispute #dis4 flagged — double charge confirmed', sev: 'error' as const },
     { id: 2, msg: 'Payout failed for Mohd Hafiz (RHB) — invalid account', sev: 'warning' as const },
     { id: 3, msg: 'Driver EVP expired: Siti Aminah Binti Kadir', sev: 'warning' as const },
     { id: 4, msg: 'New pending driver application: Mohd Azlan Bin Che Hassan', sev: 'info' as const },
