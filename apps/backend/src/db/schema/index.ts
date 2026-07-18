@@ -7,5 +7,6 @@ export * from './trips';
 export * from './payments';
 export * from './pricing-incentives';
 export * from './safety-comm';
+export * from './feedback-disputes';
 export * from './compliance';
 export * from './notifications-content';

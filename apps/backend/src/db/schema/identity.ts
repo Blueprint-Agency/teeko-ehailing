@@ -16,6 +16,9 @@ export const userRole = pgEnum('user_role', [
   'rider',
   'driver',
   'admin_super',
+  // Generic back-office admin — can do everything a super admin can except
+  // deactivate other admins. `admin_super` is the only role allowed to do that.
+  'admin',
   'admin_ops',
   'admin_finance',
 ]);
@@ -32,6 +35,9 @@ export const users = pgTable('users', {
   // Rider-side Stripe Customer, created lazily on first payment-method add.
   stripeCustomerId: text().unique(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  // Soft-delete marker — non-null means the account was removed by an admin but
+  // its rows are retained for audit/trip-history integrity.
+  deletedAt: timestamp({ withTimezone: true }),
 });
 
 export const userRoles = pgTable(

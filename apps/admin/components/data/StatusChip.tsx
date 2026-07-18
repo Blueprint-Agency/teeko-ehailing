@@ -20,6 +20,10 @@ const STATUS_MAP: Record<string, { label: string; color: 'success' | 'error' | '
   rejected:    { label: 'Rejected',    color: 'error' },
   expired:     { label: 'Expired',     color: 'error' },
   not_applied: { label: 'Not Applied', color: 'default' },
+  refund_pending:    { label: 'Refund Pending',    color: 'warning' },
+  refund_processing: { label: 'Refund Processing', color: 'info' },
+  refund_completed:  { label: 'Refunded',          color: 'success' },
+  refund_failed:     { label: 'Refund Failed',     color: 'error' },
 };
 
 export function StatusChip({ status }: { status: string }) {

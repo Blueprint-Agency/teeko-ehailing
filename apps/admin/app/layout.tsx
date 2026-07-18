@@ -1,8 +1,6 @@
 import type { Metadata } from 'next';
 import { Providers } from '@/lib/providers';
 
-export const dynamic = 'force-dynamic';
-
 export const metadata: Metadata = {
   title: 'Teeko Admin',
   description: 'Teeko e-hailing platform admin panel',

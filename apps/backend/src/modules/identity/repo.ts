@@ -14,7 +14,7 @@ import { riderProfiles } from '../../db/schema/riders';
 import { driverProfiles } from '../../db/schema/drivers';
 
 type Locale = (typeof localeEnum)['enumValues'][number];
-type Role = 'rider' | 'driver' | 'admin_super' | 'admin_ops' | 'admin_finance';
+type Role = 'rider' | 'driver' | 'admin_super' | 'admin' | 'admin_ops' | 'admin_finance';
 
 export type IdentityRow = {
   id: string;

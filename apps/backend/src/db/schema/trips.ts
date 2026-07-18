@@ -210,11 +210,21 @@ export const disputeCategory = pgEnum('dispute_category', [
   'lost_item',
   'other',
 ]);
+// Lifecycle. Riders only ever create disputes as `open`; the extra statuses
+// drive the admin queues added in the feedback/dispute merge:
+//   Dispute Queue → open, under_review, escalated
+//   Refund Queue  → refund_pending, refund_processing, refund_failed
+//   Completion    → resolved, refund_completed, rejected
 export const disputeStatus = pgEnum('dispute_status', [
   'open',
   'under_review',
   'resolved',
   'rejected',
+  'escalated',
+  'refund_pending',
+  'refund_processing',
+  'refund_completed',
+  'refund_failed',
 ]);
 
 export const disputes = pgTable(
@@ -228,6 +238,10 @@ export const disputes = pgTable(
     amountCents: integer(),
     description: text().notNull(),
     resolution: text(),
+    // Refund payout tracking, managed from the admin Refund Queue.
+    refundNote: text(),
+    refundRef: text(),
+    handledBy: uuid().references(() => users.id),
     resolvedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },

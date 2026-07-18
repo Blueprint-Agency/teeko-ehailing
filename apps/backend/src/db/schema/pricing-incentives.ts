@@ -1,4 +1,5 @@
 import {
+  boolean,
   integer,
   jsonb,
   numeric,
@@ -9,6 +10,7 @@ import {
   text,
   time,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { users } from './identity';
@@ -45,6 +47,10 @@ export const surgeZones = pgTable('surge_zones', {
   label: text().notNull(),
   polygon: geographyPolygon().notNull(),
   multiplier: numeric({ precision: 4, scale: 2 }).notNull(),
+  /** Admin master switch — whether the zone's surge is currently applied. */
+  active: boolean().notNull().default(true),
+  /** Hex colour used to render the zone on the admin surge map. */
+  color: text(),
   activeFrom: timestamp({ withTimezone: true }).notNull(),
   activeUntil: timestamp({ withTimezone: true }).notNull(),
 });
@@ -111,3 +117,31 @@ export const ratings = pgTable('ratings', {
   comment: text(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Tiered commission configuration.
+ *
+ * Scope resolution order (highest wins): driver › category › platform
+ *
+ * scopeKey values:
+ *   - scope='platform'  → scopeKey='__platform__'
+ *   - scope='category'  → scopeKey = rideCategory value (e.g. 'premium')
+ *   - scope='driver'    → scopeKey = driver user UUID
+ */
+export const commissionScope = pgEnum('commission_scope', ['platform', 'category', 'driver']);
+
+export const commissionConfigs = pgTable(
+  'commission_configs',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    scope: commissionScope().notNull(),
+    scopeKey: text().notNull(),
+    /** Commission rate in basis points (e.g. 2000 = 20%). */
+    rateBps: integer().notNull(),
+    note: text(),
+    updatedBy: uuid().references(() => users.id),
+    updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique('uq_commission_scope_key').on(t.scope, t.scopeKey)],
+);

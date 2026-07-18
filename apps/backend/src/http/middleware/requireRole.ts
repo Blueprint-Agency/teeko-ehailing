@@ -12,5 +12,5 @@ export function requireRole(role: Role | Role[]) {
 }
 
 export function requireAdminRole() {
-  return requireRole(['admin_super', 'admin_ops', 'admin_finance']);
+  return requireRole(['admin_super', 'admin', 'admin_ops', 'admin_finance']);
 }

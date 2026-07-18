@@ -9,22 +9,33 @@ import { useTripStore } from '@/stores/trip';
 import { useRbac } from '@/hooks/useRbac';
 import { StatusChip } from '@/components/data/StatusChip';
 import { ArrowBack } from '@mui/icons-material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { CircularProgress } from '@mui/material';
 
 export default function RiderProfilePage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? '';
   const router = useRouter();
   const riders = useRiderStore((s) => s.riders);
+  const loading = useRiderStore((s) => s.loading);
+  const loadRiders = useRiderStore((s) => s.loadRiders);
   const updateStatus = useRiderStore((s) => s.updateRiderStatus);
   const trips = useTripStore((s) => s.trips);
   const { can } = useRbac();
   const [done, setDone] = useState('');
 
+  useEffect(() => {
+    loadRiders();
+  }, [loadRiders]);
+
   const rider = riders.find((r) => r.id === id);
   const riderTrips = trips.filter((t) => t.riderId === id).slice(0, 8);
 
-  if (!rider) return <Box p={4}><Alert severity="error">Rider not found.</Alert></Box>;
+  if (!rider) {
+    return loading
+      ? <Box p={4} sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>
+      : <Box p={4}><Alert severity="error">Rider not found.</Alert></Box>;
+  }
 
   return (
     <Box>
