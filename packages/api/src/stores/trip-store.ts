@@ -25,6 +25,8 @@ export type TripState = {
   paymentMethodId: string | null;
   fareOptions: Fare[];
   selectedFare: Fare | null;
+  /** ISO expiry of the currently held quotes; null when none are held. */
+  quotesExpireAt: string | null;
   trip: Trip | null;
   driver: Driver | null;
   driverPosition: LatLng | null;
@@ -36,6 +38,7 @@ export type TripState = {
   setPickup: (p: Place) => void;
   setDestination: (p: Place) => void;
   quote: () => Promise<void>;
+  quotesExpired: () => boolean;
   selectRideType: (r: RideCategory) => void;
   selectPayment: (id: string) => void;
   book: (riderId: string) => Promise<void>;
@@ -52,6 +55,15 @@ export type TripState = {
 
 let activeSocket: TripSocket | null = null;
 
+/** Held quotes priced a specific route; moving either endpoint invalidates them. */
+const CLEARED_QUOTES = { fareOptions: [] as Fare[], selectedFare: null, quotesExpireAt: null };
+
+/** ~1m precision — enough to ignore GPS jitter while catching a real move. */
+function sameCoords(a: Place | null, b: Place | null): boolean {
+  if (!a || !b) return false;
+  return a.lat.toFixed(5) === b.lat.toFixed(5) && a.lng.toFixed(5) === b.lng.toFixed(5);
+}
+
 export const useTripStore = create<TripState>((set, get) => ({
   status: 'idle',
   pickup: null,
@@ -60,6 +72,7 @@ export const useTripStore = create<TripState>((set, get) => ({
   paymentMethodId: null,
   fareOptions: [],
   selectedFare: null,
+  quotesExpireAt: null,
   trip: null,
   driver: null,
   driverPosition: null,
@@ -70,10 +83,25 @@ export const useTripStore = create<TripState>((set, get) => ({
   error: null,
 
   setPickup(p) {
-    set({ pickup: p });
+    // Only a change of *coordinates* invalidates a quote. Callers also use this
+    // to attach a resolved address label to the same point (and do so mid-book),
+    // which must not wipe the fare the rider is about to be charged.
+    set(sameCoords(get().pickup, p) ? { pickup: p } : { pickup: p, ...CLEARED_QUOTES });
   },
   setDestination(p) {
-    set({ destination: p });
+    set(
+      sameCoords(get().destination, p)
+        ? { destination: p }
+        : { destination: p, ...CLEARED_QUOTES },
+    );
+  },
+
+  /** True when the held quotes have lapsed and the backend would reject them (410). */
+  quotesExpired() {
+    const { fareOptions, quotesExpireAt } = get();
+    if (fareOptions.length === 0) return false;
+    if (!quotesExpireAt) return false;
+    return new Date(quotesExpireAt).getTime() <= Date.now();
   },
 
   async quote() {
@@ -83,13 +111,27 @@ export const useTripStore = create<TripState>((set, get) => ({
     try {
       const fareOptions = await tripsApi.estimate(pickup, destination);
       if (!Array.isArray(fareOptions)) throw new Error('Invalid fare response');
+      // All quotes in a response share one expiry; take the earliest defensively.
+      const expiries = fareOptions
+        .map((f) => f.expiresAt)
+        .filter((e): e is string => typeof e === 'string')
+        .sort();
+      const quotesExpireAt = expiries[0] ?? null;
+
+      // Keep the rider's chosen ride type selected across a re-quote, so a
+      // refresh updates the price in place instead of resetting the screen.
+      const { rideType } = get();
+      const selectedFare = rideType
+        ? (fareOptions.find((f) => f.rideType === rideType) ?? null)
+        : null;
+
       // Only reset status to 'pending' if we haven't advanced to searching/matched.
       // Guards against a slow quote response overwriting status after book() is called.
       const current = get().status;
       if (current === 'pending') {
-        set({ fareOptions, status: 'pending' });
+        set({ fareOptions, quotesExpireAt, selectedFare, status: 'pending' });
       } else {
-        set({ fareOptions });
+        set({ fareOptions, quotesExpireAt, selectedFare });
       }
     } catch (e) {
       set({ error: (e as Error).message, status: 'idle' });
@@ -111,6 +153,10 @@ export const useTripStore = create<TripState>((set, get) => ({
       set({ error: 'Missing booking details' });
       return;
     }
+    if (!selectedFare.quoteId) {
+      set({ error: 'This price is out of date — please refresh.', status: 'idle' });
+      return;
+    }
     set({ status: 'searching', error: null });
     try {
       const trip = await tripsApi.book({
@@ -118,6 +164,7 @@ export const useTripStore = create<TripState>((set, get) => ({
         destination,
         rideType,
         fare: selectedFare,
+        quoteId: selectedFare.quoteId,
         paymentMethodId,
         riderId,
       });
@@ -125,9 +172,22 @@ export const useTripStore = create<TripState>((set, get) => ({
       // Status transitions (matched → arrived → in_trip → completed) are
       // driven by socket events via applyTripUpdate / connectSocket.
     } catch (e: any) {
+      if (e?.status === 410) {
+        // Quote lapsed between render and tap — re-quote so the rider sees the
+        // current price and can confirm it, rather than being charged silently.
+        set({ status: 'pending', fareOptions: [], quotesExpireAt: null });
+        await get().quote();
+        set({ error: 'Prices updated — please confirm your ride.' });
+        return;
+      }
       if (e?.status === 409) {
-        // Active trip already exists in DB — restore it and let the caller navigate
-        await get().restoreActiveTrip();
+        // Either an active trip already exists, or this quote was already
+        // booked. Restore the live trip if there is one; otherwise surface the
+        // conflict instead of leaving the rider stuck on 'searching'.
+        const restored = await get().restoreActiveTrip();
+        if (!restored) {
+          set({ status: 'idle', error: 'That booking was already placed.' });
+        }
         return;
       }
       set({ status: 'no_drivers', error: 'Could not create booking' });
@@ -173,6 +233,7 @@ export const useTripStore = create<TripState>((set, get) => ({
       rideType: null,
       selectedFare: null,
       fareOptions: [],
+      quotesExpireAt: null,
       history: [rated, ...s.history],
     }));
   },
@@ -286,6 +347,7 @@ export const useTripStore = create<TripState>((set, get) => ({
       paymentMethodId: null,
       fareOptions: [],
       selectedFare: null,
+      quotesExpireAt: null,
       trip: null,
       driver: null,
       driverPosition: null,

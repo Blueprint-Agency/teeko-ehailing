@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Fare, RideCategory } from '@teeko/shared';
+import { pricingService } from '../../modules/pricing/service';
 
 // Accept Place objects (with id/name/address) or bare lat/lng; support both
 // `dest` and `destination` keys so the client and backend stay in sync.
@@ -20,20 +21,9 @@ const QuoteBody = z.object({
   dest: LatLngShape.optional(),
 }).refine((b) => b.destination ?? b.dest, { message: 'destination or dest is required' });
 
-const RIDE_TYPES: RideCategory[] = ['go', 'comfort', 'xl'];
-
-function mockFares(pickupLat: number, pickupLng: number, destLat: number, destLng: number): Fare[] {
-  const dlat = destLat - pickupLat;
-  const dlng = destLng - pickupLng;
-  const distKm = Math.sqrt(dlat * dlat + dlng * dlng) * 111;
-  const basePrices: Record<RideCategory, number> = { go: 1.2, comfort: 1.6, xl: 2.0, premium: 2.8, bike: 0.8 };
-  const etaBase: Record<RideCategory, number> = { go: 5, comfort: 7, xl: 8, premium: 10, bike: 3 };
-  return RIDE_TYPES.map((type) => ({
-    rideType: type,
-    amountMyr: Math.max(5, parseFloat((basePrices[type] * distKm + 2).toFixed(2))),
-    etaMin: etaBase[type],
-  }));
-}
+// Ride types surfaced to the rider UI. The pricing engine prices all five
+// categories; we expose the subset the ride-selection screen renders.
+const VISIBLE_RIDE_TYPES: RideCategory[] = ['go', 'comfort', 'xl'];
 
 export async function routes(app: FastifyInstance) {
   // POST /api/v1/rider/quotes
@@ -41,7 +31,30 @@ export async function routes(app: FastifyInstance) {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
     const body = QuoteBody.parse(req.body);
     const dest = body.destination ?? body.dest!;
-    const fares = mockFares(body.pickup.lat, body.pickup.lng, dest.lat, dest.lng);
+
+    // Canonical sen-integer engine: real road distance/time (Google Distance
+    // Matrix), surge, and persisted itemised quotes. Throws DomainError
+    // (ROUTE_UNAVAILABLE, 422) when no route exists — handled globally.
+    const quotes = await pricingService.getQuotes(
+      req.user.id,
+      { lat: body.pickup.lat, lng: body.pickup.lng },
+      { lat: dest.lat, lng: dest.lng },
+      VISIBLE_RIDE_TYPES,
+    );
+
+    const fares: Fare[] = quotes
+      .map((q) => ({
+        rideType: q.category as RideCategory,
+        amountMyr: q.totalCents / 100,
+        etaMin: q.durationMin,
+        // The rider books against this id — it is what locks the displayed
+        // price to the price charged. `expiresAt` lets the client re-quote
+        // before the backend starts rejecting it with 410.
+        quoteId: q.quoteId,
+        expiresAt: q.expiresAt,
+        ...(q.surgeMultiplier > 1 ? { surge: q.surgeMultiplier } : {}),
+      }));
+
     return reply.code(201).send(fares);
   });
 }

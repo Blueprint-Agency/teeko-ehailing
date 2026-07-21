@@ -64,6 +64,14 @@ export interface Fare {
   amountMyr: number;
   etaMin: number;
   surge?: number;
+  /**
+   * Server-issued quote this fare came from. Booking must send it back so the
+   * backend charges the price the rider was actually shown — the client's
+   * `amountMyr` is display-only and is never trusted as an input.
+   */
+  quoteId?: string;
+  /** ISO timestamp after which the quote is no longer honoured (backend returns 410). */
+  expiresAt?: string;
 }
 
 export interface PaymentMethod {

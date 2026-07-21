@@ -30,6 +30,8 @@ export async function book(args: {
   destination: Place;
   rideType: RideCategory;
   fare: Fare;
+  /** Server-issued quote being redeemed — the backend prices the trip from this. */
+  quoteId: string;
   paymentMethodId: string;
   riderId: string;
 }): Promise<Trip> {

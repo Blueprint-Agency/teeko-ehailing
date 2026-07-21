@@ -2,8 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Driver, Fare, Place, RideCategory, Trip } from '@teeko/shared';
 import { randomUUID } from 'crypto';
-import { db } from '../../db';
-import { fareQuotes } from '../../db/schema';
+import { pricingService } from '../../modules/pricing/service';
 import { tripsService } from '../../modules/trips/service';
 import { dispatchService } from '../../modules/dispatch/service';
 import { paymentsService } from '../../modules/payments/service';
@@ -20,11 +19,15 @@ const PlaceShape = z.object({
   category: z.string().optional(),
 });
 
+// `amountMyr` here is display-only — the charged price comes from the persisted
+// quote identified by `quoteId`, never from the client.
 const FareShape = z.object({
   rideType: RideCategoryZ,
   amountMyr: z.number(),
   etaMin: z.number(),
   surge: z.number().optional(),
+  quoteId: z.string().uuid().optional(),
+  expiresAt: z.string().optional(),
 }) satisfies z.ZodType<Fare>;
 
 // Accept the shape the client actually sends.
@@ -33,6 +36,8 @@ const BookBody = z.object({
   destination: PlaceShape,
   rideType: RideCategoryZ,
   fare: FareShape,
+  // Accepted at the top level too so callers can send it without nesting.
+  quoteId: z.string().uuid().optional(),
   paymentMethodId: z.string().min(1),
   riderId: z.string().min(1),
 });
@@ -75,28 +80,29 @@ export async function routes(app: FastifyInstance) {
     // Block booking while the rider has an unpaid balance (spec §11).
     await paymentsService.assertNoOutstandingDebt(req.user.id);
 
-    const totalCents = Math.round(fare.amountMyr * 100);
-    const [quote] = await db.insert(fareQuotes).values({
-      riderId: req.user.id,
-      category: rideType,
-      pickup: `SRID=4326;POINT(${pickup.lng} ${pickup.lat})`,
-      dropoff: `SRID=4326;POINT(${destination.lng} ${destination.lat})`,
-      pickupAddress: pickup.address,
-      dropoffAddress: destination.address,
-      distanceMeters: 5000,
-      durationSeconds: fare.etaMin * 60,
-      baseCents: totalCents,
-      totalCents,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-    }).returning();
+    // The rider is charged the fare they were quoted. redeemQuote enforces
+    // ownership, category match, the 5-minute expiry and single use; it throws
+    // DomainError (410 QUOTE_EXPIRED etc.) handled by the global error hook.
+    const quoteId = body.quoteId ?? fare.quoteId;
+    if (!quoteId) {
+      throw new DomainError(
+        'QUOTE_REQUIRED',
+        'A fare quote is required to book. Request a quote first.',
+        400,
+      );
+    }
+    const { quote, pickup: quotedPickup, dropoff: quotedDropoff } =
+      await pricingService.redeemQuote(quoteId, req.user.id, rideType);
 
     const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     const pmId = UUID_RE.test(paymentMethodId) ? paymentMethodId : null;
 
+    // Coordinates come from the quote (authoritative route); addresses come
+    // from the client since the quote only stores geometry.
     const dbTrip = await tripsService.requestRide(
-      req.user.id, quote!.id, pmId,
-      { lat: pickup.lat, lng: pickup.lng },
-      { lat: destination.lat, lng: destination.lng },
+      req.user.id, quote, pmId,
+      quotedPickup,
+      quotedDropoff,
       pickup.address, destination.address,
     );
 
@@ -116,7 +122,15 @@ export async function routes(app: FastifyInstance) {
       pickup: { id: pickup.id, name: pickup.name, address: pickup.address, lat: pickup.lat, lng: pickup.lng },
       destination: { id: destination.id, name: destination.name, address: destination.address, lat: destination.lat, lng: destination.lng },
       rideType,
-      fare,
+      // Echo the authoritative quoted fare, not whatever the client sent.
+      fare: {
+        rideType,
+        amountMyr: quote.totalCents / 100,
+        etaMin: Math.ceil(quote.durationSeconds / 60),
+        quoteId: quote.id,
+        expiresAt: quote.expiresAt.toISOString(),
+        ...(Number(quote.surgeMultiplier) > 1 ? { surge: Number(quote.surgeMultiplier) } : {}),
+      },
       paymentMethodId,
       routePolyline,
       approachPolyline,

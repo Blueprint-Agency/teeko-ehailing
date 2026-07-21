@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, View } from 'react-native';
+import { ActivityIndicator, AppState, ScrollView, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 
@@ -22,6 +22,8 @@ export default function RideSelectionScreen() {
   const rideType = useTripStore((s) => s.rideType);
   const paymentMethodId = useTripStore((s) => s.paymentMethodId);
   const quote = useTripStore((s) => s.quote);
+  const quotesExpireAt = useTripStore((s) => s.quotesExpireAt);
+  const quotesExpired = useTripStore((s) => s.quotesExpired);
   const selectRideType = useTripStore((s) => s.selectRideType);
   const selectPayment = useTripStore((s) => s.selectPayment);
   const book = useTripStore((s) => s.book);
@@ -54,6 +56,31 @@ export default function RideSelectionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Quotes are honoured for 5 minutes; past that the backend rejects them with
+  // 410. Re-quote when the window lapses (and when the screen regains focus
+  // after being backgrounded) so the rider always books a live price.
+  useEffect(() => {
+    if (!quotesExpireAt) return;
+
+    const refresh = () => {
+      if (!quotesExpired()) return;
+      setLoading(true);
+      quote().finally(() => setLoading(false));
+    };
+
+    const msLeft = new Date(quotesExpireAt).getTime() - Date.now();
+    const timer = setTimeout(refresh, Math.max(0, msLeft));
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refresh();
+    });
+
+    return () => {
+      clearTimeout(timer);
+      sub.remove();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quotesExpireAt]);
+
   useEffect(() => {
     if (!paymentMethodId && defaultId) {
       selectPayment(defaultId);
@@ -61,6 +88,9 @@ export default function RideSelectionScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultId]);
 
+  // Surge currently resolves per pickup location, so it applies to every ride
+  // type at once — one notice above the list rather than repeated per row.
+  const surged = fareOptions.some((f) => !!f.surge);
   const selectedMethod = methods.find((m) => m.id === paymentMethodId) ?? null;
   const selectedFare = fareOptions.find((f) => f.rideType === rideType) ?? null;
   const canBook = !!rideType && !!paymentMethodId;
@@ -156,6 +186,15 @@ export default function RideSelectionScreen() {
           <Text weight="bold" className="mb-3 text-lg">
             Choose a ride
           </Text>
+          {surged ? (
+            <View className="mb-3 flex-row items-start rounded-lg bg-warning-50 px-3 py-2">
+              <Icon name="bolt" size={16} color="#B45309" />
+              <Text className="ml-1.5 flex-1 text-xs text-warning-700">
+                Demand is high right now, so fares are temporarily higher. The price you see is
+                the price you pay.
+              </Text>
+            </View>
+          ) : null}
           <View className="gap-2">
             {fareOptions.map((fare) => (
               <RideTypeRow

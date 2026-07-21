@@ -19,6 +19,11 @@ const rideMeta: Record<RideCategory, { label: string; icon: IconName; seats: num
   bike: { label: 'Teeko Bike', icon: 'two-wheeler', seats: 1, sub: 'Fastest for short trips' },
 };
 
+/** 1.5 → "1.5", 2 → "2" — avoids a needless trailing zero on whole multipliers. */
+function formatSurge(multiplier: number): string {
+  return Number.isInteger(multiplier) ? String(multiplier) : multiplier.toFixed(1);
+}
+
 export function RideTypeRow({ fare, selected, onPress }: RideTypeRowProps) {
   const m = rideMeta[fare.rideType];
   return (
@@ -57,6 +62,17 @@ export function RideTypeRow({ fare, selected, onPress }: RideTypeRowProps) {
         </Text>
       </View>
       <View className="items-end">
+        {fare.surge ? (
+          <View
+            className="mb-1 flex-row items-center rounded-full bg-warning-50 px-1.5 py-0.5"
+            accessibilityLabel={`Surge pricing, ${formatSurge(fare.surge)} times the normal fare`}
+          >
+            <Icon name="bolt" size={12} color="#B45309" />
+            <Text weight="bold" className="ml-0.5 text-xs text-warning-700">
+              {formatSurge(fare.surge)}×
+            </Text>
+          </View>
+        ) : null}
         <Text weight="bold" className="text-base">
           RM {fare.amountMyr.toFixed(2)}
         </Text>

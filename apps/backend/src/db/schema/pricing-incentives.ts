@@ -46,7 +46,18 @@ export const surgeZones = pgTable('surge_zones', {
   id: uuid().primaryKey().defaultRandom(),
   label: text().notNull(),
   polygon: geographyPolygon().notNull(),
-  multiplier: numeric({ precision: 4, scale: 2 }).notNull(),
+  /**
+   * Admin-set override. Wins over `autoMultiplier` until `manualUntil` passes.
+   * NULL means no override — the zone is left to the recompute worker.
+   */
+  manualMultiplier: numeric({ precision: 4, scale: 2 }),
+  /** When the admin override lapses. NULL (or past) → the override is inert. */
+  manualUntil: timestamp({ withTimezone: true }),
+  /**
+   * Written by the surge-recompute worker from live demand/supply. Never
+   * touched by the admin panel, so a recompute pass can't erase a human's call.
+   */
+  autoMultiplier: numeric({ precision: 4, scale: 2 }),
   /** Admin master switch — whether the zone's surge is currently applied. */
   active: boolean().notNull().default(true),
   /** Hex colour used to render the zone on the admin surge map. */

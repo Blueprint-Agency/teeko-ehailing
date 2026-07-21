@@ -2,6 +2,7 @@ import { and, eq, inArray, not } from 'drizzle-orm';
 import { db } from '../../db';
 import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, vehicles, driverActiveVehicle, users } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
+import type { RedeemedQuote } from '../pricing/service';
 import { trackingService } from '../tracking/service';
 import { paymentsService } from '../payments/service';
 import { redis } from '../../config/redis';
@@ -24,9 +25,18 @@ function parsePoint(raw: unknown): Coords {
 
 export const tripsService = {
   // ---- rider: request ride ----
+  /**
+   * Create a trip from an already-redeemed quote.
+   *
+   * The caller must obtain `quote` from `pricingService.redeemQuote`, which is
+   * the single place quote ownership, category, expiry and single-use are
+   * enforced. Taking the row (not an id) keeps that check from being duplicated
+   * here — an earlier second check re-fetched the same row and reported expiry
+   * as 422 while redeemQuote reports 410.
+   */
   async requestRide(
     riderId: string,
-    quoteId: string,
+    quote: RedeemedQuote,
     paymentMethodId: string | null,
     pickup: Coords,
     dest: Coords,
@@ -43,13 +53,7 @@ export const tripsService = {
     });
     if (active) throw new DomainError('ACTIVE_RIDE_EXISTS', 'You already have an active trip.', 409);
 
-    // Validate quote exists and not expired
-    const quote = await db.query.fareQuotes.findFirst({ where: eq(fareQuotes.id, quoteId) });
-    if (!quote) throw new DomainError('QUOTE_NOT_FOUND', 'Fare quote not found.', 404);
-    if (new Date(quote.expiresAt) < new Date()) {
-      throw new DomainError('QUOTE_EXPIRED', 'Fare quote has expired. Please get a new quote.', 422);
-    }
-
+    const quoteId = quote.id;
     const pickupWkt = `SRID=4326;POINT(${pickup.lng} ${pickup.lat})`;
     const dropoffWkt = `SRID=4326;POINT(${dest.lng} ${dest.lat})`;
     const [trip] = await db

@@ -41,7 +41,13 @@ const config: Config = {
         },
         border: '#E5E7EB',
         success: '#10B981',
-        warning: '#F59E0B',
+        warning: {
+          DEFAULT: '#F59E0B',
+          // Tint behind surge badges — amber reads as "caution", not "error",
+          // and stays clear of the Teeko red used for selection state.
+          50: '#FFFBEB',
+          700: '#B45309',
+        },
         danger: '#EF4444',
       },
       fontFamily: {
