@@ -32,13 +32,20 @@ export default function LoginPage() {
     <Box
       sx={{
         minHeight: '100vh', display: 'flex', alignItems: 'center',
-        justifyContent: 'center', bgcolor: 'background.default', p: 2,
+        justifyContent: 'center', bgcolor: 'background.default',
+        p: { xs: 1.5, sm: 2 },
       }}
     >
-      <Box sx={{ width: '100%', maxWidth: 900, display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+      <Box
+        sx={{
+          width: '100%', maxWidth: 900, display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: 3, alignItems: { xs: 'stretch', md: 'flex-start' },
+        }}
+      >
         {/* Login form */}
-        <Card sx={{ flex: 1, maxWidth: 400 }} elevation={2}>
-          <CardContent sx={{ p: 3 }}>
+        <Card sx={{ flex: 1, width: '100%', maxWidth: { xs: '100%', md: 400 } }} elevation={2}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
               <Box sx={{ width: 32, height: 32, bgcolor: 'primary.main', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Typography sx={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>T</Typography>
@@ -66,8 +73,8 @@ export default function LoginPage() {
         </Card>
 
         {/* Demo accounts panel */}
-        <Card sx={{ flex: 1 }} elevation={1}>
-          <CardContent sx={{ p: 3 }}>
+        <Card sx={{ flex: 1, width: '100%' }} elevation={1}>
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
             <Typography variant="subtitle2" fontWeight={600} mb={0.5}>Demo Accounts</Typography>
             <Typography variant="caption" color="text.secondary" display="block" mb={2}>
               Click any row to autofill credentials. Password: <code>demo1234</code>

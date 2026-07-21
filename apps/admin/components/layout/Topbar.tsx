@@ -1,13 +1,19 @@
 'use client';
-import { AppBar, Toolbar, Typography, IconButton, Avatar, Chip, Box, Tooltip } from '@mui/material';
-import { LightMode, DarkMode, Logout } from '@mui/icons-material';
+import { AppBar, Toolbar, Typography, IconButton, Avatar, Chip, Box, Tooltip, useMediaQuery, useTheme } from '@mui/material';
+import { LightMode, DarkMode, Logout, Menu as MenuIcon } from '@mui/icons-material';
 import { useAdminAuthStore } from '@/stores/auth';
+import { useUiStore } from '@/stores/ui';
 import { ROLE_LABELS, ROLE_COLORS } from '@/lib/mock-accounts';
 import { useRouter } from 'next/navigation';
 
 export function Topbar() {
   const { profile, logout, themeMode, toggleTheme } = useAdminAuthStore();
   const router = useRouter();
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const toggleDesktop = useUiStore((s) => s.toggleDesktop);
+  const toggleMobile = useUiStore((s) => s.toggleMobile);
+  const toggleSidebar = () => (isDesktop ? toggleDesktop() : toggleMobile());
 
   const handleLogout = () => {
     logout();
@@ -27,6 +33,11 @@ export function Topbar() {
       }}
     >
       <Toolbar variant="dense" sx={{ minHeight: 48, px: 2 }}>
+        <Tooltip title="Toggle sidebar">
+          <IconButton size="small" edge="start" onClick={toggleSidebar} sx={{ mr: 1 }}>
+            <MenuIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
         <Box sx={{ flexGrow: 1 }} />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Tooltip title={`Switch to ${themeMode === 'light' ? 'dark' : 'light'} mode`}>

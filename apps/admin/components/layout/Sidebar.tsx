@@ -1,7 +1,7 @@
 'use client';
 import {
   Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  Divider, Typography, Box, Collapse,
+  Divider, Typography, Box, Collapse, Toolbar, useMediaQuery, useTheme,
 } from '@mui/material';
 import {
   Dashboard, People, DirectionsCar, Map, Gavel, TrendingUp,
@@ -13,8 +13,9 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRbac } from '@/hooks/useRbac';
+import { useUiStore } from '@/stores/ui';
 
-const DRAWER_WIDTH = 220;
+export const DRAWER_WIDTH = 220;
 
 interface NavItem {
   label: string;
@@ -81,20 +82,15 @@ export function Sidebar() {
 
   const groupKey = (label: string) => label.toLowerCase();
 
-  return (
-    <Drawer
-      variant="permanent"
-      sx={{
-        width: DRAWER_WIDTH,
-        flexShrink: 0,
-        '& .MuiDrawer-paper': {
-          width: DRAWER_WIDTH,
-          boxSizing: 'border-box',
-          borderRight: '1px solid',
-          borderColor: 'divider',
-        },
-      }}
-    >
+  const theme = useTheme();
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const desktopOpen = useUiStore((s) => s.desktopOpen);
+  const mobileOpen = useUiStore((s) => s.mobileOpen);
+  const closeMobile = useUiStore((s) => s.closeMobile);
+
+  const content = (
+    <>
+      <Toolbar variant="dense" sx={{ minHeight: 48 }} />
       <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
         <Box sx={{ width: 28, height: 28, bgcolor: 'primary.main', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Typography variant="caption" sx={{ color: '#fff', fontWeight: 700, fontSize: 11 }}>T</Typography>
@@ -150,6 +146,55 @@ export function Sidebar() {
           );
         })}
       </List>
+    </>
+  );
+
+  // Mobile: temporary overlay drawer that closes on navigation / backdrop click.
+  if (!isDesktop) {
+    return (
+      <Drawer
+        variant="temporary"
+        open={mobileOpen}
+        onClose={closeMobile}
+        onClick={closeMobile}
+        ModalProps={{ keepMounted: true }}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: DRAWER_WIDTH,
+            boxSizing: 'border-box',
+            borderRight: '1px solid',
+            borderColor: 'divider',
+          },
+        }}
+      >
+        {content}
+      </Drawer>
+    );
+  }
+
+  // Desktop: collapsible persistent drawer. When closed it reserves no space.
+  return (
+    <Drawer
+      variant="persistent"
+      open={desktopOpen}
+      sx={{
+        width: desktopOpen ? DRAWER_WIDTH : 0,
+        flexShrink: 0,
+        whiteSpace: 'nowrap',
+        transition: (t) =>
+          t.transitions.create('width', {
+            easing: t.transitions.easing.sharp,
+            duration: t.transitions.duration.enteringScreen,
+          }),
+        '& .MuiDrawer-paper': {
+          width: DRAWER_WIDTH,
+          boxSizing: 'border-box',
+          borderRight: '1px solid',
+          borderColor: 'divider',
+        },
+      }}
+    >
+      {content}
     </Drawer>
   );
 }

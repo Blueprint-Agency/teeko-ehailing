@@ -26,7 +26,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           flexGrow: 1,
           minWidth: 0,
           bgcolor: 'background.default',
-          p: 3,
+          p: { xs: 2, md: 3 },
         }}
       >
         <Toolbar variant="dense" sx={{ minHeight: 48 }} />
