@@ -56,6 +56,9 @@ export type ProvisionInput = {
   email?: string;
   fullName?: string;
   locale?: Locale;
+  // True when the identity provider already verified the email (e.g. Google
+  // OAuth). Riders provisioned this way skip the in-app OTP step.
+  emailVerified?: boolean;
 };
 
 /**
@@ -69,6 +72,7 @@ export async function provisionRider(input: ProvisionInput): Promise<string> {
       .values({
         email: input.email ?? null,
         fullName: input.fullName ?? null,
+        emailVerified: input.emailVerified ?? false,
         locale: input.locale ?? 'en',
       })
       .returning({ id: users.id });

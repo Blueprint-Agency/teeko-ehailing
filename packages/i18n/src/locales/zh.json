@@ -6,6 +6,7 @@
     "back": "返回",
     "close": "关闭",
     "loading": "加载中…",
+    "gettingReady": "正在准备…",
     "tryAgain": "重试",
     "done": "完成"
   },
@@ -42,7 +43,8 @@
     "invalidEmail": "请输入有效的电子邮件地址。",
     "invalidPassword": "请输入您的密码。",
     "signInRequired": "登录以预订行程",
-    "signInRequiredBody": "登录或创建 Teeko 账户以继续预订。"
+    "signInRequiredBody": "登录或创建 Teeko 账户以继续预订。",
+    "signingIn": "正在为您登录…"
   },
   "home": {
     "tagline": "让我们出发吧。",

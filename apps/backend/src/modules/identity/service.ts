@@ -41,29 +41,31 @@ export type RiderMeResponse = {
 async function resolveProfileFromClerk(
   claims: ClerkClaims,
   clerkClient = clerk,
-): Promise<{ email: string | undefined; fullName: string | undefined }> {
+): Promise<{ email: string | undefined; fullName: string | undefined; emailVerified: boolean }> {
   const claimEmail = claims.email;
   const claimName = [claims.firstName, claims.lastName].filter(Boolean).join(' ').trim();
-  if (claimEmail) {
-    return { email: claimEmail, fullName: claimName || undefined };
+  // Fast path: only when the JWT template exposes BOTH email and email_verified
+  // can we skip the admin call. If email_verified is absent we must query Clerk
+  // to learn the true verification status (e.g. Google OAuth = already verified).
+  if (claimEmail && claims.emailVerified !== undefined) {
+    return { email: claimEmail, fullName: claimName || undefined, emailVerified: claims.emailVerified };
   }
-  // Fallback: JWT template missing fields; query Clerk admin API.
+  // Fallback: query Clerk admin API for the missing field(s) + verification status.
   try {
     const user = await clerkClient.users.getUser(claims.sub);
-    const primaryEmail = user.emailAddresses.find(
-      (e) => e.id === user.primaryEmailAddressId,
-    )?.emailAddress;
+    const primary = user.emailAddresses.find((e) => e.id === user.primaryEmailAddressId);
     const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
     return {
-      email: primaryEmail ?? undefined,
-      fullName: fullName || undefined,
+      email: primary?.emailAddress ?? claimEmail ?? undefined,
+      fullName: fullName || claimName || undefined,
+      emailVerified: primary?.verification?.status === 'verified',
     };
   } catch (err) {
     logger.warn(
       { clerkUserId: claims.sub, err },
       'clerk admin lookup failed during JIT — provisioning with empty profile',
     );
-    return { email: claimEmail, fullName: claimName || undefined };
+    return { email: claimEmail, fullName: claimName || undefined, emailVerified: claims.emailVerified ?? false };
   }
 }
 
@@ -77,7 +79,9 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
   }
   let row: IdentityRow | null = await findUserByExternalId('clerk', claims.sub);
   let weCreatedTheRow = false;
-  let provisionedProfile: { email: string | undefined; fullName: string | undefined } | null = null;
+  let provisionedProfile:
+    | { email: string | undefined; fullName: string | undefined; emailVerified: boolean }
+    | null = null;
   if (!row) {
     const profile = await resolveProfileFromClerk(claims);
     provisionedProfile = profile;
@@ -86,6 +90,7 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
         clerkUserId: claims.sub,
         email: profile.email,
         fullName: profile.fullName,
+        emailVerified: profile.emailVerified,
       });
       weCreatedTheRow = true;
     } catch (err) {
@@ -100,9 +105,11 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
   const bundle = await getRiderProfileBundle(row.id);
   if (!bundle) throw new Error('user row exists but profile bundle missing');
 
-  // Auto-fire the first verification OTP only when WE just created the row
-  // and we have an email. Fire-and-forget; failures are logged.
-  if (weCreatedTheRow && provisionedProfile?.email) {
+  // Auto-fire the first verification OTP only when WE just created the row,
+  // we have an email, AND Clerk hasn't already verified it. OAuth signups
+  // (e.g. Google) arrive pre-verified and skip the OTP entirely.
+  // Fire-and-forget; failures are logged.
+  if (weCreatedTheRow && provisionedProfile?.email && !provisionedProfile.emailVerified) {
     const userId = row.id;
     const email = provisionedProfile.email;
     const fullName = provisionedProfile.fullName ?? null;

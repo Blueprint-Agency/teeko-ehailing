@@ -6,6 +6,7 @@
     "back": "Back",
     "close": "Close",
     "loading": "Loading…",
+    "gettingReady": "Getting things ready…",
     "tryAgain": "Try again",
     "done": "Done"
   },
@@ -57,7 +58,8 @@
     "invalidEmail": "Enter a valid email address.",
     "invalidPassword": "Enter your password.",
     "signInRequired": "Sign in to book your ride",
-    "signInRequiredBody": "Log in or create a Teeko account to continue booking."
+    "signInRequiredBody": "Log in or create a Teeko account to continue booking.",
+    "signingIn": "Signing you in…"
   },
   "home": {
     "tagline": "Let's get you on your way.",

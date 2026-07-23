@@ -8,6 +8,7 @@ import { useSignUp } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 import { GoogleButton } from '../../components/GoogleButton';
+import { useGoogleAuth } from '../../lib/useGoogleAuth';
 
 const PASSWORD_MIN = 8;
 
@@ -37,6 +38,7 @@ export default function SignupScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const pushToast = useUIStore((s) => s.pushToast);
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const { signInWithGoogle, loading: googleLoading } = useGoogleAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -255,6 +257,8 @@ export default function SignupScreen() {
             <View className="mt-6">
               <GoogleButton
                 label={t('auth.continueWithGoogle')}
+                onPress={signInWithGoogle}
+                loading={googleLoading}
                 disabled={submitting}
               />
             </View>

@@ -6,6 +6,7 @@
     "back": "Kembali",
     "close": "Tutup",
     "loading": "Memuatkan…",
+    "gettingReady": "Sedang bersedia…",
     "tryAgain": "Cuba lagi",
     "done": "Selesai"
   },
@@ -42,7 +43,8 @@
     "invalidEmail": "Masukkan alamat e-mel yang sah.",
     "invalidPassword": "Masukkan kata laluan anda.",
     "signInRequired": "Log masuk untuk menempah perjalanan",
-    "signInRequiredBody": "Log masuk atau cipta akaun Teeko untuk meneruskan tempahan."
+    "signInRequiredBody": "Log masuk atau cipta akaun Teeko untuk meneruskan tempahan.",
+    "signingIn": "Sedang log masuk anda…"
   },
   "home": {
     "tagline": "Mari bergerak.",

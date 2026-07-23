@@ -8,12 +8,14 @@ import { useSignIn } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 import { GoogleButton } from '../../components/GoogleButton';
+import { useGoogleAuth } from '../../lib/useGoogleAuth';
 
 export default function LoginScreen() {
   const router = useRouter();
   const t = useT();
   const { signIn, setActive, isLoaded } = useSignIn();
   const pushToast = useUIStore((s) => s.pushToast);
+  const { signInWithGoogle, loading: googleLoading } = useGoogleAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -172,6 +174,8 @@ export default function LoginScreen() {
                 <View className="mt-6">
                   <GoogleButton
                     label={t('auth.continueWithGoogle')}
+                    onPress={signInWithGoogle}
+                    loading={googleLoading}
                     disabled={submitting}
                   />
                 </View>

@@ -1,8 +1,11 @@
+import { ActivityIndicator } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { Pressable, Text } from '@teeko/ui';
 
 export type GoogleButtonProps = {
   label: string;
+  onPress?: () => void;
+  loading?: boolean;
   disabled?: boolean;
 };
 
@@ -30,24 +33,29 @@ function GoogleMark() {
   );
 }
 
-export function GoogleButton({ label }: GoogleButtonProps) {
-  // Temporarily disabled — Google sign-in is not yet available.
+export function GoogleButton({ label, onPress, loading = false, disabled = false }: GoogleButtonProps) {
+  const isDisabled = disabled || loading;
   return (
     <Pressable
-      disabled
+      onPress={onPress}
+      disabled={isDisabled}
+      haptic="light"
       accessibilityRole="button"
-      accessibilityLabel={`${label} (coming soon)`}
-      accessibilityState={{ disabled: true }}
-      className="h-14 w-full flex-row items-center justify-center gap-3 rounded-full border border-border bg-muted"
-      style={{ opacity: 0.5 }}
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
+      className="h-14 w-full flex-row items-center justify-center gap-3 rounded-full border border-border bg-surface"
+      style={isDisabled ? { opacity: 0.6 } : undefined}
     >
-      <GoogleMark />
-      <Text weight="bold" className="text-base text-ink-secondary">
-        {label}
-      </Text>
-      <Text tone="faint" className="text-xs">
-        (coming soon)
-      </Text>
+      {loading ? (
+        <ActivityIndicator size="small" color="#4B5563" />
+      ) : (
+        <>
+          <GoogleMark />
+          <Text weight="bold" className="text-base text-ink-secondary">
+            {label}
+          </Text>
+        </>
+      )}
     </Pressable>
   );
 }

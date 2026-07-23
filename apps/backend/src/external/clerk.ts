@@ -20,14 +20,24 @@ export const clerk: ClerkClient = riderClerk;
 export type ClerkClaims = {
   sub: string;
   email?: string;
+  // Present only if the Clerk JWT template exposes `email_verified`. Undefined
+  // means "unknown from the token" — the caller falls back to the admin API.
+  emailVerified?: boolean;
   firstName?: string;
   lastName?: string;
 };
 
-function extractClaims(verified: { sub: string; email?: unknown; first_name?: unknown; last_name?: unknown }): ClerkClaims {
+function extractClaims(verified: {
+  sub: string;
+  email?: unknown;
+  email_verified?: unknown;
+  first_name?: unknown;
+  last_name?: unknown;
+}): ClerkClaims {
   return {
     sub: verified.sub,
     email: typeof verified.email === 'string' ? verified.email : undefined,
+    emailVerified: typeof verified.email_verified === 'boolean' ? verified.email_verified : undefined,
     firstName: typeof verified.first_name === 'string' ? verified.first_name : undefined,
     lastName: typeof verified.last_name === 'string' ? verified.last_name : undefined,
   };
