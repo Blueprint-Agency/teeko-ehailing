@@ -52,15 +52,17 @@ function MetricCard({ metric }: { metric: Metric }) {
 
 export default function DashboardPage() {
   const drivers = useDriverStore((s) => s.drivers);
+  const loadDrivers = useDriverStore((s) => s.loadDrivers);
   const trips = useTripStore((s) => s.trips);
   const riders = useRiderStore((s) => s.riders);
   const disputes = useDisputeStore((s) => s.disputes);
 
   const [tick, setTick] = useState(0);
   useEffect(() => {
+    loadDrivers();
     const id = setInterval(() => setTick((t) => t + 1), 10000);
     return () => clearInterval(id);
-  }, []);
+  }, [loadDrivers]);
 
   const activeDrivers = drivers.filter((d) => d.status === 'active').length;
   const onlineDrivers = Math.floor(activeDrivers * (0.6 + (tick % 3) * 0.05));

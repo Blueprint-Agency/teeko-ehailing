@@ -1,47 +1,44 @@
 'use client';
 import { create } from 'zustand';
-import driversData from '@/data/mock-drivers.json';
+import { adminApi, type Driver, type DriverStatus } from '@/lib/api';
 
-export interface Driver {
-  id: string; name: string; ic: string; phone: string; email: string;
-  city: string; category: string; status: string; evp: string;
-  account: 'open' | 'closed';
-  rating: number; trips: number; joinDate: string; vehicle: string;
-  plate: string; earnings: number;
-}
+export type { Driver, DriverStatus };
 
 interface DriverState {
   drivers: Driver[];
+  loading: boolean;
+  loaded: boolean;
+  error: string;
   selectedDriverId: string | null;
+  loadDrivers: (force?: boolean) => Promise<void>;
   selectDriver: (id: string | null) => void;
-  updateDriverStatus: (id: string, status: string) => void;
-  updateDriverEvp: (id: string, evp: string) => void;
-  openDriverAccount: (id: string) => void;
+  updateDriverStatus: (id: string, status: DriverStatus, reason?: string) => Promise<void>;
 }
 
-const initialDrivers: Driver[] = (driversData as Omit<Driver, 'account'>[]).map((d) => ({
-  ...d,
-  account: 'closed',
-}));
-
-export const useDriverStore = create<DriverState>()((set) => ({
-  drivers: initialDrivers,
+export const useDriverStore = create<DriverState>()((set, get) => ({
+  drivers: [],
+  loading: false,
+  loaded: false,
+  error: '',
   selectedDriverId: null,
+  loadDrivers: async (force = false) => {
+    if (get().loading) return;
+    if (get().loaded && !force) return;
+    set({ loading: true, error: '' });
+    try {
+      const drivers = await adminApi.getDrivers();
+      set({ drivers, loaded: true });
+    } catch (e) {
+      set({ error: e instanceof Error ? e.message : 'Failed to load drivers' });
+    } finally {
+      set({ loading: false });
+    }
+  },
   selectDriver: (id) => set({ selectedDriverId: id }),
-  updateDriverStatus: (id, status) =>
+  updateDriverStatus: async (id, status, reason) => {
+    await adminApi.updateDriverStatus(id, status, reason);
     set((s) => ({
       drivers: s.drivers.map((d) => (d.id === id ? { ...d, status } : d)),
-    })),
-  updateDriverEvp: (id, evp) =>
-    set((s) => ({
-      drivers: s.drivers.map((d) => (d.id === id ? { ...d, evp } : d)),
-    })),
-  // Final onboarding step after document upload + EVP approval.
-  // Only drivers with an approved EVP can have their account opened.
-  openDriverAccount: (id) =>
-    set((s) => ({
-      drivers: s.drivers.map((d) =>
-        d.id === id && d.evp === 'approved' ? { ...d, account: 'open' } : d
-      ),
-    })),
+    }));
+  },
 }));

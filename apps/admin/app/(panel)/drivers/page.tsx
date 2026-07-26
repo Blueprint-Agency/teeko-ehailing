@@ -1,13 +1,21 @@
 'use client';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, Alert, CircularProgress } from '@mui/material';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useDriverStore } from '@/stores/driver';
 import { StatusChip } from '@/components/data/StatusChip';
 
 export default function DriversPage() {
   const drivers = useDriverStore((s) => s.drivers);
+  const loading = useDriverStore((s) => s.loading);
+  const error = useDriverStore((s) => s.error);
+  const loadDrivers = useDriverStore((s) => s.loadDrivers);
   const router = useRouter();
+
+  useEffect(() => {
+    loadDrivers();
+  }, [loadDrivers]);
 
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Name', flex: 1.5, minWidth: 180 },
@@ -35,17 +43,25 @@ export default function DriversPage() {
   return (
     <Box>
       <Typography variant="h6" fontWeight={700} mb={2.5}>Drivers</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Box sx={{ height: 600 }}>
-        <DataGrid
-          rows={drivers}
-          columns={columns}
-          pageSizeOptions={[25, 50, 100]}
-          checkboxSelection
-          disableRowSelectionOnClick
-          slots={{ toolbar: GridToolbar }}
-          slotProps={{ toolbar: { showQuickFilter: true } }}
-          onRowDoubleClick={({ row }) => router.push(`/drivers/${row.id}`)}
-        />
+        {loading && drivers.length === 0 ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          <DataGrid
+            rows={drivers}
+            columns={columns}
+            loading={loading}
+            pageSizeOptions={[25, 50, 100]}
+            checkboxSelection
+            disableRowSelectionOnClick
+            slots={{ toolbar: GridToolbar }}
+            slotProps={{ toolbar: { showQuickFilter: true } }}
+            onRowDoubleClick={({ row }) => router.push(`/drivers/${row.id}`)}
+          />
+        )}
       </Box>
     </Box>
   );

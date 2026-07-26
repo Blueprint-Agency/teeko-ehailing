@@ -4,6 +4,7 @@ import { driverProfiles, vehicles } from '../src/db/schema/drivers';
 import { riderProfiles } from '../src/db/schema/riders';
 import { trips } from '../src/db/schema/trips';
 import { driverApplications, documents, documentReviews } from '../src/db/schema/onboarding';
+import { evpRecords } from '../src/db/schema/compliance';
 import { notificationInbox } from '../src/db/schema/notifications-content';
 import { feedback } from '../src/db/schema/feedback-disputes';
 import { disputes } from '../src/db/schema/trips';
@@ -190,6 +191,11 @@ async function seed() {
     }).onConflictDoNothing();
   }
 
+  // ── Driver directory ────────────────────────────────────────────────────
+  // The 20 drivers the admin panel lists. Real user/profile/vehicle/EVP rows so
+  // that admin status changes (suspend/deactivate/reinstate/approve) persist.
+  await seedDriverDirectory();
+
   // ── Riders ────────────────────────────────────────────────────────────────
   // A small directory of riders the admin panel lists. Completed trips drive
   // the `trips` count and `totalSpent` (sum of finalFareCents) the API derives.
@@ -201,6 +207,135 @@ async function seed() {
   console.log(`  Admin ID  : ${MOCK_ADMIN_ID}`);
   console.log('  Set NEXT_PUBLIC_DEV_DRIVER_ID in apps/web/.env.local');
   console.log('  Set NEXT_PUBLIC_ADMIN_DEV_USER in apps/admin/.env.local');
+}
+
+// ── Driver directory ─────────────────────────────────────────────────────────
+// Mirrors the former apps/admin/data/mock-drivers.json so the admin drivers list
+// is backed by real rows. Admin `status` maps onto driver_profiles.approval_status
+// (+ users.status); `evp` onto an evp_records row.
+async function seedDriverDirectory() {
+  console.log('Seeding driver directory...');
+
+  type AdminStatus = 'active' | 'pending' | 'suspended' | 'inactive';
+  type Evp = 'approved' | 'pending' | 'expired' | 'not_applied';
+  type Tier = 'Standard' | 'Premium' | 'Economy';
+
+  type SeedDriver = {
+    n: number;
+    name: string;
+    phone: string;
+    email: string;
+    city: string;
+    tier: Tier;
+    status: AdminStatus;
+    evp: Evp;
+    rating: number;
+    trips: number;
+    joinDate: string;
+    vehicle: string; // "<make> <model...> <year>"
+    plate: string;
+  };
+
+  const directory: SeedDriver[] = [
+    { n: 1,  name: 'Ahmad Faris Bin Azman',     phone: '+601112345678', email: 'faris@mail.com',   city: 'Kuala Lumpur',  tier: 'Standard', status: 'active',    evp: 'approved',    rating: 4.8, trips: 342, joinDate: '2024-01-15', vehicle: 'Perodua Myvi 2022',  plate: 'WFR 1234' },
+    { n: 2,  name: 'Tan Wei Loong',             phone: '+601198765432', email: 'weig@mail.com',    city: 'Petaling Jaya', tier: 'Premium',  status: 'active',    evp: 'approved',    rating: 4.9, trips: 512, joinDate: '2023-11-22', vehicle: 'Honda City 2023',    plate: 'VBN 5678' },
+    { n: 3,  name: 'Rajan Krishnaswamy',        phone: '+601161234567', email: 'rajan@mail.com',   city: 'Subang Jaya',   tier: 'Economy',  status: 'pending',   evp: 'pending',     rating: 0,   trips: 0,   joinDate: '2025-12-01', vehicle: 'Proton Saga 2020',   plate: 'BCD 9012' },
+    { n: 4,  name: 'Nurul Hazirah Binti Salleh',phone: '+601133456789', email: 'nurul@mail.com',   city: 'Kuala Lumpur',  tier: 'Standard', status: 'suspended', evp: 'approved',    rating: 3.9, trips: 87,  joinDate: '2024-06-10', vehicle: 'Perodua Axia 2021',  plate: 'KLM 3456' },
+    { n: 5,  name: 'Lee Chong Wei Jr',          phone: '+601187654321', email: 'lcw@mail.com',     city: 'Cyberjaya',     tier: 'Standard', status: 'active',    evp: 'approved',    rating: 4.6, trips: 208, joinDate: '2024-03-05', vehicle: 'Honda Jazz 2022',    plate: 'PQR 7890' },
+    { n: 6,  name: 'Mohd Hafiz Bin Ismail',     phone: '+601145678901', email: 'hafiz@mail.com',   city: 'Shah Alam',     tier: 'Economy',  status: 'active',    evp: 'approved',    rating: 4.7, trips: 432, joinDate: '2023-08-17', vehicle: 'Perodua Bezza 2021', plate: 'STU 2345' },
+    { n: 7,  name: 'Siti Aminah Binti Kadir',   phone: '+601176543210', email: 'siti@mail.com',    city: 'Kuala Lumpur',  tier: 'Premium',  status: 'inactive',  evp: 'expired',     rating: 4.5, trips: 156, joinDate: '2024-01-28', vehicle: 'Toyota Vios 2023',   plate: 'DEF 6789' },
+    { n: 8,  name: 'Krishnan Pillai',           phone: '+601156789012', email: 'kris@mail.com',    city: 'Ampang',        tier: 'Standard', status: 'active',    evp: 'approved',    rating: 4.4, trips: 298, joinDate: '2024-02-14', vehicle: 'Perodua Myvi 2021',  plate: 'GHI 1357' },
+    { n: 9,  name: 'Zainuddin Bin Bakar',       phone: '+601178901234', email: 'zain@mail.com',    city: 'Klang',         tier: 'Economy',  status: 'pending',   evp: 'pending',     rating: 0,   trips: 0,   joinDate: '2026-01-10', vehicle: 'Honda Brio 2020',    plate: 'JKL 2468' },
+    { n: 10, name: 'Farah Liyana Bt Yusoff',    phone: '+601123456789', email: 'farah@mail.com',   city: 'Kuala Lumpur',  tier: 'Standard', status: 'active',    evp: 'approved',    rating: 4.9, trips: 621, joinDate: '2023-06-01', vehicle: 'Toyota Vios 2022',   plate: 'MNO 9753' },
+    { n: 11, name: 'Chong Kim Fatt',            phone: '+601198765430', email: 'ckf@mail.com',     city: 'Petaling Jaya', tier: 'Premium',  status: 'active',    evp: 'approved',    rating: 4.8, trips: 389, joinDate: '2023-09-20', vehicle: 'Honda Accord 2022',  plate: 'PRS 8642' },
+    { n: 12, name: 'Normah Binti Ahmad',        phone: '+601167890123', email: 'norma@mail.com',   city: 'Selayang',      tier: 'Economy',  status: 'suspended', evp: 'approved',    rating: 3.2, trips: 44,  joinDate: '2024-08-15', vehicle: 'Perodua Axia 2019',  plate: 'TUV 5731' },
+    { n: 13, name: 'Vijayakumar Nadarajan',     phone: '+601145678902', email: 'vijay@mail.com',   city: 'Puchong',       tier: 'Standard', status: 'active',    evp: 'approved',    rating: 4.6, trips: 277, joinDate: '2024-04-22', vehicle: 'Honda City 2021',    plate: 'WXZ 4862' },
+    { n: 14, name: 'Izzatul Husna Binti Mohd',  phone: '+601134567890', email: 'izzatul@mail.com', city: 'Kuala Lumpur',  tier: 'Standard', status: 'active',    evp: 'approved',    rating: 4.7, trips: 183, joinDate: '2024-07-11', vehicle: 'Perodua Myvi 2023',  plate: 'ABC 3971' },
+    { n: 15, name: 'Lim Boon Seng',             phone: '+601189012345', email: 'lbs@mail.com',     city: 'Subang Jaya',   tier: 'Economy',  status: 'inactive',  evp: 'expired',     rating: 4.3, trips: 124, joinDate: '2024-02-01', vehicle: 'Perodua Bezza 2020', plate: 'DEG 7532' },
+    { n: 16, name: 'Hafizuddin Bin Ramli',      phone: '+601156789013', email: 'hafizr@mail.com',  city: 'Kuala Lumpur',  tier: 'Premium',  status: 'active',    evp: 'approved',    rating: 4.9, trips: 847, joinDate: '2023-02-28', vehicle: 'BMW 320i 2023',      plate: 'VIP 6419' },
+    { n: 17, name: 'Saritha Devi Munisamy',     phone: '+601167890124', email: 'saritha@mail.com', city: 'Ampang',        tier: 'Standard', status: 'active',    evp: 'approved',    rating: 4.5, trips: 159, joinDate: '2024-09-05', vehicle: 'Honda Jazz 2021',    plate: 'GHJ 2843' },
+    { n: 18, name: 'Mohd Azlan Bin Che Hassan', phone: '+601178901235', email: 'azlan@mail.com',   city: 'Shah Alam',     tier: 'Economy',  status: 'pending',   evp: 'not_applied', rating: 0,   trips: 0,   joinDate: '2026-02-20', vehicle: 'Perodua Alza 2022',  plate: 'KLN 5196' },
+    { n: 19, name: 'Wong Siew Lian',            phone: '+601123456790', email: 'wsl@mail.com',     city: 'Petaling Jaya', tier: 'Standard', status: 'active',    evp: 'approved',    rating: 4.6, trips: 264, joinDate: '2024-01-03', vehicle: 'Toyota Yaris 2022',  plate: 'PQT 8367' },
+    { n: 20, name: 'Tengku Aidil Fadzillah',    phone: '+601145678903', email: 'aidil@mail.com',   city: 'Kuala Lumpur',  tier: 'Premium',  status: 'active',    evp: 'approved',    rating: 4.7, trips: 445, joinDate: '2023-07-19', vehicle: 'Mercedes C200 2023', plate: 'AIDIL' },
+  ];
+
+  // Admin status → (users.status, driver_profiles.approval_status).
+  const USER_STATUS: Record<AdminStatus, 'active' | 'suspended' | 'deactivated'> = {
+    active: 'active', pending: 'active', suspended: 'suspended', inactive: 'deactivated',
+  };
+  const APPROVAL: Record<AdminStatus, 'pending' | 'approved' | 'suspended' | 'deactivated'> = {
+    active: 'approved', pending: 'pending', suspended: 'suspended', inactive: 'deactivated',
+  };
+  // Service tier → ride_category enum on the vehicle.
+  const CATEGORY: Record<Tier, 'go' | 'comfort' | 'premium'> = {
+    Economy: 'go', Standard: 'comfort', Premium: 'premium',
+  };
+
+  const driverId = (n: number) => `70000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
+  const vehicleId = (n: number) => `71000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
+  const evpId = (n: number) => `72000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
+
+  // "Perodua Myvi 2022" → { make: 'Perodua', model: 'Myvi', year: 2022 }
+  const parseVehicle = (s: string) => {
+    const parts = s.split(' ');
+    const year = Number(parts[parts.length - 1]);
+    return { make: parts[0] ?? s, model: parts.slice(1, -1).join(' '), year };
+  };
+
+  for (const d of directory) {
+    const id = driverId(d.n);
+    const { make, model, year } = parseVehicle(d.vehicle);
+
+    await db.insert(users).values({
+      id,
+      phone: d.phone,
+      email: d.email,
+      fullName: d.name,
+      locale: 'ms',
+      status: USER_STATUS[d.status],
+      createdAt: new Date(`${d.joinDate}T09:00:00Z`),
+    }).onConflictDoNothing();
+
+    await db.insert(userRoles).values({ userId: id, role: 'driver' }).onConflictDoNothing();
+
+    await db.insert(driverProfiles).values({
+      userId: id,
+      approvalStatus: APPROVAL[d.status],
+      availability: 'offline',
+      ratingAvg: d.rating ? d.rating.toFixed(2) : null,
+      ratingCount: d.trips,
+      totalTrips: d.trips,
+    }).onConflictDoNothing();
+
+    await db.insert(vehicles).values({
+      id: vehicleId(d.n),
+      driverId: id,
+      plateNumber: d.plate,
+      make,
+      model,
+      year,
+      category: CATEGORY[d.tier],
+      isActive: d.status === 'active',
+    }).onConflictDoNothing();
+
+    // EVP application row (the admin list reads `evp` from here). `not_applied`
+    // drivers have no record — the list left-joins and defaults to 'not_applied'.
+    if (d.evp !== 'not_applied') {
+      await db.insert(evpRecords).values({
+        id: evpId(d.n),
+        vehicleId: vehicleId(d.n),
+        driverId: id,
+        authority: 'apad',
+        region: d.city,
+        status: d.evp,
+        submittedAt: new Date(`${d.joinDate}T09:30:00Z`),
+        approvedAt: d.evp === 'approved' ? new Date(`${d.joinDate}T12:00:00Z`) : null,
+        expiryDate: d.evp === 'approved' ? '2027-01-01' : d.evp === 'expired' ? '2025-06-01' : null,
+      }).onConflictDoNothing();
+    }
+  }
+
+  console.log(`  Seeded ${directory.length} drivers.`);
 }
 
 // ── Rider directory ──────────────────────────────────────────────────────────

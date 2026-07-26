@@ -2,6 +2,7 @@
 import {
   Box, Typography, Grid, Card, CardContent, Button, Stack,
   Table, TableBody, TableRow, TableCell, Alert, Chip,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
 } from '@mui/material';
 import { useParams, useRouter } from 'next/navigation';
 import { useRiderStore } from '@/stores/rider';
@@ -23,6 +24,8 @@ export default function RiderProfilePage() {
   const trips = useTripStore((s) => s.trips);
   const { can } = useRbac();
   const [done, setDone] = useState('');
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: string; newStatus: string }>({ open: false, action: '', newStatus: '' });
+  const [reason, setReason] = useState('');
 
   useEffect(() => {
     loadRiders();
@@ -37,6 +40,16 @@ export default function RiderProfilePage() {
       : <Box p={4}><Alert severity="error">Rider not found.</Alert></Box>;
   }
 
+  const openConfirm = (action: string, newStatus: string) =>
+    setConfirmDialog({ open: true, action, newStatus });
+
+  const handleConfirm = () => {
+    updateStatus(rider.id, confirmDialog.newStatus);
+    setDone(`Rider status updated to ${confirmDialog.newStatus}.`);
+    setConfirmDialog({ open: false, action: '', newStatus: '' });
+    setReason('');
+  };
+
   return (
     <Box>
       <Button startIcon={<ArrowBack />} onClick={() => router.push('/riders')} sx={{ mb: 2 }} size="small">Back to Riders</Button>
@@ -46,7 +59,7 @@ export default function RiderProfilePage() {
         <Grid item xs={12}>
           <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
             <CardContent sx={{ p: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
                 <Box>
                   <Typography variant="h6" fontWeight={700}>{rider.name}</Typography>
                   <Typography variant="body2" color="text.secondary">{rider.email} · {rider.phone}</Typography>
@@ -56,12 +69,15 @@ export default function RiderProfilePage() {
                     <Chip label={rider.city} size="small" variant="outlined" />
                   </Stack>
                 </Box>
-                <Stack direction="row" spacing={1}>
-                  {can('ban_rider') && rider.status !== 'banned' && (
-                    <Button variant="outlined" color="error" size="small" onClick={() => { updateStatus(rider.id, 'banned'); setDone('Rider banned.'); }}>Ban Rider</Button>
+                <Stack direction="row" spacing={1} flexWrap="wrap">
+                  {can('ban_rider') && rider.status === 'active' && (
+                    <Button variant="outlined" color="warning" size="small" onClick={() => openConfirm('Suspend', 'suspended')}>Suspend</Button>
                   )}
-                  {can('ban_rider') && rider.status === 'banned' && (
-                    <Button variant="outlined" color="success" size="small" onClick={() => { updateStatus(rider.id, 'active'); setDone('Rider unbanned.'); }}>Unban</Button>
+                  {can('ban_rider') && rider.status === 'suspended' && (
+                    <Button variant="outlined" color="success" size="small" onClick={() => openConfirm('Reinstate', 'active')}>Reinstate</Button>
+                  )}
+                  {can('ban_rider') && rider.status === 'active' && (
+                    <Button variant="outlined" color="error" size="small" onClick={() => openConfirm('Deactivate', 'inactive')}>Deactivate</Button>
                   )}
                 </Stack>
               </Box>
@@ -107,6 +123,25 @@ export default function RiderProfilePage() {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Confirm dialog */}
+      <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, action: '', newStatus: '' })} maxWidth="xs" fullWidth>
+        <DialogTitle>{confirmDialog.action} Rider</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" mb={2}>
+            You are about to <strong>{confirmDialog.action.toLowerCase()}</strong>{' '}
+            <strong>{rider.name}</strong>. Please provide a reason.
+          </Typography>
+          <TextField
+            label="Reason" fullWidth multiline rows={2} size="small"
+            value={reason} onChange={(e) => setReason(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialog({ open: false, action: '', newStatus: '' })}>Cancel</Button>
+          <Button variant="contained" onClick={handleConfirm} disabled={!reason}>Confirm</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

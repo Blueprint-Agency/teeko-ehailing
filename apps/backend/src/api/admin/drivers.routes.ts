@@ -1,13 +1,33 @@
 import type { FastifyInstance } from 'fastify';
-import { and, desc, eq, sql } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../../config/db';
 import { documents, documentReviews, driverApplications } from '../../db/schema/onboarding';
 import { vehicles, driverProfiles } from '../../db/schema/drivers';
-import { evpRecords } from '../../db/schema/compliance';
-import { users } from '../../db/schema/identity';
+import { evpRecords, auditLog } from '../../db/schema/compliance';
+import { users, userRoles } from '../../db/schema/identity';
 import { notificationInbox } from '../../db/schema/notifications-content';
 import { ensureEvpRecordForDriver, resolveDocumentDriverId } from '../../modules/onboarding';
 import { sendEmail } from '../../external/gmail-smtp';
+
+// Admin-facing driver status ⇄ DB enums. The admin panel speaks in
+// active/pending/suspended/inactive; the DB stores an onboarding
+// approval status plus the shared users.status account flag.
+const ADMIN_STATUSES = ['active', 'pending', 'suspended', 'inactive'] as const;
+type AdminDriverStatus = (typeof ADMIN_STATUSES)[number];
+
+const APPROVAL_STATUS: Record<
+  AdminDriverStatus,
+  'pending' | 'approved' | 'suspended' | 'deactivated'
+> = { active: 'approved', pending: 'pending', suspended: 'suspended', inactive: 'deactivated' };
+
+const USER_STATUS: Record<AdminDriverStatus, 'active' | 'suspended' | 'deactivated'> = {
+  active: 'active', pending: 'active', suspended: 'suspended', inactive: 'deactivated',
+};
+
+// driver_profiles.approval_status → admin label (inverse of APPROVAL_STATUS).
+const APPROVAL_TO_ADMIN: Record<string, AdminDriverStatus> = {
+  approved: 'active', pending: 'pending', suspended: 'suspended', deactivated: 'inactive',
+};
 
 const DOC_LABELS: Record<string, string> = {
   nric_front: 'NRIC / MyKad (Front)',
@@ -22,6 +42,113 @@ const DOC_LABELS: Record<string, string> = {
 };
 
 export async function routes(app: FastifyInstance) {
+  // ── Driver directory ─────────────────────────────────────────────────────
+  // Backs the admin drivers list. Mirrors the rider directory: one row per
+  // user holding the `driver` role, joined to their profile, active vehicle,
+  // and EVP record.
+  app.get('/', async () => {
+    const rows = await db
+      .select({
+        id: users.id,
+        name: users.fullName,
+        phone: users.phone,
+        email: users.email,
+        createdAt: users.createdAt,
+        approvalStatus: driverProfiles.approvalStatus,
+        ratingAvg: driverProfiles.ratingAvg,
+        totalTrips: driverProfiles.totalTrips,
+        make: vehicles.make,
+        model: vehicles.model,
+        year: vehicles.year,
+        plate: vehicles.plateNumber,
+        category: vehicles.category,
+        evp: evpRecords.status,
+        appState: driverApplications.state,
+      })
+      .from(users)
+      .innerJoin(
+        userRoles,
+        and(eq(userRoles.userId, users.id), eq(userRoles.role, 'driver')),
+      )
+      .leftJoin(driverProfiles, eq(driverProfiles.userId, users.id))
+      .leftJoin(vehicles, eq(vehicles.driverId, users.id))
+      .leftJoin(evpRecords, eq(evpRecords.driverId, users.id))
+      .leftJoin(driverApplications, eq(driverApplications.driverId, users.id))
+      .where(isNull(users.deletedAt))
+      .orderBy(desc(users.createdAt));
+
+    // A driver may have more than one vehicle/EVP row; keep the first seen
+    // (rows are ordered by driver, and duplicates are cosmetic for the list).
+    const seen = new Set<string>();
+    return rows
+      .filter((r) => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+      .map((r) => ({
+        id: r.id,
+        name: r.name ?? '—',
+        // NRIC is not stored as a column; the admin UI doesn't display it.
+        ic: '—',
+        phone: r.phone ?? '—',
+        email: r.email ?? '—',
+        // City isn't captured on the driver profile yet (mirrors the rider list).
+        city: '—',
+        category: r.category ?? '—',
+        status: APPROVAL_TO_ADMIN[r.approvalStatus ?? 'pending'] ?? 'pending',
+        evp: r.evp ?? 'not_applied',
+        account: r.appState === 'activated' ? ('open' as const) : ('closed' as const),
+        rating: r.ratingAvg ? Number(r.ratingAvg) : 0,
+        trips: r.totalTrips ?? 0,
+        joinDate: r.createdAt ? r.createdAt.toISOString().slice(0, 10) : '—',
+        vehicle: r.make ? `${r.make} ${r.model} ${r.year}` : '—',
+        plate: r.plate ?? '—',
+        // Earnings aren't yet aggregated from payouts; surface 0 until they are.
+        earnings: 0,
+      }));
+  });
+
+  // Change a driver's status. Persists to both driver_profiles.approval_status
+  // and users.status, and writes an audit-log entry capturing the admin reason.
+  app.post<{ Params: { id: string }; Body: { status?: string; reason?: string } }>(
+    '/:id/status',
+    async (req, reply) => {
+      const { id } = req.params;
+      const { status, reason } = req.body ?? {};
+
+      if (!status || !ADMIN_STATUSES.includes(status as AdminDriverStatus)) {
+        return reply.code(400).send({ error: 'invalid_status' });
+      }
+      const next = status as AdminDriverStatus;
+
+      // Guard: target must be a non-deleted user holding the driver role.
+      const [driver] = await db
+        .select({ id: users.id })
+        .from(users)
+        .innerJoin(
+          userRoles,
+          and(eq(userRoles.userId, users.id), eq(userRoles.role, 'driver')),
+        )
+        .where(and(eq(users.id, id), isNull(users.deletedAt)))
+        .limit(1);
+      if (!driver) return reply.code(404).send({ error: 'driver_not_found' });
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(driverProfiles)
+          .set({ approvalStatus: APPROVAL_STATUS[next] })
+          .where(eq(driverProfiles.userId, id));
+        await tx.update(users).set({ status: USER_STATUS[next] }).where(eq(users.id, id));
+        await tx.insert(auditLog).values({
+          actorId: req.user!.id,
+          action: 'driver_status_change',
+          targetType: 'driver',
+          targetId: id,
+          payload: { status: next, reason: reason ?? null },
+        });
+      });
+
+      return { ok: true, status: next };
+    },
+  );
+
   app.get('/documents', async () => {
     const docDriverId = sql<string>`coalesce(${vehicles.driverId}, ${documents.ownerId})`;
 

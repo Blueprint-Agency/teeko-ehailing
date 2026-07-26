@@ -3,14 +3,14 @@ import {
   Box, Typography, Grid, Card, CardContent, Button, Chip,
   Divider, Stack, Table, TableBody, TableRow, TableCell,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
-  Alert,
+  Alert, CircularProgress,
 } from '@mui/material';
 import { useParams, useRouter } from 'next/navigation';
-import { useDriverStore } from '@/stores/driver';
+import { useDriverStore, type DriverStatus } from '@/stores/driver';
 import { useTripStore } from '@/stores/trip';
 import { useRbac } from '@/hooks/useRbac';
 import { StatusChip } from '@/components/data/StatusChip';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowBack } from '@mui/icons-material';
 
 export default function DriverProfilePage() {
@@ -18,29 +18,49 @@ export default function DriverProfilePage() {
   const id = params?.id ?? '';
   const router = useRouter();
   const drivers = useDriverStore((s) => s.drivers);
+  const loading = useDriverStore((s) => s.loading);
+  const loadDrivers = useDriverStore((s) => s.loadDrivers);
   const updateStatus = useDriverStore((s) => s.updateDriverStatus);
   const trips = useTripStore((s) => s.trips);
   const { can } = useRbac();
 
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: string; newStatus: DriverStatus }>({ open: false, action: '', newStatus: 'active' });
+  const [reason, setReason] = useState('');
+  const [done, setDone] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadDrivers();
+  }, [loadDrivers]);
+
   const driver = drivers.find((d) => d.id === id);
   const driverTrips = trips.filter((t) => t.driverId === id).slice(0, 10);
 
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: string; newStatus: string }>({ open: false, action: '', newStatus: '' });
-  const [reason, setReason] = useState('');
-  const [done, setDone] = useState('');
-
   if (!driver) {
-    return <Box p={4}><Alert severity="error">Driver not found.</Alert></Box>;
+    return loading
+      ? <Box p={4} sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>
+      : <Box p={4}><Alert severity="error">Driver not found.</Alert></Box>;
   }
 
-  const openConfirm = (action: string, newStatus: string) =>
+  const openConfirm = (action: string, newStatus: DriverStatus) => {
+    setError('');
     setConfirmDialog({ open: true, action, newStatus });
+  };
 
-  const handleConfirm = () => {
-    updateStatus(driver.id, confirmDialog.newStatus);
-    setDone(`Driver status updated to ${confirmDialog.newStatus}.`);
-    setConfirmDialog({ open: false, action: '', newStatus: '' });
-    setReason('');
+  const handleConfirm = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      await updateStatus(driver.id, confirmDialog.newStatus, reason);
+      setDone(`Driver status updated to ${confirmDialog.newStatus}.`);
+      setConfirmDialog({ open: false, action: '', newStatus: 'active' });
+      setReason('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update status');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -131,9 +151,10 @@ export default function DriverProfilePage() {
       </Grid>
 
       {/* Confirm dialog */}
-      <Dialog open={confirmDialog.open} onClose={() => setConfirmDialog({ open: false, action: '', newStatus: '' })} maxWidth="xs" fullWidth>
+      <Dialog open={confirmDialog.open} onClose={() => !submitting && setConfirmDialog({ open: false, action: '', newStatus: 'active' })} maxWidth="xs" fullWidth>
         <DialogTitle>{confirmDialog.action} Driver</DialogTitle>
         <DialogContent>
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           <Typography variant="body2" mb={2}>
             You are about to <strong>{confirmDialog.action.toLowerCase()}</strong>{' '}
             <strong>{driver.name}</strong>. Please provide a reason.
@@ -144,8 +165,10 @@ export default function DriverProfilePage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmDialog({ open: false, action: '', newStatus: '' })}>Cancel</Button>
-          <Button variant="contained" onClick={handleConfirm} disabled={!reason}>Confirm</Button>
+          <Button onClick={() => setConfirmDialog({ open: false, action: '', newStatus: 'active' })} disabled={submitting}>Cancel</Button>
+          <Button variant="contained" onClick={handleConfirm} disabled={!reason || submitting}>
+            {submitting ? 'Saving…' : 'Confirm'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

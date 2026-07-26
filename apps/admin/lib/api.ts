@@ -59,6 +59,27 @@ export interface Rider {
   totalSpent: number;
 }
 
+export interface Driver {
+  id: string;
+  name: string;
+  ic: string;
+  phone: string;
+  email: string;
+  city: string;
+  category: string;
+  status: string;
+  evp: string;
+  account: 'open' | 'closed';
+  rating: number;
+  trips: number;
+  joinDate: string;
+  vehicle: string;
+  plate: string;
+  earnings: number;
+}
+
+export type DriverStatus = 'active' | 'pending' | 'suspended' | 'inactive';
+
 export interface EvpRecord {
   id: string;
   driverId: string;
@@ -219,6 +240,11 @@ export const adminApi = {
   createRider: (input: NewRider) => post<Rider>('/riders', input),
 
   deleteRider: (id: string) => del<{ ok: boolean }>(`/riders/${id}`),
+
+  getDrivers: () => get<Driver[]>('/drivers'),
+
+  updateDriverStatus: (id: string, status: DriverStatus, reason?: string) =>
+    post<{ ok: boolean; status: DriverStatus }>(`/drivers/${id}/status`, { status, reason }),
 
   getEvpRecords: () => get<EvpRecord[]>('/drivers/evp'),
 

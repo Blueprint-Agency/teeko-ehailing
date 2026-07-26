@@ -8,17 +8,15 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogContentText,
   DialogActions,
   Stack,
   TextField,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useRiderStore, type Rider } from '@/stores/rider';
+import { useRiderStore } from '@/stores/rider';
 import { StatusChip } from '@/components/data/StatusChip';
 
 export default function RidersPage() {
@@ -27,16 +25,12 @@ export default function RidersPage() {
   const error = useRiderStore((s) => s.error);
   const loadRiders = useRiderStore((s) => s.loadRiders);
   const createRider = useRiderStore((s) => s.createRider);
-  const deleteRider = useRiderStore((s) => s.deleteRider);
   const router = useRouter();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
-
-  const [toDelete, setToDelete] = useState<Rider | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     loadRiders();
@@ -65,46 +59,25 @@ export default function RidersPage() {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!toDelete) return;
-    setDeleting(true);
-    try {
-      await deleteRider(toDelete.id);
-      setToDelete(null);
-    } catch {
-      // Surface failures via the page-level alert from the store load path.
-    } finally {
-      setDeleting(false);
-    }
-  };
-
   const columns: GridColDef[] = [
     { field: 'name', headerName: 'Name', flex: 1.5, minWidth: 160 },
     { field: 'phone', headerName: 'Phone', width: 140 },
     { field: 'city', headerName: 'City', width: 120 },
     { field: 'status', headerName: 'Status', width: 100, renderCell: ({ value }) => <StatusChip status={value} /> },
     { field: 'trips', headerName: 'Trips', width: 80, type: 'number' },
-    { field: 'totalSpent', headerName: 'Total Spent', width: 110, type: 'number', valueFormatter: ({ value }) => `RM ${value}` },
+    { field: 'totalSpent', headerName: 'Total Spent', width: 110, type: 'number', valueFormatter: ({ value }) => (value == null ? '—' : `RM ${value}`) },
     { field: 'escalation', headerName: 'Escalation Lvl', width: 120, type: 'number' },
     { field: 'rating', headerName: 'Rating', width: 80, type: 'number' },
     { field: 'joinDate', headerName: 'Joined', width: 110 },
     {
       field: 'actions',
       headerName: '',
-      width: 150,
+      width: 80,
       sortable: false,
       filterable: false,
       renderCell: ({ row }) => (
         <Stack direction="row" spacing={0.5} alignItems="center" sx={{ height: '100%' }}>
           <Button size="small" onClick={() => router.push(`/riders/${row.id}`)}>View</Button>
-          <Button
-            size="small"
-            color="error"
-            startIcon={<DeleteOutlineIcon fontSize="small" />}
-            onClick={() => setToDelete(row)}
-          >
-            Delete
-          </Button>
         </Stack>
       ),
     },
@@ -161,22 +134,6 @@ export default function RidersPage() {
             disabled={submitting || !form.name.trim()}
           >
             {submitting ? 'Creating…' : 'Create'}
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Dialog open={!!toDelete} onClose={() => !deleting && setToDelete(null)}>
-        <DialogTitle>Delete rider?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {toDelete?.name} will be removed from the riders list. Their trip history is
-            retained and the account can be restored from the database if needed.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setToDelete(null)} disabled={deleting}>Cancel</Button>
-          <Button color="error" variant="contained" onClick={confirmDelete} disabled={deleting}>
-            {deleting ? 'Deleting…' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
