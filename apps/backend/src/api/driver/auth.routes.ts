@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { driverClerk } from '../../external/clerk';
 import { sendVerificationOtp, verifyOtp } from '../../modules/auth_otp/service';
 import { getOrProvisionDriverMe } from '../../modules/identity/service';
 
@@ -55,6 +56,8 @@ export async function routes(app: FastifyInstance) {
       userId: req.user.id,
       clerkUserId: req.user.clerkUserId,
       code,
+      // Drivers live in the driver Clerk instance, not the rider default.
+      clerkClient: driverClerk,
     });
     switch (result.status) {
       case 'verified':

@@ -21,9 +21,6 @@ async function req<T = unknown>(path: string, options: RequestInit = {}): Promis
     ...((options.headers as Record<string, string>) ?? {}),
   };
   const fullUrl = `${BASE_URL}${path}`;
-  console.log('[API] -->', options.method ?? 'GET', fullUrl);
-  console.log('[API] headers:', JSON.stringify(headers, null, 2));
-  if (options.body) console.log('[API] body:', options.body);
   let res: Response;
   try {
     res = await fetch(fullUrl, { ...options, headers });
@@ -31,7 +28,6 @@ async function req<T = unknown>(path: string, options: RequestInit = {}): Promis
     console.error('[API] network error on', fullUrl, err);
     throw err;
   }
-  console.log('[API] <--', res.status, fullUrl);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = data?.message ?? data?.error?.message ?? data?.error ?? `HTTP ${res.status}`;
@@ -40,9 +36,25 @@ async function req<T = unknown>(path: string, options: RequestInit = {}): Promis
   return data as T;
 }
 
+export type DriverMe = {
+  user: {
+    id: string;
+    email: string | null;
+    emailVerified: boolean;
+    fullName: string | null;
+    status: string;
+    pdpaConsentAt: string | null;
+  };
+  driverProfile: { approvalStatus: string };
+  // Set once the driver exists in our tables. Drives post-login routing —
+  // a Clerk session alone does not mean the driver may accept trips.
+  application: { state: string; rejectionReason: string | null; submittedAt: string | null } | null;
+};
+
 export const api = {
   auth: {
-    me: () => req<{ user: { id: string; email: string | null; fullName: string | null; status: string }; driverProfile: { approvalStatus: string } }>('/driver/auth/me'),
+    me: () =>
+      req<DriverMe>('/driver/auth/me'),
     sendOtp: () => req<{ ok: true }>('/driver/auth/send-otp', { method: 'POST', body: JSON.stringify({}) }),
     verifyOtp: (code: string) => req<{ ok: true }>('/driver/auth/verify-otp', { method: 'POST', body: JSON.stringify({ code }) }),
   },

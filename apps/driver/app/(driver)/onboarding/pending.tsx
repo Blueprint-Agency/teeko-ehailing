@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '@clerk/clerk-expo';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
@@ -16,6 +17,7 @@ const STATUS_STEP_KEYS = [
 
 export default function PendingReviewScreen() {
   const router = useRouter();
+  const { signOut } = useAuth();
   const colors = useColors();
   const { activeTheme } = useTheme();
   const t = useT();
@@ -80,12 +82,16 @@ export default function PendingReviewScreen() {
             <Text style={styles.supportBtnText}>{t('driver.contactSupport')}</Text>
           </TouchableOpacity>
 
-          {/* Dev shortcut */}
+          {/* An unapproved driver has nowhere else to go in-app, so this is their
+              only way off this screen — e.g. to sign in as a different account. */}
           <TouchableOpacity
-            style={styles.devBtn}
-            onPress={() => router.replace('/(driver)/(tabs)/home')}
+            style={styles.signOutBtn}
+            onPress={async () => {
+              await signOut();
+              router.replace('/(auth)/login');
+            }}
           >
-            <Text style={styles.devBtnText}>[ Dev ] Skip to Home →</Text>
+            <Text style={styles.signOutBtnText}>{t('driver.signOut')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -149,6 +155,10 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   supportBtnText: { color: colors.text, fontSize: 15, fontWeight: '700' },
 
-  devBtn: { marginTop: 8 },
-  devBtnText: { color: colors.textMut, fontSize: 12 },
+  signOutBtn: {
+    width: '100%', height: 52, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 8,
+  },
+  signOutBtnText: { color: colors.textSec, fontSize: 15, fontWeight: '700' },
 });

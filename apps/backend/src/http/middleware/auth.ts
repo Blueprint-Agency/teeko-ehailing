@@ -73,6 +73,23 @@ export async function clerkAuthVerify(req: FastifyRequest, reply: FastifyReply) 
 }
 
 export async function driverClerkAuthVerify(req: FastifyRequest, reply: FastifyReply) {
+  // Same dev bypass as clerkAuthVerify — the driver web portal and the Expo
+  // driver app both authenticate through here now, so local/staging work needs
+  // the X-Teeko-User escape hatch on this path too.
+  if (env.NODE_ENV === 'development' || env.DEV_AUTH_BYPASS) {
+    const devUserId = req.headers['x-teeko-user'];
+    if (devUserId && typeof devUserId === 'string') {
+      const roleRow = await db.query.userRoles.findFirst({
+        where: eq(userRoles.userId, devUserId),
+      });
+      if (roleRow) {
+        req.user = { id: devUserId, role: roleRow.role, clerkUserId: '' };
+        return;
+      }
+      req.log.warn({ devUserId }, 'X-Teeko-User dev bypass user has no registered roles');
+    }
+  }
+
   const header = req.headers.authorization;
   if (!header || !header.toLowerCase().startsWith('bearer ')) {
     return reply.code(401).send({ error: 'unauthorized', message: 'missing bearer token' });

@@ -22,7 +22,6 @@ export function getSocket(): Socket {
 
 export function connectSocket(getToken: () => Promise<string | null>): Socket {
   const s = getSocket();
-  console.log(`[socket] connectSocket called. connected=${s.connected}`);
   if (s.connected) {
     getToken().then((token) => {
       if (token) s.emit('auth', { token });
@@ -30,22 +29,16 @@ export function connectSocket(getToken: () => Promise<string | null>): Socket {
   } else {
     s.off('connect'); // remove any previously registered connect listener before adding a new one
     s.on('connect', () => {
-      console.log(`[socket] connected — fetching fresh token`);
       getToken().then((token) => {
         if (token) {
-          console.log(`[socket] emitting auth`);
           s.emit('auth', { token });
         } else {
-          console.log(`[socket] no token — disconnecting`);
           s.disconnect();
         }
       });
     });
-    s.on('connect_error', (err) => console.log(`[socket] connect_error: ${err.message}`));
-    s.on('disconnect', (reason) => console.log(`[socket] disconnected: ${reason}`));
-    s.on('auth.ok', (data: unknown) => console.log(`[socket] auth.ok`, JSON.stringify(data)));
-    s.on('auth.error', (data: unknown) => console.log(`[socket] auth.error`, JSON.stringify(data)));
-    console.log(`[socket] calling s.connect() to ${BASE_URL}`);
+    s.on('connect_error', (err) => console.warn(`[socket] connect_error: ${err.message}`));
+    s.on('auth.error', (data: unknown) => console.warn(`[socket] auth.error`, JSON.stringify(data)));
     s.connect();
   }
   return s;

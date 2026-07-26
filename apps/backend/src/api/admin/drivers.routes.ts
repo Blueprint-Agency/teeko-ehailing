@@ -253,6 +253,15 @@ export async function routes(app: FastifyInstance) {
           .set({ state: 'activated', approvedAt: application.approvedAt ?? now, updatedAt: now })
           .where(eq(driverApplications.driverId, record.driverId));
 
+        // Keep the two approval sources in step. driver_profiles.approval_status
+        // starts `pending` at Clerk JIT provisioning; this is the only place a
+        // driver becomes approved, so both must flip together or the Expo app
+        // and the web portal can disagree about the same driver.
+        await tx
+          .update(driverProfiles)
+          .set({ approvalStatus: 'approved' })
+          .where(eq(driverProfiles.userId, record.driverId));
+
         if (newlyActivated) {
           await tx.insert(notificationInbox).values({
             userId: record.driverId,

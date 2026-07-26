@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { User, Mail, Phone, Globe, Shield, LogOut, ChevronRight, Save } from 'lucide-react'
+import { useClerk } from '@clerk/nextjs'
 import { Header } from '@/components/driver/Header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,7 +15,8 @@ import type { Locale } from '@teeko/shared/types'
 export default function ProfilePage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { profile, logout, updateProfile } = useWebAuthStore()
+  const { profile, clear, updateProfile } = useWebAuthStore()
+  const { signOut } = useClerk()
   const { locale, setLocale } = useLanguageStore()
   const [saved, setSaved] = useState(false)
   const [fullName, setFullName] = useState(profile?.fullName ?? '')
@@ -33,8 +35,9 @@ export default function ProfilePage() {
     setTimeout(() => setSaved(false), 2500)
   }
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    clear()
+    await signOut()
     router.push('/')
   }
 

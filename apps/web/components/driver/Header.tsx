@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Bell, User, LogOut, ChevronDown } from 'lucide-react'
+import { useClerk } from '@clerk/nextjs'
 import { useWebAuthStore } from '@/stores/authStore'
 import { useApplicationStatusStore } from '@/stores/applicationStatusStore'
 import { useLanguageStore } from '@/stores/languageStore'
@@ -25,10 +26,14 @@ interface HeaderProps {
 export function Header({ variant = 'light', showNav = true }: HeaderProps) {
   const { t } = useTranslation()
   const router = useRouter()
-  const { isAuthenticated, logout } = useWebAuthStore()
+  const { isAuthenticated, clear } = useWebAuthStore()
+  const { signOut } = useClerk()
 
-  const handleLogout = () => {
-    logout()
+  // Clerk holds the session, so signing out must end it there — clearing our
+  // local cache alone would leave the driver signed in on the next page load.
+  const handleLogout = async () => {
+    clear()
+    await signOut()
     router.push('/')
   }
   const { unreadCount } = useApplicationStatusStore()

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import type { ApplicationStatus, DocumentState, Notification } from '@teeko/shared/types'
-import { api } from '@/lib/api'
+import { api, authHeaders, PREFIX } from '@/lib/api'
 
 interface ApplicationStatusStore {
   status: ApplicationStatus | null
@@ -84,14 +84,22 @@ export const useApplicationStatusStore = create<ApplicationStatusStore>()((set, 
       }
     })
 
-    // Persist to backend
+    // Persist to backend. Uses the shared PREFIX/authHeaders so this call gets
+    // the Clerk bearer token like every other one (it previously hardcoded the
+    // dev headers and a wrong default port).
     const formData = new FormData()
     formData.append('file', file)
-    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3000'}/api/v1/driver-web/documents/${docId}/resubmit`, {
-      method: 'POST',
-      headers: { 'X-Teeko-User': driverId, 'X-Teeko-Role': 'driver' },
-      body: formData,
-    }).catch(console.error)
+    void (async () => {
+      try {
+        await fetch(`${PREFIX}/documents/${docId}/resubmit`, {
+          method: 'POST',
+          headers: await authHeaders(driverId),
+          body: formData,
+        })
+      } catch (err) {
+        console.error(err)
+      }
+    })()
 
     // Refresh from server after a short delay
     setTimeout(() => get().fetchAll(driverId), 500)

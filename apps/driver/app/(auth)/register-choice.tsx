@@ -3,9 +3,16 @@ import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Linking from 'expo-linking';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
+
+// Driver registration happens in the web portal only: it is where the PDPA 2010
+// consent checkbox and the document-upload wizard live. Clerk is shared between
+// the two apps, so a driver who signs up there can log in here immediately.
+const PORTAL_REGISTER_URL =
+  (process.env.EXPO_PUBLIC_DRIVER_PORTAL_URL ?? 'http://localhost:3001') + '/auth/register';
 
 export default function RegisterChoiceScreen() {
   const router = useRouter();
@@ -27,7 +34,7 @@ export default function RegisterChoiceScreen() {
 
         <TouchableOpacity
           style={styles.card}
-          onPress={() => router.push('/(auth)/register')}
+          onPress={() => Linking.openURL(PORTAL_REGISTER_URL)}
           activeOpacity={0.85}
         >
           <View style={styles.cardIcon}><Text style={styles.cardIconText}>🚗</Text></View>

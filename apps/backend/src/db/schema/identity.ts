@@ -32,6 +32,10 @@ export const users = pgTable('users', {
   fullName: text(),
   locale: localeEnum().notNull().default('en'),
   status: userStatus().notNull().default('active'),
+  // PDPA 2010 consent record. Captured by our own checkbox at driver sign-up —
+  // deliberately kept here rather than in Clerk metadata so the consent trail
+  // stays in our DB for the APAD/JPJ audit.
+  pdpaConsentAt: timestamp({ withTimezone: true }),
   // Rider-side Stripe Customer, created lazily on first payment-method add.
   stripeCustomerId: text().unique(),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),

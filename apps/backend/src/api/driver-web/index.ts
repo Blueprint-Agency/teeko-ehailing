@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { auth0Verify } from '../../http/middleware/auth';
+import { driverClerkAuthVerify } from '../../http/middleware/auth';
 import { requireRole } from '../../http/middleware/requireRole';
 
 import { routes as auth } from './auth.routes';
@@ -12,12 +12,17 @@ import { routes as notifications } from './notifications.routes';
 import { routes as status } from './status.routes';
 
 export async function driverWebRoutes(app: FastifyInstance) {
-  // Public routes (no auth required)
-  await app.register(auth, { prefix: '/auth' });
+  // Auth routes: a valid Clerk (driver instance) token is required, but NOT the
+  // driver role — GET /auth/me is what creates the user_roles row in the first
+  // place, so requireRole here would reject every new signup.
+  app.register(async (authedApp) => {
+    authedApp.addHook('preHandler', driverClerkAuthVerify);
+    await authedApp.register(auth, { prefix: '/auth' });
+  });
 
   // Protected routes
   app.register(async (protectedApp) => {
-    protectedApp.addHook('preHandler', auth0Verify);
+    protectedApp.addHook('preHandler', driverClerkAuthVerify);
     protectedApp.addHook('preHandler', requireRole('driver'));
 
     await protectedApp.register(account, { prefix: '/account' });

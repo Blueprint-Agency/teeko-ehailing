@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { OnboardingProgress } from '@/components/driver/OnboardingProgress'
+import { RequireAuth } from '@/components/RequireAuth'
 import { useWebAuthStore } from '@/stores/authStore'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import { api } from '@/lib/api'
@@ -30,11 +31,21 @@ const STEP_ROUTES = [
 const SUBMITTED_STATES = new Set(['in_review', 'rejected', 'activated'])
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
+  // Clerk gate first (no server middleware — the secret key stays backend-only),
+  // then the step-progress gating below.
+  return (
+    <RequireAuth>
+      <OnboardingShell>{children}</OnboardingShell>
+    </RequireAuth>
+  )
+}
+
+function OnboardingShell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
   const currentStep = pathname ? STEP_MAP[pathname] ?? 0 : 0
-  const { isAuthenticated, profile } = useWebAuthStore()
+  const { isAuthenticated, profile, hydrating } = useWebAuthStore()
   const { agreementAccepted, personalDocs, vehicleDetails, submitted } = useOnboardingStore()
 
   // Furthest step the local (client-side) progress allows access to. Because
@@ -48,6 +59,10 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
   else if (agreementAccepted) furthestAllowed = 1
 
   useEffect(() => {
+    // Clerk middleware already blocks unauthenticated access to /onboarding; this
+    // guard only waits for our own row to arrive. Bouncing while the store is
+    // still hydrating would kick a legitimately signed-in driver to login.
+    if (hydrating) return
     if (!isAuthenticated || !profile) {
       router.push('/auth/login')
       return
@@ -77,7 +92,7 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
     return () => {
       isMounted = false
     }
-  }, [isAuthenticated, profile, pathname, router, furthestAllowed, submitted])
+  }, [isAuthenticated, profile, hydrating, pathname, router, furthestAllowed, submitted])
 
   return (
     <div className="min-h-screen bg-[var(--color-surface)]">

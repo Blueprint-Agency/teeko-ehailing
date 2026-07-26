@@ -13,6 +13,7 @@ import {
   updateRiderFields,
   softDeleteUser,
   getRiderProfileBundle,
+  recordPdpaConsent,
   type IdentityRow,
 } from './repo';
 
@@ -142,30 +143,47 @@ export type DriverMeResponse = {
   user: {
     id: string;
     email: string | null;
+    emailVerified: boolean;
     fullName: string | null;
     status: 'active' | 'suspended' | 'deactivated';
+    pdpaConsentAt: string | null;
   };
   driverProfile: {
     approvalStatus: string;
   };
+  // Drives post-login routing in BOTH the web portal and the Expo driver app:
+  // onboarding wizard → pending → resubmission → dashboard.
+  application: {
+    state: string;
+    rejectionReason: string | null;
+    submittedAt: string | null;
+  } | null;
 };
 
 /**
- * Get-or-create the driver's row. Used by GET /auth/me on the driver API.
- * Idempotent — safe to call on every app launch.
+ * Get-or-create the driver's row. Used by GET /auth/me on both the driver API
+ * (Expo) and the driver-web API (portal) — whichever app the driver reaches
+ * first provisions; the other reads. Idempotent, safe on every app launch.
  */
 export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<DriverMeResponse> {
   if (!claims.sub) throw new Error('clerk claims missing sub');
 
   let row: IdentityRow | null = await findUserByExternalId('clerk', claims.sub);
+  let weCreatedTheRow = false;
+  let provisionedProfile:
+    | { email: string | undefined; fullName: string | undefined; emailVerified: boolean }
+    | null = null;
   if (!row) {
     const profile = await resolveProfileFromClerk(claims, driverClerk);
+    provisionedProfile = profile;
     try {
       await provisionDriver({
         clerkUserId: claims.sub,
         email: profile.email,
         fullName: profile.fullName,
+        emailVerified: profile.emailVerified,
       });
+      weCreatedTheRow = true;
     } catch (err) {
       if (!isUniqueViolation(err)) throw err;
       logger.debug({ clerkUserId: claims.sub }, 'driver JIT race lost, re-reading');
@@ -174,27 +192,75 @@ export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<Drive
     if (!row) throw new Error('provisionDriver succeeded but row not found');
   }
 
-  // Fetch driver profile approval status
   const { db } = await import('../../config/db');
   const { driverProfiles } = await import('../../db/schema/drivers');
+  const { driverApplications } = await import('../../db/schema/onboarding');
+  const { users } = await import('../../db/schema/identity');
   const { eq } = await import('drizzle-orm');
+
   const [dp] = await db
     .select({ approvalStatus: driverProfiles.approvalStatus })
     .from(driverProfiles)
     .where(eq(driverProfiles.userId, row.id))
     .limit(1);
 
+  const [application] = await db
+    .select({
+      state: driverApplications.state,
+      rejectionReason: driverApplications.rejectionReason,
+      submittedAt: driverApplications.submittedAt,
+    })
+    .from(driverApplications)
+    .where(eq(driverApplications.driverId, row.id))
+    .limit(1);
+
+  const [userRow] = await db
+    .select({ emailVerified: users.emailVerified, pdpaConsentAt: users.pdpaConsentAt })
+    .from(users)
+    .where(eq(users.id, row.id))
+    .limit(1);
+
+  // Same rule as the rider path: send the first verification OTP only when WE
+  // just created the row, there is an email, and Clerk hasn't already verified
+  // it. Fire-and-forget; failures are logged, never block login.
+  if (weCreatedTheRow && provisionedProfile?.email && !provisionedProfile.emailVerified) {
+    const userId = row.id;
+    const email = provisionedProfile.email;
+    const fullName = provisionedProfile.fullName ?? null;
+    void (async () => {
+      try {
+        await sendVerificationOtp({ userId, email, fullName });
+      } catch (err) {
+        logger.warn({ err, userId }, 'driver auto-send OTP failed');
+      }
+    })();
+  }
+
   return {
     user: {
       id: row.id,
       email: row.email,
+      emailVerified: userRow?.emailVerified ?? false,
       fullName: row.fullName,
       status: row.status,
+      pdpaConsentAt: userRow?.pdpaConsentAt?.toISOString() ?? null,
     },
     driverProfile: {
       approvalStatus: dp?.approvalStatus ?? 'pending',
     },
+    application: application
+      ? {
+          state: application.state,
+          rejectionReason: application.rejectionReason ?? null,
+          submittedAt: application.submittedAt?.toISOString() ?? null,
+        }
+      : null,
   };
+}
+
+/** Records PDPA consent for a driver. Called right after Clerk sign-up. */
+export async function acceptPdpaConsent(userId: string): Promise<void> {
+  await recordPdpaConsent(userId);
 }
 
 export type RiderMePatch = {

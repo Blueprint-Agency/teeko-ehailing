@@ -2,6 +2,7 @@ import { createHash, randomInt } from 'node:crypto';
 
 import { logger } from '../../config/logger';
 import { clerk } from '../../external/clerk';
+import type { ClerkClient } from '@clerk/backend';
 import { sendEmail, EmailDeliveryError } from '../../external/gmail-smtp';
 
 import { verificationEmail } from './emails';
@@ -93,6 +94,9 @@ export async function verifyOtp(input: {
   userId: string;
   clerkUserId: string;
   code: string;
+  // Which Clerk instance the user lives in. Riders and drivers are separate
+  // instances, so the default (rider) would look drivers up in the wrong one.
+  clerkClient?: ClerkClient;
 }): Promise<VerifyOtpResult> {
   const active = await findActiveOtp(input.userId);
   if (!active) return { status: 'no_active_code' };
@@ -119,7 +123,8 @@ export async function verifyOtp(input: {
   // gates pass. Failure here doesn't block our own verified status — our
   // users.email_verified column is the source of truth.
   try {
-    const user = await clerk.users.getUser(input.clerkUserId);
+    const clerkClient = input.clerkClient ?? clerk;
+    const user = await clerkClient.users.getUser(input.clerkUserId);
     const primary = user.emailAddresses.find(
       (e) => e.id === user.primaryEmailAddressId,
     );

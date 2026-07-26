@@ -5,9 +5,11 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
+import { Eye, EyeOff } from 'lucide-react-native';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
+import { resolveRouteAfterAuth } from '../../lib/routeAfterAuth';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -18,6 +20,7 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
@@ -52,7 +55,7 @@ export default function LoginScreen() {
         const attempt = await signIn.attemptFirstFactor({ strategy: 'password', password: creds.password });
         if (attempt.status === 'complete') {
           await setActive({ session: attempt.createdSessionId });
-          router.replace('/(driver)/(tabs)/home');
+          router.replace(await resolveRouteAfterAuth());
         } else if (attempt.status === 'needs_second_factor') {
           verifyStrategyRef.current = 'email_code';
           await signIn.prepareSecondFactor({ strategy: 'email_code' });
@@ -64,7 +67,7 @@ export default function LoginScreen() {
         }
       } else if (identified.status === 'complete') {
         await setActive({ session: identified.createdSessionId });
-        router.replace('/(driver)/(tabs)/home');
+        router.replace(await resolveRouteAfterAuth());
       } else if ((identified.status as string) === 'needs_client_trust') {
         await prepareClientTrust(identified as any);
       } else {
@@ -104,7 +107,7 @@ export default function LoginScreen() {
       });
       if (attempt.status === 'complete') {
         await setActive({ session: attempt.createdSessionId });
-        router.replace('/(driver)/(tabs)/home');
+        router.replace(await resolveRouteAfterAuth());
       } else {
         Alert.alert('Verification incomplete', 'Please try again.');
       }
@@ -200,16 +203,29 @@ export default function LoginScreen() {
 
               <View style={styles.inputBlock}>
                 <Text style={styles.inputLabel}>PASSWORD</Text>
-                <TextInput
-                  style={[styles.textInput, passwordError && styles.inputError]}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.textMut}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete="password"
-                  value={password}
-                  onChangeText={(v) => { setPassword(v); if (passwordError) setPasswordError(undefined); }}
-                />
+                <View style={styles.passwordRow}>
+                  <TextInput
+                    style={[styles.textInput, styles.passwordInput, passwordError && styles.inputError]}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.textMut}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    autoComplete="password"
+                    value={password}
+                    onChangeText={(v) => { setPassword(v); if (passwordError) setPasswordError(undefined); }}
+                  />
+                  <TouchableOpacity
+                    style={styles.revealBtn}
+                    onPress={() => setShowPassword((v) => !v)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword
+                      ? <EyeOff size={20} color={colors.textSec} />
+                      : <Eye size={20} color={colors.textSec} />}
+                  </TouchableOpacity>
+                </View>
                 {passwordError && <Text style={styles.errorText}>{passwordError}</Text>}
               </View>
 
@@ -263,6 +279,14 @@ const createStyles = (colors: any) => StyleSheet.create({
     color: colors.text, fontSize: 17,
     backgroundColor: colors.surface,
     borderRadius: 14, borderWidth: 1, borderColor: colors.border,
+  },
+  passwordRow: { justifyContent: 'center' },
+  // Room for the reveal button so long passwords don't run underneath it.
+  passwordInput: { paddingRight: 52 },
+  revealBtn: {
+    position: 'absolute', right: 0,
+    height: '100%', width: 52,
+    alignItems: 'center', justifyContent: 'center',
   },
   inputError: { borderColor: '#ef4444' },
   errorText: { color: '#ef4444', fontSize: 12, marginTop: 4 },

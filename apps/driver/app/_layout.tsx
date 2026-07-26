@@ -15,19 +15,9 @@ import { api, registerTokenGetter } from '../lib/api';
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
 
 const tokenCache = {
-  getToken: async (key: string) => {
-    const val = await SecureStore.getItemAsync(key);
-    console.log('[Clerk cache] getToken', key, val ? `found (${val.length} chars)` : 'null/missing');
-    return val;
-  },
-  saveToken: async (key: string, value: string) => {
-    console.log('[Clerk cache] saveToken', key, `(${value.length} chars)`);
-    return SecureStore.setItemAsync(key, value);
-  },
-  clearToken: async (key: string) => {
-    console.log('[Clerk cache] clearToken', key);
-    return SecureStore.deleteItemAsync(key);
-  },
+  getToken: (key: string) => SecureStore.getItemAsync(key),
+  saveToken: (key: string, value: string) => SecureStore.setItemAsync(key, value),
+  clearToken: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
 function TokenSync() {

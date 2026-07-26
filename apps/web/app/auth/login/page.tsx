@@ -9,35 +9,95 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowRight, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { useSignIn } from '@clerk/nextjs'
 import { loginSchema, type LoginFormData } from '@teeko/shared/schemas/auth'
 import { useWebAuthStore } from '@/stores/authStore'
-import mockProfile from '@/data/mock-driver-profile.json'
-import type { DriverProfile } from '@teeko/shared/types'
 import { api } from '@/lib/api'
+import { routeForApplicationState } from '@/lib/routeForApplicationState'
+
+// Falls back to a plain Error's message so failures from OUR api (e.g. a 500
+// from /auth/me) surface verbatim rather than as a misleading generic string.
+function clerkError(err: unknown): string {
+  const errors = (err as { errors?: { longMessage?: string; message?: string }[] })?.errors
+  return (
+    errors?.[0]?.longMessage ??
+    errors?.[0]?.message ??
+    (err instanceof Error ? err.message : null) ??
+    'Failed to log in'
+  )
+}
 
 export default function LoginPage() {
   const { t } = useTranslation()
   const router = useRouter()
-  const { login } = useWebAuthStore()
+  const { isLoaded, signIn, setActive } = useSignIn()
+  const { hydrate } = useWebAuthStore()
   const [loading, setLoading] = useState(false)
+  // Set once Clerk asks for a second factor / device-trust code.
+  const [needsCode, setNeedsCode] = useState(false)
+  const [code, setCode] = useState('')
+  const [codeError, setCodeError] = useState<string | undefined>()
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   })
 
+  // Resolve (or provision, if this driver's first login happened in the Expo
+  // app) our row, then route on the application state rather than assuming an
+  // approved account.
+  const finishSignIn = async (sessionId: string | null) => {
+    if (!setActive) return
+    await setActive({ session: sessionId })
+    const me = await api.getMe()
+    await hydrate()
+    router.push(routeForApplicationState(me.application?.state))
+  }
+
   const onSubmit = async (data: LoginFormData) => {
+    if (!isLoaded || !signIn) return
     setLoading(true)
+    setCodeError(undefined)
     try {
-      const user = await api.loginDriver(data.email, data.password)
-      login({
-        ...mockProfile,
-        id: user.id,
-        fullName: user.fullName,
-        phone: user.phone ?? '',
-        email: user.email,
-      } as DriverProfile)
-      router.push('/dashboard')
-    } catch (error: any) {
-      alert(error.message || 'Failed to log in')
+      const attempt = await signIn.create({ identifier: data.email, password: data.password })
+
+      if (attempt.status === 'complete') {
+        await finishSignIn(attempt.createdSessionId)
+        return
+      }
+
+      // The driver Clerk instance may require a second factor or device-trust
+      // code (the Expo driver app handles the same two statuses). Fall back to
+      // email_code, which every driver has by definition.
+      const status = attempt.status as string
+      if (status === 'needs_second_factor' || status === 'needs_client_trust') {
+        await signIn.prepareSecondFactor({ strategy: 'email_code' })
+        setNeedsCode(true)
+        return
+      }
+
+      throw new Error(`Sign-in incomplete (${attempt.status ?? 'unknown'})`)
+    } catch (error: unknown) {
+      alert(clerkError(error))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const onVerifyCode = async () => {
+    if (!isLoaded || !signIn || !code.trim()) return
+    setLoading(true)
+    setCodeError(undefined)
+    try {
+      const attempt = await signIn.attemptSecondFactor({
+        strategy: 'email_code',
+        code: code.trim(),
+      })
+      if (attempt.status !== 'complete') {
+        setCodeError(`Verification incomplete (${attempt.status ?? 'unknown'})`)
+        return
+      }
+      await finishSignIn(attempt.createdSessionId)
+    } catch (error: unknown) {
+      setCodeError(clerkError(error))
     } finally {
       setLoading(false)
     }
@@ -82,6 +142,38 @@ export default function LoginPage() {
             <p className="text-[var(--color-muted)]">{t('auth.login.subtitle')}</p>
           </div>
 
+          {needsCode ? (
+            <div className="animate-fade-up animate-delay-100 space-y-5">
+              <p className="text-sm text-[var(--color-muted)]">
+                Enter the 6-digit code we emailed you to finish signing in.
+              </p>
+              <Input
+                label="Verification code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="123456"
+                maxLength={6}
+                required
+                error={codeError}
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value)
+                  if (codeError) setCodeError(undefined)
+                }}
+              />
+              <Button
+                type="button"
+                size="lg"
+                className="w-full"
+                loading={loading}
+                disabled={code.trim().length < 6}
+                onClick={onVerifyCode}
+              >
+                {t('auth.login.loginButton')}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="animate-fade-up animate-delay-100 space-y-5">
             <Input
               label={t('auth.login.emailLabel')}
@@ -102,11 +194,12 @@ export default function LoginPage() {
               {...register('password')}
             />
 
-            <Button type="submit" size="lg" className="w-full" loading={loading}>
+            <Button type="submit" size="lg" className="w-full" loading={loading} disabled={!isLoaded}>
               {t('auth.login.loginButton')}
               <ArrowRight className="h-4 w-4" />
             </Button>
           </form>
+          )}
 
           <p className="animate-fade-up animate-delay-200 mt-6 text-center text-sm text-[var(--color-muted)]">
             {t('auth.login.noAccount')}{' '}

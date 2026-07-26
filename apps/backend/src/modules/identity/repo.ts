@@ -1,7 +1,7 @@
 // modules/identity/repo.ts
 // Drizzle queries for the identity domain. Private to the module; routes
 // must go through the service.
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 
 import { db } from '../../config/db';
 import {
@@ -12,6 +12,7 @@ import {
 } from '../../db/schema/identity';
 import { riderProfiles } from '../../db/schema/riders';
 import { driverProfiles } from '../../db/schema/drivers';
+import { driverApplications } from '../../db/schema/onboarding';
 
 type Locale = (typeof localeEnum)['enumValues'][number];
 type Role = 'rider' | 'driver' | 'admin_super' | 'admin' | 'admin_ops' | 'admin_finance';
@@ -93,7 +94,15 @@ export async function provisionRider(input: ProvisionInput): Promise<string> {
 }
 
 /**
- * Atomic upsert: create user + driver role + clerk external_identity + driver_profile.
+ * Atomic upsert: create user + driver role + clerk external_identity +
+ * driver_profile + driver_application.
+ *
+ * The driver_applications row used to be created by the (now deleted)
+ * email+password register route. Clerk JIT is the only provisioning path, so it
+ * is created here — without it the driver has no application to be gated on.
+ *
+ * approval_status starts `pending`: authenticating with Clerk never implies
+ * approval. Only the admin EVP open-account step flips a driver to approved.
  * Returns the new user id.
  */
 export async function provisionDriver(input: ProvisionInput): Promise<string> {
@@ -103,6 +112,7 @@ export async function provisionDriver(input: ProvisionInput): Promise<string> {
       .values({
         email: input.email ?? null,
         fullName: input.fullName ?? null,
+        emailVerified: input.emailVerified ?? false,
         locale: input.locale ?? 'en',
       })
       .returning({ id: users.id });
@@ -116,10 +126,22 @@ export async function provisionDriver(input: ProvisionInput): Promise<string> {
         provider: 'clerk',
         providerSub: input.clerkUserId,
       });
-    await tx.insert(driverProfiles).values({ userId: user.id, approvalStatus: 'approved' });
+    await tx.insert(driverProfiles).values({ userId: user.id, approvalStatus: 'pending' });
+    await tx.insert(driverApplications).values({ driverId: user.id, state: 'phone_entered' });
 
     return user.id;
   });
+}
+
+/**
+ * Record the driver's PDPA 2010 consent. First consent wins — re-registering or
+ * re-submitting must not overwrite the original timestamp.
+ */
+export async function recordPdpaConsent(userId: string): Promise<void> {
+  await db
+    .update(users)
+    .set({ pdpaConsentAt: new Date() })
+    .where(and(eq(users.id, userId), isNull(users.pdpaConsentAt)));
 }
 
 export async function updateRiderFields(
