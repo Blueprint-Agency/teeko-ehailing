@@ -192,6 +192,22 @@ export interface SurgeZone {
   color: string | null;
 }
 
+export interface LiveTrip {
+  id: string;
+  driver: string;
+  category: string;
+  status: 'matched' | 'driver_arrived' | 'in_trip';
+  pickup: string | null;
+  dropoff: string | null;
+  /** Current position — latest GPS breadcrumb, or the pickup point if none yet. */
+  lat: number;
+  lng: number;
+  heading: number | null;
+  recordedAt: string | null;
+  /** true = real GPS fix; false = pickup fallback (driver hasn't emitted GPS). */
+  live: boolean;
+}
+
 // ── Feedback & Disputes ───────────────────────────────────────────────────────
 export interface FeedbackRow {
   id: string;
@@ -242,6 +258,8 @@ export const adminApi = {
   deleteRider: (id: string) => del<{ ok: boolean }>(`/riders/${id}`),
 
   getDrivers: () => get<Driver[]>('/drivers'),
+
+  getLiveTrips: () => get<LiveTrip[]>('/trips/live'),
 
   updateDriverStatus: (id: string, status: DriverStatus, reason?: string) =>
     post<{ ok: boolean; status: DriverStatus }>(`/drivers/${id}/status`, { status, reason }),
