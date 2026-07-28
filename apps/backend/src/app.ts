@@ -7,6 +7,7 @@ import staticFiles from '@fastify/static';
 import { join } from 'node:path';
 
 import { env } from './config/env';
+import { redis } from './config/redis';
 import { errorHandler } from './http/middleware/errorHandler';
 
 import { riderRoutes } from './api/rider/index';
@@ -46,6 +47,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     startedAt: new Date(Date.now() - process.uptime() * 1000).toISOString(),
     endpoints: {
       health: '/healthz',
+      ready: '/readyz',
       rider: '/api/v1/rider',
       driver: '/api/v1/driver',
       driverWeb: '/api/v1/driver-web',
@@ -55,6 +57,27 @@ export async function buildApp(): Promise<FastifyInstance> {
     },
   }));
   app.get('/healthz', async () => ({ ok: true, service: 'teeko-backend' }));
+
+  // Readiness: unlike /healthz this actually probes Redis. Redis uses
+  // enableOfflineQueue, so ping() can hang while disconnected instead of
+  // rejecting — race it against a timeout so the prober never blocks.
+  app.get('/readyz', async (_req, reply) => {
+    let timer: NodeJS.Timeout | undefined;
+    const ok = await Promise.race([
+      redis
+        .ping()
+        .then(() => true)
+        .catch(() => false),
+      new Promise<boolean>((resolve) => {
+        timer = setTimeout(() => resolve(false), 1000);
+      }),
+    ]).finally(() => clearTimeout(timer));
+
+    if (!ok) {
+      return reply.code(503).send({ ok: false, service: 'teeko-backend', redis: 'down' });
+    }
+    return { ok: true, service: 'teeko-backend', redis: 'up' };
+  });
 
   await app.register(riderRoutes, { prefix: '/api/v1/rider' });
   await app.register(driverRoutes, { prefix: '/api/v1/driver' });

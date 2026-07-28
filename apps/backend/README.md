@@ -27,7 +27,8 @@ make init      # install deps, start postgres + redis, enable PostGIS, run migra
 make dev       # tsx watch src/server.ts
 ```
 
-Server boots at **http://localhost:8000**. Hit `/` for an index payload, `/healthz` for liveness.
+Server boots at **http://localhost:8000**. Hit `/` for an index payload, `/healthz` for liveness,
+`/readyz` for readiness (pings Redis; 503 + `{ redis: 'down' }` when it's unreachable).
 
 ---
 
@@ -149,7 +150,7 @@ curl -H "x-teeko-user: 00000000-0000-0000-0000-000000000001" \
 ```
 
 Roles: `rider` · `driver` · `admin_super` · `admin_ops` · `admin_finance`.
-Public routes (`/api/public/*`, `/healthz`, `/`) need no auth.
+Public routes (`/api/public/*`, `/healthz`, `/readyz`, `/`) need no auth.
 
 ---
 
