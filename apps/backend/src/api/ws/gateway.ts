@@ -16,14 +16,20 @@ export function mountSocketIO(httpServer: HttpServer): Server {
     cors: { origin: '*', methods: ['GET', 'POST'] },
     transports: ['websocket', 'polling'],
     pingInterval: 25_000,
-    pingTimeout: 20_000,
+    // Mobile clients stall: a backgrounded RN app, a Doze window, or a cell
+    // handover can freeze the JS loop past a 20s pong deadline, and every drop
+    // costs a full reconnect + re-auth + presence restore. 60s tolerates those
+    // stalls while still evicting a genuinely dead socket inside ~1.5 min.
+    pingTimeout: 60_000,
     path: '/ws',
   });
 
   setIO(io);
 
   io.on('connection', async (socket: Socket) => {
-    console.log(`[WS] connect  sid=${socket.id}`);
+    console.log(`[WS] connect  sid=${socket.id} transport=${socket.conn.transport.name}`);
+    socket.conn.on('upgrade', (t) => console.log(`[WS] upgrade sid=${socket.id} → ${t.name}`));
+    socket.data.connectedAt = Date.now();
 
     // --- auth handshake ---
     socket.on('auth', async ({ token }: { token: string }) => {
@@ -45,7 +51,15 @@ export function mountSocketIO(httpServer: HttpServer): Server {
         }
         const user = await findUserByExternalId('clerk', claims.sub);
         console.log(`[WS] auth lookup clerkSub=${claims.sub} → dbUserId=${user?.id ?? 'NOT FOUND'} role=${user?.role}`);
-        if (!user) { socket.disconnect(); return; }
+        // Emit auth.error before disconnecting: a bare disconnect is
+        // indistinguishable from a network drop, so the client retries it on the
+        // 1s reconnect loop forever. auth.error tells it to back off instead.
+        if (!user) {
+          console.log(`[WS] auth.error  user not provisioned`);
+          socket.emit('auth.error', { message: 'user not provisioned' });
+          socket.disconnect();
+          return;
+        }
 
         socket.data.userId = user.id;
         socket.data.role = user.role;
@@ -120,45 +134,77 @@ export function mountSocketIO(httpServer: HttpServer): Server {
       if (socket.data.role !== 'driver') return;
       const driverId: string = socket.data.userId;
 
-      await trackingService.updateDriverLocation(driverId, lat, lng, heading);
+      try {
+        await trackingService.updateDriverLocation(driverId, lat, lng, heading);
 
-      const activeTrip = await db.query.trips.findFirst({
-        where: and(
-          eq(trips.driverId, driverId),
-          inArray(trips.status, ['matched', 'driver_arrived', 'in_trip']),
-        ),
-      });
+        const activeTrip = await db.query.trips.findFirst({
+          where: and(
+            eq(trips.driverId, driverId),
+            inArray(trips.status, ['matched', 'driver_arrived', 'in_trip']),
+          ),
+        });
 
-      if (activeTrip) {
-        // Persist a sampled breadcrumb (self-throttled to ~5s/~25m) for route
-        // replay, fare-dispute, and APAD/insurance audit. Only during a trip.
-        await trackingService.persistTripLocation(activeTrip.id, driverId, lat, lng, heading);
+        if (activeTrip) {
+          // Persist a sampled breadcrumb (self-throttled to ~5s/~25m) for route
+          // replay, fare-dispute, and APAD/insurance audit. Only during a trip.
+          await trackingService.persistTripLocation(activeTrip.id, driverId, lat, lng, heading);
 
-        // pickup is now a WKT string "POINT(lng lat)" after geographyPoint.fromDriver
-        const m = String(activeTrip.pickup).match(/POINT\(([^ ]+) ([^ )]+)\)/);
-        const pickupLng = m ? parseFloat(m[1]!) : 0;
-        const pickupLat = m ? parseFloat(m[2]!) : 0;
-        const etaMin = await trackingService.getEtaMinutes(
-          { lat, lng },
-          { lat: pickupLat, lng: pickupLng },
-        );
-        trackingService.emitToRider(activeTrip.riderId, 'driver.location', { lat, lng, etaMin });
+          // pickup is now a WKT string "POINT(lng lat)" after geographyPoint.fromDriver
+          const m = String(activeTrip.pickup).match(/POINT\(([^ ]+) ([^ )]+)\)/);
+          const pickupLng = m ? parseFloat(m[1]!) : 0;
+          const pickupLat = m ? parseFloat(m[2]!) : 0;
+          const etaMin = await trackingService.getEtaMinutesCached(
+            driverId,
+            { lat, lng },
+            { lat: pickupLat, lng: pickupLng },
+          );
+          trackingService.emitToRider(activeTrip.riderId, 'driver.location', { lat, lng, etaMin });
+        }
+      } catch (err) {
+        // Contain the failure to this ping. Unhandled, it would reject into the
+        // process and take every other driver's socket down with it.
+        console.error(`[WS] driver.location failed driverId=${driverId}:`, err);
       }
     });
 
     // --- disconnect cleanup ---
-    socket.on('disconnect', async () => {
+    // `reason` is the whole diagnosis for reconnect churn:
+    //   'ping timeout'               → client stopped answering (backgrounded/frozen app, dead network)
+    //   'transport close'            → the connection dropped underneath us (proxy/LB idle kill, network switch)
+    //   'transport error'            → protocol/proxy failure mid-stream
+    //   'client namespace disconnect'→ the CLIENT called disconnect() — an app-code bug, not the network
+    //   'server namespace disconnect'→ we called disconnect() (auth failure path above)
+    socket.on('disconnect', async (reason: string) => {
       const { userId, role } = socket.data as { userId?: string; role?: string };
-      console.log(`[WS] disconnect sid=${socket.id} userId=${userId ?? 'unauthed'}`);
+      const livedMs = Date.now() - (socket.data.connectedAt ?? Date.now());
+      console.log(
+        `[WS] disconnect sid=${socket.id} userId=${userId ?? 'unauthed'} reason="${reason}" ` +
+        `transport=${socket.conn.transport.name} livedMs=${livedMs}`,
+      );
       if (!userId) return;
       if (role === 'driver') {
-        trackingService.unregisterDriver(userId);
-        await trackingService.removeDriverLocation(userId);
-        // Fix 4: Immediately delete the online flag so dispatch doesn't treat
-        // this driver as available for the remaining 1-hour TTL after they disconnect.
-        await trackingService.clearDriverOnlineStatus(userId);
+        // Only tear down if this socket still owns the registry entry. A
+        // reconnect registers the new socket first, and the old socket's
+        // disconnect arrives afterwards — without this guard that late event
+        // unregisters the *live* socket and wipes its GEO/presence state,
+        // leaving a connected driver unreachable and invisible to riders.
+        const owned = trackingService.unregisterDriver(userId, socket.id);
+        if (!owned) {
+          console.log(`[WS] stale disconnect for userId=${userId} — superseded socket, skipping teardown`);
+          return;
+        }
+        // Redis can be down or slow; an unhandled rejection in a disconnect
+        // handler would kill the process and disconnect everyone else.
+        try {
+          await trackingService.removeDriverLocation(userId);
+          // Fix 4: Immediately delete the online flag so dispatch doesn't treat
+          // this driver as available for the remaining 1-hour TTL after they disconnect.
+          await trackingService.clearDriverOnlineStatus(userId);
+        } catch (err) {
+          console.error(`[WS] disconnect cleanup failed userId=${userId}:`, err);
+        }
       } else {
-        trackingService.unregisterRider(userId);
+        trackingService.unregisterRider(userId, socket.id);
       }
     });
   });

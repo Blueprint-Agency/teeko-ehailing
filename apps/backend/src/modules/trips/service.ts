@@ -147,6 +147,19 @@ export const tripsService = {
       if (!t || t.status !== 'requested') {
         throw new DomainError('TRIP_NOT_AVAILABLE', 'Trip is no longer available.', 409);
       }
+      // The status guard below stops two drivers taking one trip; this stops one
+      // driver taking two. Concurrent riders can each offer the same driver, so
+      // without it a driver tapping accept on both requests ends up with two
+      // 'matched' trips.
+      const otherActive = await tx.query.trips.findFirst({
+        where: and(
+          eq(trips.driverId, driverId),
+          not(inArray(trips.status, ['completed', 'cancelled', 'no_show'])),
+        ),
+      });
+      if (otherActive) {
+        throw new DomainError('DRIVER_BUSY', 'You already have an active trip.', 409);
+      }
       const [row] = await tx
         .update(trips)
         .set({ driverId, status: 'matched', updatedAt: new Date() })

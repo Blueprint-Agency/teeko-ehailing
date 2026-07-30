@@ -21,6 +21,14 @@ const MIN_PERSIST_DISTANCE_M = 25;
 type PersistState = { tripId: string; ts: number; lat: number; lng: number };
 const lastPersist = new Map<string, PersistState>();
 
+// ---- ETA throttling ----
+// Google Distance Matrix is billed per element and drivers heartbeat every ~10s,
+// so recomputing the ETA on every location ping costs one call per driver per
+// heartbeat and scales linearly with concurrent trips. A pickup ETA in whole
+// minutes barely moves in 20s, so cache it and let location itself stream freely.
+const ETA_TTL_MS = 20_000;
+const etaCache = new Map<string, { ts: number; etaMin: number }>();
+
 // Haversine distance in metres between two coordinates.
 function distanceMeters(aLat: number, aLng: number, bLat: number, bLng: number): number {
   const R = 6_371_000;
@@ -36,23 +44,56 @@ function distanceMeters(aLat: number, aLng: number, bLat: number, bLng: number):
 
 export const trackingService = {
   // ---- socket registry ----
+  // Keyed by userId, so a reconnect (or a second device) overwrites the entry.
+  // The disconnect of the *superseded* socket then arrives late — unregister
+  // therefore takes the disconnecting socket's id and only clears the entry if
+  // that socket still owns it. Without this check a stale disconnect deletes the
+  // live socket, leaving the driver connected but unreachable by dispatch.
   registerDriver(driverId: string, socket: Socket) {
     driverSockets.set(driverId, socket);
   },
   registerRider(riderId: string, socket: Socket) {
     riderSockets.set(riderId, socket);
   },
-  unregisterDriver(driverId: string) {
+  /** Returns true if the socket owned the registry entry (i.e. this is a real
+   *  disconnect, not a superseded one) — callers gate their teardown on it. */
+  unregisterDriver(driverId: string, socketId?: string): boolean {
+    const current = driverSockets.get(driverId);
+    if (socketId && current && current.id !== socketId) return false;
     driverSockets.delete(driverId);
+    return true;
   },
-  unregisterRider(riderId: string) {
+  unregisterRider(riderId: string, socketId?: string): boolean {
+    const current = riderSockets.get(riderId);
+    if (socketId && current && current.id !== socketId) return false;
     riderSockets.delete(riderId);
+    return true;
+  },
+  hasDriverSocket(driverId: string): boolean {
+    return driverSockets.get(driverId)?.connected === true;
   },
   getDriverSocket(driverId: string): Socket | undefined {
     return driverSockets.get(driverId);
   },
   getRiderSocket(riderId: string): Socket | undefined {
     return riderSockets.get(riderId);
+  },
+  /** Snapshot of the in-memory socket registry, for liveness probes.
+   *  Counts are per-process: behind a load balancer each instance reports only
+   *  the sockets it owns, so a driver "connected" to another instance shows 0
+   *  here. `entries` vs the live count exposes leaked registry rows — a gap
+   *  means sockets were dropped without their disconnect handler running. */
+  registryStats() {
+    let drivers = 0;
+    for (const s of driverSockets.values()) if (s.connected) drivers++;
+    let riders = 0;
+    for (const s of riderSockets.values()) if (s.connected) riders++;
+    return {
+      drivers,
+      riders,
+      driverEntries: driverSockets.size,
+      riderEntries: riderSockets.size,
+    };
   },
 
   // ---- Redis GEO ----
@@ -75,6 +116,7 @@ export const trackingService = {
 
   async removeDriverLocation(driverId: string): Promise<void> {
     lastPersist.delete(driverId);
+    etaCache.delete(driverId);
     await redis
       .pipeline()
       .del(`driver:location:${driverId}`)
@@ -171,6 +213,22 @@ export const trackingService = {
     return fresh;
   },
 
+  /** Cached wrapper around getEtaMinutes — at most one Distance Matrix call per
+   *  driver per ETA_TTL_MS. Safe to call on every location ping. */
+  async getEtaMinutesCached(
+    driverId: string,
+    driverLocation: { lat: number; lng: number },
+    pickupCoords: { lat: number; lng: number },
+  ): Promise<number> {
+    const hit = etaCache.get(driverId);
+    const now = Date.now();
+    if (hit && now - hit.ts < ETA_TTL_MS) return hit.etaMin;
+
+    const etaMin = await trackingService.getEtaMinutes(driverLocation, pickupCoords);
+    etaCache.set(driverId, { ts: now, etaMin });
+    return etaMin;
+  },
+
   /** ETA from driverLocation to pickupCoords in minutes. */
   async getEtaMinutes(
     driverLocation: { lat: number; lng: number },
@@ -185,10 +243,24 @@ export const trackingService = {
   },
 
   // ---- emit helpers ----
-  emitToDriver(driverId: string, event: string, payload: unknown): void {
+  emitToDriver(driverId: string, event: string, payload: unknown): boolean {
     const s = driverSockets.get(driverId);
-    console.log(`[tracking] emitToDriver driverId=${driverId} event=${event} socketFound=${!!s}`);
-    s?.emit(event, payload);
+    const io = getIO();
+    console.log(`[tracking] emitToDriver driverId=${driverId} event=${event} directSocketFound=${!!s} ioReady=${!!io}`);
+    if (s?.connected) {
+      s.emit(event, payload);
+      return true;
+    }
+    if (io) {
+      // Room fallback, mirroring emitToRider: the gateway calls
+      // socket.join('driver:{id}') on auth, so this still reaches a driver whose
+      // map entry was clobbered by reconnect churn.
+      console.log(`[tracking] emitToDriver falling back to room driver:${driverId}`);
+      io.to(`driver:${driverId}`).emit(event, payload);
+      return true;
+    }
+    console.log(`[tracking] emitToDriver DROPPED — no socket and no io instance`);
+    return false;
   },
 
   emitToRider(riderId: string, event: string, payload: unknown): void {

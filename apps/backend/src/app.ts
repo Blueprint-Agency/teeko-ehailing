@@ -9,6 +9,8 @@ import { join } from 'node:path';
 import { env } from './config/env';
 import { redis } from './config/redis';
 import { errorHandler } from './http/middleware/errorHandler';
+import { getIO } from './api/ws/gateway';
+import { trackingService } from './modules/tracking/service';
 
 import { riderRoutes } from './api/rider/index';
 import { driverRoutes } from './api/driver/index';
@@ -16,6 +18,29 @@ import { driverWebRoutes } from './api/driver-web/index';
 import { adminRoutes } from './api/admin/index';
 import { webhookRoutes } from './api/webhooks/index';
 import { publicRoutes } from './api/public/index';
+
+/**
+ * Socket.IO liveness snapshot. `mountSocketIO` runs after `buildApp` but before
+ * `listen`, so by the time any request reaches a handler the gateway is either
+ * mounted or genuinely missing — getIO() throwing is a real failure, not a race.
+ */
+function wsStatus() {
+  try {
+    const io = getIO();
+    return {
+      mounted: true,
+      path: '/ws',
+      // engine.clientsCount counts raw transport connections on THIS process,
+      // including sockets that connected but never sent `auth`. A gap between
+      // this and drivers+riders below means clients are failing the handshake.
+      sockets: io.engine.clientsCount,
+      rooms: io.sockets.adapter.rooms.size,
+      ...trackingService.registryStats(),
+    };
+  } catch {
+    return { mounted: false };
+  }
+}
 
 export async function buildApp(): Promise<FastifyInstance> {
   const app = Fastify({
@@ -48,6 +73,7 @@ export async function buildApp(): Promise<FastifyInstance> {
     endpoints: {
       health: '/healthz',
       ready: '/readyz',
+      websocket: '/wsz',
       rider: '/api/v1/rider',
       driver: '/api/v1/driver',
       driverWeb: '/api/v1/driver-web',
@@ -73,10 +99,37 @@ export async function buildApp(): Promise<FastifyInstance> {
       }),
     ]).finally(() => clearTimeout(timer));
 
-    if (!ok) {
-      return reply.code(503).send({ ok: false, service: 'teeko-backend', redis: 'down' });
+    const ws = wsStatus();
+    if (!ok || !ws.mounted) {
+      return reply.code(503).send({
+        ok: false,
+        service: 'teeko-backend',
+        redis: ok ? 'up' : 'down',
+        ws: ws.mounted ? 'up' : 'down',
+      });
     }
-    return { ok: true, service: 'teeko-backend', redis: 'up' };
+    return { ok: true, service: 'teeko-backend', redis: 'up', ws: 'up' };
+  });
+
+  // WS liveness: per-process socket counts. `pid` is here because the registry
+  // is in-memory — when drivers report "connected" but a given instance shows
+  // 0 drivers, comparing pids across replicas tells you they landed elsewhere.
+  app.get('/wsz', async (_req, reply) => {
+    const ws = wsStatus();
+    if (!ws.mounted) {
+      return reply.code(503).send({ ok: false, service: 'teeko-backend', ws });
+    }
+    // uptimeSec next to pid: if the churn is caused by the process restarting,
+    // uptime resets to ~0 at exactly the moment sockets drop. A steady uptime
+    // across a disconnect proves the server never died and the cause is the
+    // network or the client.
+    return {
+      ok: true,
+      service: 'teeko-backend',
+      pid: process.pid,
+      uptimeSec: Math.round(process.uptime()),
+      ws,
+    };
   });
 
   await app.register(riderRoutes, { prefix: '/api/v1/rider' });

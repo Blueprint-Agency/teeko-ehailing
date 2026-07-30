@@ -1,4 +1,4 @@
-import { and, eq, inArray, not } from 'drizzle-orm';
+import { and, eq, gt, inArray, ne, not } from 'drizzle-orm';
 import { db } from '../../db';
 import { trips, tripOffers, driverProfiles, driverRadiusSettings, fareQuotes, users } from '../../db/schema';
 import { redis } from '../../config/redis';
@@ -15,6 +15,43 @@ function extractPoint(raw: unknown): { lat: number; lng: number } {
   }
   const m = String(raw).match(/POINT\(([^ ]+) ([^ )]+)\)/);
   return m ? { lat: parseFloat(m[2]!), lng: parseFloat(m[1]!) } : { lat: 0, lng: 0 };
+}
+
+/** True when the driver holds neither an active trip nor a live offer for some
+ *  *other* trip.
+ *
+ *  The offer half is what stops double-booking: `offer:{tripId}:current` is keyed
+ *  per trip, so it gives no cross-trip exclusion. Two riders booking at the same
+ *  moment both compute a queue, both rank the same nearest driver first, and both
+ *  emit trip.request to them — and nothing downstream stopped that driver
+ *  accepting both. Checked at queue-build time *and* again just before each offer,
+ *  because the queue is walked over as much as 60s. */
+async function driverIsFree(driverId: string, tripId: string): Promise<boolean> {
+  const activeTrip = await db.query.trips.findFirst({
+    where: and(
+      eq(trips.driverId, driverId),
+      not(inArray(trips.status, ['completed', 'cancelled', 'no_show'])),
+    ),
+  });
+  if (activeTrip) {
+    console.log(`[dispatch] driver=${driverId} has active trip ${activeTrip.id} (${activeTrip.status}), skipping`);
+    return false;
+  }
+
+  const heldOffer = await db.query.tripOffers.findFirst({
+    where: and(
+      eq(tripOffers.driverId, driverId),
+      eq(tripOffers.status, 'pending'),
+      gt(tripOffers.expiresAt, new Date()),
+      ne(tripOffers.tripId, tripId),
+    ),
+  });
+  if (heldOffer) {
+    console.log(`[dispatch] driver=${driverId} already holds a live offer for trip ${heldOffer.tripId}, skipping`);
+    return false;
+  }
+
+  return true;
 }
 
 async function findOnlineDriverIds(): Promise<string[]> {
@@ -92,19 +129,11 @@ export const dispatchService = {
       console.log(`[dispatch] driver=${driverId} profile.availability=${profile?.availability} approvalStatus=${profile?.approvalStatus}`);
       if (!profile || profile.availability !== 'online') continue;
 
-      // Skip drivers who already have an active trip — otherwise a driver who just
-      // accepted trip A can receive trip B immediately if trip A's offer timeout
-      // fires and the rider retries before the driver goes offline.
-      const activeTrip = await db.query.trips.findFirst({
-        where: and(
-          eq(trips.driverId, driverId),
-          not(inArray(trips.status, ['completed', 'cancelled', 'no_show'])),
-        ),
-      });
-      if (activeTrip) {
-        console.log(`[dispatch] driver=${driverId} has active trip ${activeTrip.id} (${activeTrip.status}), skipping`);
-        continue;
-      }
+      // Skip drivers who already have an active trip or a live offer elsewhere —
+      // otherwise a driver who just accepted trip A can receive trip B immediately
+      // if trip A's offer timeout fires and the rider retries before the driver
+      // goes offline, and concurrent riders can both offer to the same driver.
+      if (!(await driverIsFree(driverId, tripId))) continue;
 
       const radius = await db.query.driverRadiusSettings.findFirst({
         where: eq(driverRadiusSettings.driverId, driverId),
@@ -175,6 +204,28 @@ export const dispatchService = {
     // Resolve pickup coords from explicit params (preferred) or DB
     const pLat = pickupLat ?? extractPoint(trip.pickup).lat;
     const pLng = pickupLng ?? extractPoint(trip.pickup).lng;
+
+    // Re-check just-in-time: the queue was snapshotted at dispatch time and may
+    // be up to a minute stale by the time we reach this index.
+    if (!(await driverIsFree(driverId, tripId))) {
+      await dispatchService.offerToDriver(tripId, queue, index + 1, pLat, pLng);
+      return;
+    }
+
+    // Ghost drivers: `availability` in Postgres is authoritative for dispatch, but
+    // it is never cleared on socket disconnect — so a driver who closed the app is
+    // still queued, and emitWithRetry burns its full 8s before giving up. Two or
+    // three of those consume the entire 60s search window while real drivers wait
+    // behind them. When there is no socket AND no presence key (deleted on
+    // disconnect, restored on WS auth), the driver is genuinely gone — skip now.
+    // A failed Redis read yields '1' so an outage falls back to the retry path
+    // rather than skipping every driver.
+    const presence = await redis.get(`driver:online:${driverId}`).catch(() => '1');
+    if (!presence && !trackingService.hasDriverSocket(driverId)) {
+      console.log(`[dispatch] driver=${driverId} has no socket and no presence key — skipping without retry`);
+      await dispatchService.offerToDriver(tripId, queue, index + 1, pLat, pLng);
+      return;
+    }
 
     // Fix 2: Persist the full queue and pickup coords in the offer payload so
     // handleDriverDecline can advance the queue correctly without re-querying

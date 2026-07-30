@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -9,7 +10,7 @@ import { ThemeProvider, useTheme } from '../components/ThemeProvider';
 import { useColors } from '../constants/colors';
 import { LocaleProvider } from '../providers/LocaleProvider';
 import { useDriverStore } from '../store/useDriverStore';
-import { connectSocket, disconnectSocket, getSocket } from '../lib/socket';
+import { connectSocket, disconnectSocket, resumeSocket, getSocket } from '../lib/socket';
 import { api, registerTokenGetter } from '../lib/api';
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? '';
@@ -57,12 +58,29 @@ function SocketBridge() {
   // Guard: connect once per session; don't reconnect on every token refresh.
   const hasConnectedRef = useRef(false);
 
+  // Reconnect on foreground. The OS freezes the JS loop while the app is
+  // backgrounded, so the server's ping times out and the socket is dropped
+  // without the client noticing — a driver who unlocks their phone would
+  // otherwise sit there "online" but unreachable by dispatch until something
+  // else happened to re-run the effect below.
   useEffect(() => {
-    if (!isSignedIn || !token) {
+    if (!isSignedIn) return;
+    const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
+      if (state === 'active') resumeSocket();
+    });
+    return () => sub.remove();
+  }, [isSignedIn]);
+
+  useEffect(() => {
+    // Only a real sign-out tears the socket down. A momentarily null token
+    // during a Clerk refresh is not a disconnect reason — treating it as one
+    // made the socket drop and reconnect on the TokenSync interval.
+    if (!isSignedIn) {
       hasConnectedRef.current = false;
       disconnectSocket();
       return;
     }
+    if (!token) return;
 
     if (hasConnectedRef.current) return;
     hasConnectedRef.current = true;
