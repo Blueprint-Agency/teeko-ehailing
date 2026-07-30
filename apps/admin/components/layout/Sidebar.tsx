@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import {
   Dashboard, People, DirectionsCar, Map, Gavel, TrendingUp,
-  Payments, BarChart, Security, History, SupportAgent,
+  Payments, Security, History, SupportAgent,
   Campaign, Settings, ExpandLess, ExpandMore,
   AssignmentTurnedIn, Policy, Speed,
 } from '@mui/icons-material';
@@ -66,7 +66,6 @@ export function Sidebar() {
     { label: 'Surge Control', icon: <Speed fontSize="small" />, href: '/surge', permission: 'manage_surge' },
     { label: 'Commissions', icon: <TrendingUp fontSize="small" />, href: '/commissions', permission: 'adjust_commission' },
     { label: 'Payouts', icon: <Payments fontSize="small" />, href: '/payouts', permission: 'view_finance' },
-    { label: 'Reports', icon: <BarChart fontSize="small" />, href: '/reports', permission: 'view_reports' },
     { label: 'PDPA Tools', icon: <Policy fontSize="small" />, href: '/pdpa', permission: 'pdpa_tools' },
     { label: 'Audit Log', icon: <History fontSize="small" />, href: '/audit', permission: 'view_audit' },
     { label: 'Support', icon: <SupportAgent fontSize="small" />, href: '/support' },
