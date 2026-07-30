@@ -174,24 +174,40 @@ export default function PayoutsPage() {
             InputLabelProps={{ shrink: true }}
           />
           <Button variant="contained" onClick={applyRange}>Apply</Button>
+          <Box sx={{ flexGrow: 1 }} />
           <ButtonGroup size="medium" variant="outlined">
             <Button onClick={() => applyPreset('week')}>This Week</Button>
             <Button onClick={() => applyPreset('month')}>This Month</Button>
             <Button onClick={() => applyPreset('year')}>This Year</Button>
           </ButtonGroup>
-          <Box sx={{ flexGrow: 1 }} />
-          <Typography variant="caption" color="text.secondary">
-            Trip data available {DATA_MIN} to {DATA_MAX}
-          </Typography>
         </Stack>
       </Paper>
+
+      {/* Summary stat cards */}
+      <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+        {[
+          { label: 'Drivers', value: String(rows.length) },
+          { label: 'Trips', value: String(rangeTrips.length) },
+          { label: 'Total', value: rm(totalAmount), highlight: true },
+        ].map((c) => (
+          <Paper
+            key={c.label}
+            variant="outlined"
+            sx={{ p: 2.5, flex: '1 1 180px', minWidth: 180 }}
+          >
+            <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing={0.5}>
+              {c.label}
+            </Typography>
+            <Typography variant="h4" fontWeight={700} color={c.highlight ? 'success.main' : 'text.primary'}>
+              {c.value}
+            </Typography>
+          </Paper>
+        ))}
+      </Stack>
 
       {/* Range summary */}
       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
         <Chip label={`Range: ${period}`} color="primary" variant="outlined" />
-        <Chip label={`${rows.length} drivers`} variant="outlined" />
-        <Chip label={`${rangeTrips.length} trips`} variant="outlined" />
-        <Chip label={`Total ${rm(totalAmount)}`} color="success" variant="outlined" />
         <Box sx={{ flexGrow: 1 }} />
         {canPay && (
           <Button

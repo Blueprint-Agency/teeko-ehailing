@@ -65,7 +65,6 @@ export function Sidebar() {
     },
     { label: 'Surge Control', icon: <Speed fontSize="small" />, href: '/surge', permission: 'manage_surge' },
     { label: 'Commissions', icon: <TrendingUp fontSize="small" />, href: '/commissions', permission: 'adjust_commission' },
-    { label: 'Incentives', icon: <Campaign fontSize="small" />, href: '/incentives', permission: 'manage_incentives' },
     { label: 'Payouts', icon: <Payments fontSize="small" />, href: '/payouts', permission: 'view_finance' },
     { label: 'Reports', icon: <BarChart fontSize="small" />, href: '/reports', permission: 'view_reports' },
     { label: 'PDPA Tools', icon: <Policy fontSize="small" />, href: '/pdpa', permission: 'pdpa_tools' },
@@ -145,6 +144,22 @@ export function Sidebar() {
             </ListItemButton>
           );
         })}
+
+        {can('manage_incentives' as never) && (
+          <>
+            <Divider sx={{ my: 1 }} />
+            <Typography
+              variant="overline"
+              sx={{ px: 2, color: 'text.disabled', fontSize: 10, letterSpacing: 0.5, lineHeight: 2 }}
+            >
+              Coming Soon
+            </Typography>
+            <ListItemButton disabled sx={{ borderRadius: 1, mb: 0.25 }}>
+              <ListItemIcon sx={{ minWidth: 32 }}><Campaign fontSize="small" /></ListItemIcon>
+              <ListItemText primary="Incentives" primaryTypographyProps={{ fontSize: 13 }} />
+            </ListItemButton>
+          </>
+        )}
       </List>
     </>
   );
