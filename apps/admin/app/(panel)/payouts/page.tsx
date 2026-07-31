@@ -2,15 +2,18 @@
 import {
   Box, Typography, Button, Alert, Chip, Stack, TextField, ButtonGroup, Paper, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText,
-  Table, TableHead, TableBody, TableRow, TableCell,
+  Table, TableHead, TableBody, TableRow, TableCell, Grid, Card, CardContent,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridToolbar, GridRowSelectionModel } from '@mui/x-data-grid';
+import { BarChart, LineChart } from '@mui/x-charts';
+import { Download } from '@mui/icons-material';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import { useRbac } from '@/hooks/useRbac';
 import tripsData from '@/data/mock-trips.json';
 import payoutsData from '@/data/mock-payouts.json';
 import driversData from '@/data/mock-drivers.json';
+import revenueData from '@/data/mock-revenue.json';
 
 const FINANCE_EMAIL = 'finance@teeko.my';
 
@@ -61,6 +64,20 @@ function downloadSheet(rows: PayoutRow[], period: string) {
 export default function PayoutsPage() {
   const { can } = useRbac();
   const canPay = can('trigger_payout');
+
+  // Revenue Reports data
+  const last30 = revenueData.slice(-30);
+  const last7 = revenueData.slice(-7);
+  const totalRevenue = last30.reduce((s, d) => s + d.revenue, 0);
+  const totalCommissions = last30.reduce((s, d) => s + d.commissions, 0);
+  const totalPayouts = last30.reduce((s, d) => s + d.payouts, 0);
+  const totalReportTrips = last30.reduce((s, d) => s + d.trips, 0);
+  const reportSummary = [
+    { label: '30-day Revenue',    value: `RM ${totalRevenue.toLocaleString()}` },
+    { label: '30-day Commission', value: `RM ${totalCommissions.toLocaleString()}` },
+    { label: '30-day Payouts',    value: `RM ${totalPayouts.toLocaleString()}` },
+    { label: '30-day Trips',      value: totalReportTrips.toLocaleString() },
+  ];
 
   const [draft, setDraft] = useState({ start: DATA_MIN, end: DATA_MAX });
   const [applied, setApplied] = useState({ start: DATA_MIN, end: DATA_MAX });
@@ -174,24 +191,40 @@ export default function PayoutsPage() {
             InputLabelProps={{ shrink: true }}
           />
           <Button variant="contained" onClick={applyRange}>Apply</Button>
+          <Box sx={{ flexGrow: 1 }} />
           <ButtonGroup size="medium" variant="outlined">
             <Button onClick={() => applyPreset('week')}>This Week</Button>
             <Button onClick={() => applyPreset('month')}>This Month</Button>
             <Button onClick={() => applyPreset('year')}>This Year</Button>
           </ButtonGroup>
-          <Box sx={{ flexGrow: 1 }} />
-          <Typography variant="caption" color="text.secondary">
-            Trip data available {DATA_MIN} to {DATA_MAX}
-          </Typography>
         </Stack>
       </Paper>
+
+      {/* Summary stat cards */}
+      <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
+        {[
+          { label: 'Drivers', value: String(rows.length) },
+          { label: 'Trips', value: String(rangeTrips.length) },
+          { label: 'Total', value: rm(totalAmount), highlight: true },
+        ].map((c) => (
+          <Paper
+            key={c.label}
+            variant="outlined"
+            sx={{ p: 2.5, flex: '1 1 180px', minWidth: 180 }}
+          >
+            <Typography variant="caption" color="text.secondary" textTransform="uppercase" letterSpacing={0.5}>
+              {c.label}
+            </Typography>
+            <Typography variant="h4" fontWeight={700} color={c.highlight ? 'success.main' : 'text.primary'}>
+              {c.value}
+            </Typography>
+          </Paper>
+        ))}
+      </Stack>
 
       {/* Range summary */}
       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
         <Chip label={`Range: ${period}`} color="primary" variant="outlined" />
-        <Chip label={`${rows.length} drivers`} variant="outlined" />
-        <Chip label={`${rangeTrips.length} trips`} variant="outlined" />
-        <Chip label={`Total ${rm(totalAmount)}`} color="success" variant="outlined" />
         <Box sx={{ flexGrow: 1 }} />
         {canPay && (
           <Button
@@ -226,6 +259,59 @@ export default function PayoutsPage() {
           slots={{ toolbar: GridToolbar }} slotProps={{ toolbar: { showQuickFilter: true } }}
         />
       </Box>
+
+      {/* Revenue Reports section */}
+      <Divider sx={{ my: 4 }} />
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
+        <Typography variant="h6" fontWeight={700}>Revenue Reports</Typography>
+        {can('export_reports') && (
+          <Button startIcon={<Download />} size="small" variant="outlined">Export CSV</Button>
+        )}
+      </Box>
+
+      <Grid container spacing={2} mb={3}>
+        {reportSummary.map((s) => (
+          <Grid item xs={6} md={3} key={s.label}>
+            <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
+              <CardContent sx={{ p: 1.5 }}>
+                <Typography variant="h6" fontWeight={700}>{s.value}</Typography>
+                <Typography variant="caption" color="text.secondary">{s.label}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={8}>
+          <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Daily Revenue (Last 30 days)</Typography>
+              <BarChart
+                height={280}
+                series={[
+                  { data: last30.map((d) => d.revenue), label: 'Revenue', color: '#1A56DB' },
+                  { data: last30.map((d) => d.commissions), label: 'Commission', color: '#7E3AF2' },
+                ]}
+                xAxis={[{ data: last30.map((d) => d.date.slice(5)), scaleType: 'band', tickLabelStyle: { fontSize: 10 } }]}
+              />
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid item xs={12} md={4}>
+          <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
+            <CardContent sx={{ p: 2 }}>
+              <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Daily Trips (Last 7 days)</Typography>
+              <LineChart
+                height={280}
+                series={[{ data: last7.map((d) => d.trips), label: 'Trips', color: '#057A55' }]}
+                xAxis={[{ data: last7.map((d) => d.date.slice(5)), scaleType: 'band' }]}
+              />
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
 
       {/* Trip log modal */}
       <Dialog open={!!tripDriver} onClose={() => setTripDriver(null)} maxWidth="md" fullWidth>
