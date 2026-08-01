@@ -13,6 +13,7 @@ import { routes as payouts } from './payouts.routes';
 import { routes as broadcasts } from './broadcasts.routes';
 import { routes as pdpa } from './pdpa.routes';
 import { routes as metrics } from './metrics.routes';
+import { routes as revenue } from './revenue.routes';
 import { routes as commissions } from './commissions.routes';
 import { routes as surge } from './surge.routes';
 import { routes as feedback } from './feedback.routes';
@@ -33,6 +34,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(broadcasts, { prefix: '/broadcasts' });
   await app.register(pdpa, { prefix: '/pdpa' });
   await app.register(metrics, { prefix: '/metrics' });
+  await app.register(revenue, { prefix: '/revenue' });
   await app.register(commissions, { prefix: '/commissions' });
   await app.register(surge, { prefix: '/surge' });
   await app.register(feedback, { prefix: '/feedback' });

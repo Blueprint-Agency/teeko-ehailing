@@ -250,6 +250,17 @@ export type DisputeQueue = 'dispute' | 'refund' | 'completed';
 export type DisputeAction = 'reject' | 'approve_refund';
 export type RefundStatus = 'refund_processing' | 'refund_completed' | 'refund_failed';
 
+// ── Revenue reports ───────────────────────────────────────────────────────────
+export interface RevenueDay {
+  date: string;
+  trips: number;
+  /** Major-unit ringgit (RM), not sen. */
+  revenue: number;
+  commissions: number;
+  payouts: number;
+  refunds: number;
+}
+
 export const adminApi = {
   getRiders: () => get<Rider[]>('/riders'),
 
@@ -342,4 +353,7 @@ export const adminApi = {
 
   updateRefundStatus: (id: string, status: RefundStatus, note?: string, ref?: string) =>
     put<{ ok: boolean; dispute: DisputeRow }>(`/disputes/${id}/refund`, { status, note, ref }),
+
+  // ── Revenue reports ──────────────────────────────────────────────────────────
+  getRevenueDaily: (days = 30) => get<RevenueDay[]>(`/revenue/daily?days=${days}`),
 };

@@ -8,6 +8,7 @@ import { evpRecords } from '../src/db/schema/compliance';
 import { notificationInbox } from '../src/db/schema/notifications-content';
 import { feedback } from '../src/db/schema/feedback-disputes';
 import { disputes } from '../src/db/schema/trips';
+import { payments, driverEarnings, payouts, refunds } from '../src/db/schema/payments';
 
 // Fixed UUIDs so the frontend can reference them via env var
 export const MOCK_DRIVER_ID = '00000000-0000-0000-0000-000000000001';
@@ -200,6 +201,11 @@ async function seed() {
   // A small directory of riders the admin panel lists. Completed trips drive
   // the `trips` count and `totalSpent` (sum of finalFareCents) the API derives.
   await seedRiders();
+
+  // ── Recent financials ───────────────────────────────────────────────────────
+  // Last-30-day trips/payments/earnings/payouts/refunds so the admin Revenue
+  // Reports charts render real data (the fixtures above are dated 2025).
+  await seedRecentFinance();
 
   console.log('Seed complete.');
   console.log(`  Driver ID : ${MOCK_DRIVER_ID}`);
@@ -501,6 +507,127 @@ async function seedFeedbackAndDisputes() {
   }
 
   console.log(`  Seeded ${feedbacks.length} feedback + ${disputeRows.length} disputes.`);
+}
+
+// Recent (last-30-day) financial activity so the admin Revenue Reports charts have
+// real data. Populates the exact tables the /admin/revenue/daily endpoint reads:
+//   revenue + trips → trips (completed, finalFareCents)
+//   commissions     → driver_earnings.commissionCents
+//   payouts         → payouts.amountCents (status 'paid')
+//   refunds         → refunds.amountCents (status 'succeeded'; needs a parent payment)
+// Deterministic UUIDs (prefix 7x) + onConflictDoNothing keep re-runs idempotent.
+async function seedRecentFinance() {
+  console.log('Seeding recent financial activity (last 30 days)...');
+
+  const DAYS = 30;
+  const PICKUP = { lng: 101.6869, lat: 3.139 };
+  const DROPOFF = { lng: 101.7117, lat: 3.158 };
+  const wkt = (lng: number, lat: number) => `SRID=4326;POINT(${lng} ${lat})`;
+  const riderId = (n: number) => `50000000-0000-0000-0000-${String(n).padStart(12, '0')}`;
+  const hex12 = (n: number) => String(n).padStart(12, '0');
+  const uuid = (prefix: string, n: number) => `${prefix}-0000-0000-0000-${hex12(n)}`;
+
+  // A date `d` days before now, at a fixed hour (deterministic, no time-of-day drift).
+  const dayAt = (d: number, hour: number) => {
+    const dt = new Date();
+    dt.setHours(hour, 0, 0, 0);
+    dt.setDate(dt.getDate() - d);
+    return dt;
+  };
+
+  const CATEGORIES = ['go', 'go', 'premium']; // weighted toward the cheaper tier
+  let seq = 0;
+  let tripCount = 0;
+  let payoutCount = 0;
+  let refundCount = 0;
+
+  for (let d = DAYS - 1; d >= 0; d--) {
+    // 3–6 trips/day, varying deterministically by day.
+    const perDay = 3 + (d % 4);
+    let dayNet = 0;
+
+    for (let i = 0; i < perDay; i++) {
+      seq += 1;
+      const rId = riderId((seq % 5) + 1); // cycle active-ish riders 1..5
+      const fareCents = 1200 + ((seq * 137) % 4800); // ~RM12–60
+      const commissionCents = Math.round(fareCents * 0.2); // 20% platform cut
+      const netCents = fareCents - commissionCents;
+      dayNet += netCents;
+
+      const tId = uuid('70000000', seq);
+      const pId = uuid('72000000', seq);
+      const jitter = i * 0.001;
+      const at = dayAt(d, 8 + i);
+
+      await db.insert(trips).values({
+        id: tId,
+        riderId: rId,
+        driverId: MOCK_DRIVER_ID,
+        status: 'completed',
+        category: CATEGORIES[seq % CATEGORIES.length]!,
+        pickup: wkt(PICKUP.lng + jitter, PICKUP.lat + jitter),
+        dropoff: wkt(DROPOFF.lng + jitter, DROPOFF.lat + jitter),
+        pickupAddress: 'KLCC, Kuala Lumpur',
+        dropoffAddress: 'Mid Valley Megamall, Kuala Lumpur',
+        finalFareCents: fareCents,
+        completedAt: at,
+        createdAt: at,
+      }).onConflictDoNothing();
+      tripCount += 1;
+
+      await db.insert(payments).values({
+        id: pId,
+        tripId: tId,
+        riderId: rId,
+        driverId: MOCK_DRIVER_ID,
+        kind: 'trip_fare',
+        methodType: 'card',
+        amountCents: fareCents,
+        commissionCents,
+        status: 'succeeded',
+        createdAt: at,
+      }).onConflictDoNothing();
+
+      await db.insert(driverEarnings).values({
+        id: uuid('71000000', seq),
+        driverId: MOCK_DRIVER_ID,
+        tripId: tId,
+        paymentId: pId,
+        grossCents: fareCents,
+        commissionCents,
+        netCents,
+        transferred: true,
+        createdAt: at,
+      }).onConflictDoNothing();
+
+      // Occasional partial refund (every 9th trip) tied to its payment.
+      if (seq % 9 === 0) {
+        await db.insert(refunds).values({
+          id: uuid('74000000', seq),
+          paymentId: pId,
+          amountCents: Math.round(fareCents * 0.5),
+          reason: 'rider_complaint',
+          status: 'succeeded',
+          issuedBy: MOCK_ADMIN_ID,
+          createdAt: dayAt(d, 18), // later same day
+        }).onConflictDoNothing();
+        refundCount += 1;
+      }
+    }
+
+    // One aggregated driver payout per day for that day's net earnings.
+    payoutCount += 1;
+    await db.insert(payouts).values({
+      id: uuid('73000000', payoutCount),
+      driverId: MOCK_DRIVER_ID,
+      amountCents: dayNet,
+      method: 'standard',
+      status: 'paid',
+      createdAt: dayAt(d, 21),
+    }).onConflictDoNothing();
+  }
+
+  console.log(`  Seeded ${tripCount} trips, ${payoutCount} payouts, ${refundCount} refunds across ${DAYS} days.`);
 }
 
 seed()

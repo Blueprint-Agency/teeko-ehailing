@@ -2,18 +2,18 @@
 import {
   Box, Typography, Button, Alert, Chip, Stack, TextField, ButtonGroup, Paper, Divider,
   Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText,
-  Table, TableHead, TableBody, TableRow, TableCell, Grid, Card, CardContent,
+  Table, TableHead, TableBody, TableRow, TableCell, Grid, Card, CardContent, CircularProgress,
 } from '@mui/material';
 import { DataGrid, GridColDef, GridToolbar, GridRowSelectionModel } from '@mui/x-data-grid';
 import { BarChart, LineChart } from '@mui/x-charts';
 import { Download } from '@mui/icons-material';
 import dayjs from 'dayjs';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRbac } from '@/hooks/useRbac';
+import { adminApi, RevenueDay } from '@/lib/api';
 import tripsData from '@/data/mock-trips.json';
 import payoutsData from '@/data/mock-payouts.json';
 import driversData from '@/data/mock-drivers.json';
-import revenueData from '@/data/mock-revenue.json';
 
 const FINANCE_EMAIL = 'finance@teeko.my';
 
@@ -65,9 +65,23 @@ export default function PayoutsPage() {
   const { can } = useRbac();
   const canPay = can('trigger_payout');
 
-  // Revenue Reports data
-  const last30 = revenueData.slice(-30);
-  const last7 = revenueData.slice(-7);
+  // Revenue Reports data — fetched from the backend (last 30 days).
+  const [revenue, setRevenue] = useState<RevenueDay[]>([]);
+  const [revenueLoading, setRevenueLoading] = useState(true);
+  const [revenueError, setRevenueError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    adminApi
+      .getRevenueDaily(30)
+      .then((data) => { if (alive) { setRevenue(data); setRevenueError(''); } })
+      .catch((e) => { if (alive) setRevenueError(e instanceof Error ? e.message : 'Failed to load revenue'); })
+      .finally(() => { if (alive) setRevenueLoading(false); });
+    return () => { alive = false; };
+  }, []);
+
+  const last30 = revenue.slice(-30);
+  const last7 = revenue.slice(-7);
   const totalRevenue = last30.reduce((s, d) => s + d.revenue, 0);
   const totalCommissions = last30.reduce((s, d) => s + d.commissions, 0);
   const totalPayouts = last30.reduce((s, d) => s + d.payouts, 0);
@@ -265,10 +279,18 @@ export default function PayoutsPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
         <Typography variant="h6" fontWeight={700}>Revenue Reports</Typography>
         {can('export_reports') && (
-          <Button startIcon={<Download />} size="small" variant="outlined">Export CSV</Button>
+          <Button startIcon={<Download />} size="small" variant="outlined" disabled={revenueLoading || !!revenueError}>Export CSV</Button>
         )}
       </Box>
 
+      {revenueError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setRevenueError('')}>{revenueError}</Alert>}
+
+      {revenueLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+          <CircularProgress size={28} />
+        </Box>
+      ) : (
+      <>
       <Grid container spacing={2} mb={3}>
         {reportSummary.map((s) => (
           <Grid item xs={6} md={3} key={s.label}>
@@ -312,6 +334,8 @@ export default function PayoutsPage() {
           </Card>
         </Grid>
       </Grid>
+      </>
+      )}
 
       {/* Trip log modal */}
       <Dialog open={!!tripDriver} onClose={() => setTripDriver(null)} maxWidth="md" fullWidth>
