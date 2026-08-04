@@ -3,11 +3,12 @@ import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '../../config/db';
 import { documents, documentReviews, driverApplications } from '../../db/schema/onboarding';
 import { vehicles, driverProfiles } from '../../db/schema/drivers';
-import { evpRecords, auditLog } from '../../db/schema/compliance';
+import { evpRecords } from '../../db/schema/compliance';
 import { users, userRoles } from '../../db/schema/identity';
 import { notificationInbox } from '../../db/schema/notifications-content';
 import { ensureEvpRecordForDriver, resolveDocumentDriverId } from '../../modules/onboarding';
 import { sendEmail } from '../../external/gmail-smtp';
+import { recordAudit, recordAuditSafe } from '../../modules/admin/audit';
 
 // Admin-facing driver status ⇄ DB enums. The admin panel speaks in
 // active/pending/suspended/inactive; the DB stores an onboarding
@@ -120,7 +121,7 @@ export async function routes(app: FastifyInstance) {
 
       // Guard: target must be a non-deleted user holding the driver role.
       const [driver] = await db
-        .select({ id: users.id })
+        .select({ id: users.id, name: users.fullName })
         .from(users)
         .innerJoin(
           userRoles,
@@ -136,13 +137,18 @@ export async function routes(app: FastifyInstance) {
           .set({ approvalStatus: APPROVAL_STATUS[next] })
           .where(eq(driverProfiles.userId, id));
         await tx.update(users).set({ status: USER_STATUS[next] }).where(eq(users.id, id));
-        await tx.insert(auditLog).values({
-          actorId: req.user!.id,
-          action: 'driver_status_change',
-          targetType: 'driver',
-          targetId: id,
-          payload: { status: next, reason: reason ?? null },
-        });
+        await recordAudit(
+          req,
+          {
+            action: 'driver_status_change',
+            targetType: 'driver',
+            targetId: id,
+            targetName: driver.name ?? id,
+            details: `Status set to ${next}${reason ? ` — ${reason}` : ''}`,
+            payload: { status: next, reason: reason ?? null },
+          },
+          tx,
+        );
       });
 
       return { ok: true, status: next };
@@ -248,6 +254,15 @@ export async function routes(app: FastifyInstance) {
         return resolvedDriverId;
       });
 
+      await recordAuditSafe(req, {
+        action: 'document_review',
+        targetType: 'driver_document',
+        targetId: documentId,
+        targetName: `${DOC_LABELS[doc.kind] ?? doc.kind}${driverId ? ` — driver ${driverId}` : ''}`,
+        details: `Document ${status}${status === 'rejected' && reason ? ` — ${reason}` : ''}`,
+        payload: { status, reason: reason ?? null, driverId, evpCreated },
+      });
+
       return { ok: true, evpCreated, driverId };
     },
   );
@@ -350,6 +365,15 @@ export async function routes(app: FastifyInstance) {
         }
       });
 
+      await recordAuditSafe(req, {
+        action: 'evp_status_change',
+        targetType: 'evp_record',
+        targetId: recordId,
+        targetName: `EVP — driver ${record.driverId}`,
+        details: `EVP status set to ${next}`,
+        payload: { status: next, driverId: record.driverId, previous: record.status },
+      });
+
       return { ok: true, status: next };
     },
   );
@@ -432,6 +456,17 @@ export async function routes(app: FastifyInstance) {
           req.log.warn({ driverId: record.driverId }, 'no email on file; skipped activation email');
         }
       }
+
+      await recordAuditSafe(req, {
+        action: 'activate_driver_account',
+        targetType: 'driver',
+        targetId: record.driverId,
+        targetName: `EVP — driver ${record.driverId}`,
+        details: newlyActivated
+          ? 'Driver account opened (EVP approved, application activated)'
+          : 'Open-account requested (already activated)',
+        payload: { recordId, newlyActivated },
+      });
 
       return { ok: true, account: 'open' as const };
     },

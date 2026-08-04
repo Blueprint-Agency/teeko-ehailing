@@ -3,6 +3,7 @@ import { desc, eq, inArray } from 'drizzle-orm';
 import { db } from '../../config/db';
 import { disputes } from '../../db/schema/trips';
 import { users } from '../../db/schema/identity';
+import { recordAuditSafe } from '../../modules/admin/audit';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 // Which statuses belong to each admin queue.
@@ -91,6 +92,14 @@ export async function routes(app: FastifyInstance) {
           .set({ status: 'rejected', resolution: note ?? null, handledBy, resolvedAt: now })
           .where(eq(disputes.id, id))
           .returning();
+        await recordAuditSafe(req, {
+          action: 'resolve_dispute',
+          targetType: 'dispute',
+          targetId: id,
+          targetName: `Dispute #${id.slice(0, 8)}`,
+          details: `Dispute rejected${note ? ` — ${note}` : ''}`,
+          payload: { action, note: note ?? null },
+        });
         return { ok: true, dispute: serialize(row!) };
       }
 
@@ -103,6 +112,14 @@ export async function routes(app: FastifyInstance) {
           .set({ status: 'refund_pending', resolution: note ?? null, handledBy })
           .where(eq(disputes.id, id))
           .returning();
+        await recordAuditSafe(req, {
+          action: 'resolve_dispute',
+          targetType: 'dispute',
+          targetId: id,
+          targetName: `Dispute #${id.slice(0, 8)}`,
+          details: `Refund approved (RM${((dispute.amountCents ?? 0) / 100).toFixed(2)})${note ? ` — ${note}` : ''}`,
+          payload: { action, amountCents: dispute.amountCents ?? 0, note: note ?? null },
+        });
         return { ok: true, dispute: serialize(row!) };
       }
 
@@ -147,6 +164,15 @@ export async function routes(app: FastifyInstance) {
         })
         .where(eq(disputes.id, id))
         .returning();
+
+      await recordAuditSafe(req, {
+        action: 'process_refund',
+        targetType: 'dispute',
+        targetId: id,
+        targetName: `Dispute #${id.slice(0, 8)}`,
+        details: `Refund ${status.replace('refund_', '')} (RM${((dispute.amountCents ?? 0) / 100).toFixed(2)})${ref ? ` — ref ${ref}` : ''}`,
+        payload: { status, ref: ref ?? null, note: note ?? null, amountCents: dispute.amountCents ?? 0 },
+      });
 
       return { ok: true, dispute: serialize(row!) };
     },

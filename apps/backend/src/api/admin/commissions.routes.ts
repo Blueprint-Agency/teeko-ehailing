@@ -4,6 +4,7 @@ import { db } from '../../config/db';
 import { commissionConfigs } from '../../db/schema/pricing-incentives';
 import { driverProfiles, vehicles } from '../../db/schema/drivers';
 import { users } from '../../db/schema/identity';
+import { recordAuditSafe } from '../../modules/admin/audit';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const PLATFORM_KEY = '__platform__';
@@ -175,6 +176,15 @@ export async function routes(app: FastifyInstance) {
         set: { rateBps: bps, note: note ?? null, updatedBy, updatedAt: now },
       });
 
+    await recordAuditSafe(req, {
+      action: 'adjust_commission',
+      targetType: 'commission_platform',
+      targetId: PLATFORM_KEY,
+      targetName: 'Platform default rate',
+      details: `Platform commission set to ${rate}%${note ? ` — ${note}` : ''}`,
+      payload: { scope: 'platform', rateBps: bps, note: note ?? null },
+    });
+
     return { ok: true, rate, rateBps: bps };
   });
 
@@ -204,6 +214,15 @@ export async function routes(app: FastifyInstance) {
           set: { rateBps: bps, note: note ?? null, updatedBy, updatedAt: now },
         });
 
+      await recordAuditSafe(req, {
+        action: 'adjust_commission',
+        targetType: 'commission_category',
+        targetId: category,
+        targetName: `Category — ${category}`,
+        details: `${category} commission set to ${rate}%${note ? ` — ${note}` : ''}`,
+        payload: { scope: 'category', category, rateBps: bps, note: note ?? null },
+      });
+
       return { ok: true, category, rate, rateBps: bps };
     },
   );
@@ -219,6 +238,15 @@ export async function routes(app: FastifyInstance) {
     await db
       .delete(commissionConfigs)
       .where(and(eq(commissionConfigs.scope, 'category'), eq(commissionConfigs.scopeKey, category)));
+
+    await recordAuditSafe(req, {
+      action: 'adjust_commission',
+      targetType: 'commission_category',
+      targetId: category,
+      targetName: `Category — ${category}`,
+      details: `${category} commission override removed (reverts to platform rate)`,
+      payload: { scope: 'category', category, cleared: true },
+    });
 
     return { ok: true, category, clearedToDefault: true };
   });
@@ -251,6 +279,20 @@ export async function routes(app: FastifyInstance) {
           set: { rateBps: bps, note: note ?? null, updatedBy, updatedAt: now },
         });
 
+      const named = await db.query.users.findFirst({
+        where: eq(users.id, driverId),
+        columns: { fullName: true },
+      });
+
+      await recordAuditSafe(req, {
+        action: 'adjust_commission',
+        targetType: 'commission_driver',
+        targetId: driverId,
+        targetName: named?.fullName ?? `Driver ${driverId}`,
+        details: `Driver commission set to ${rate}%${note ? ` — ${note}` : ''}`,
+        payload: { scope: 'driver', driverId, rateBps: bps, note: note ?? null },
+      });
+
       return { ok: true, driverId, rate, rateBps: bps };
     },
   );
@@ -263,6 +305,20 @@ export async function routes(app: FastifyInstance) {
     await db
       .delete(commissionConfigs)
       .where(and(eq(commissionConfigs.scope, 'driver'), eq(commissionConfigs.scopeKey, driverId)));
+
+    const named = await db.query.users.findFirst({
+      where: eq(users.id, driverId),
+      columns: { fullName: true },
+    });
+
+    await recordAuditSafe(req, {
+      action: 'adjust_commission',
+      targetType: 'commission_driver',
+      targetId: driverId,
+      targetName: named?.fullName ?? `Driver ${driverId}`,
+      details: 'Driver commission override removed (reverts to category/platform rate)',
+      payload: { scope: 'driver', driverId, cleared: true },
+    });
 
     return { ok: true, driverId, clearedToDefault: true };
   });

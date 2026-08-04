@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../../config/db';
 import { users, userRoles } from '../../db/schema/identity';
 import { requireRole } from '../../http/middleware/requireRole';
+import { recordAuditSafe } from '../../modules/admin/audit';
 
 // UI role vocabulary — collapsed to two roles for now:
 //  · super_admin — can do anything, including deactivating other admins
@@ -93,6 +94,15 @@ export async function routes(app: FastifyInstance) {
         return user;
       });
 
+      await recordAuditSafe(req, {
+        action: 'create_admin',
+        targetType: 'admin',
+        targetId: admin.id,
+        targetName: name,
+        details: `Created ${uiRole === 'super_admin' ? 'super admin' : 'admin'} account (${email})`,
+        payload: { role: uiRole, email },
+      });
+
       const body: AdminRow = {
         id: admin.id,
         name,
@@ -115,7 +125,7 @@ export async function routes(app: FastifyInstance) {
       const { id } = req.params;
 
       const [target] = await db
-        .select({ id: users.id, role: userRoles.role })
+        .select({ id: users.id, name: users.fullName, role: userRoles.role })
         .from(users)
         .innerJoin(
           userRoles,
@@ -129,6 +139,15 @@ export async function routes(app: FastifyInstance) {
       }
 
       await db.update(users).set({ status: 'deactivated' }).where(eq(users.id, id));
+
+      await recordAuditSafe(req, {
+        action: 'deactivate_admin',
+        targetType: 'admin',
+        targetId: id,
+        targetName: target.name ?? id,
+        details: 'Admin account deactivated',
+        payload: { role: target.role },
+      });
 
       return reply.send({ ok: true });
     },

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { asc, eq } from 'drizzle-orm';
 import { db } from '../../config/db';
 import { surgeZones } from '../../db/schema/pricing-incentives';
+import { recordAuditSafe } from '../../modules/admin/audit';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const MIN_MULTIPLIER = 1.0;
@@ -132,6 +133,21 @@ export async function routes(app: FastifyInstance) {
         .returning();
 
       if (!row) return reply.code(404).send({ error: 'zone_not_found' });
+
+      // Describe exactly what the admin changed for the audit trail.
+      const changes: string[] = [];
+      if (multiplier === null) changes.push('override released (back to auto)');
+      else if (multiplier !== undefined) changes.push(`multiplier set to ${multiplier}×`);
+      if (active !== undefined) changes.push(active ? 'activated' : 'deactivated');
+
+      await recordAuditSafe(req, {
+        action: 'update_surge',
+        targetType: 'surge_zone',
+        targetId: id,
+        targetName: row.label,
+        details: `Surge zone ${changes.join(', ') || 'updated'}`,
+        payload: { multiplier: multiplier ?? null, active: active ?? null, overrideMinutes: overrideMinutes ?? null },
+      });
 
       return { ok: true, zone: serialize(row) };
     },

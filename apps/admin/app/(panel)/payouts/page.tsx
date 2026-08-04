@@ -102,6 +102,32 @@ export default function PayoutsPage() {
 
   const period = `${applied.start} – ${applied.end}`;
 
+  const exportRevenueCsv = () => {
+    if (revenue.length === 0) return;
+    const header = ['Date', 'Trips', 'Revenue (RM)', 'Commission (RM)', 'Payouts (RM)', 'Refunds (RM)'];
+    const body = revenue.map((d) => [d.date, d.trips, d.revenue.toFixed(2), d.commissions.toFixed(2), d.payouts.toFixed(2), d.refunds.toFixed(2)]);
+    const csv = [header, ...body].map((row) => row.map(csvCell).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `revenue-report-${revenue[0]?.date ?? 'start'}_to_${revenue[revenue.length - 1]?.date ?? 'end'}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const rangeLabel = `${revenue[0]?.date ?? ''} – ${revenue[revenue.length - 1]?.date ?? ''}`;
+    adminApi
+      .logAudit({
+        action: 'export_report',
+        targetName: 'Revenue report',
+        details: `Exported revenue report CSV (${revenue.length} days, ${rangeLabel})`,
+        payload: { days: revenue.length, range: rangeLabel },
+      })
+      .catch(() => {});
+  };
+
   const rangeTrips = useMemo(
     () => trips.filter((t) => t.status === 'completed' && t.date.slice(0, 10) >= applied.start && t.date.slice(0, 10) <= applied.end),
     [applied]
@@ -151,10 +177,20 @@ export default function PayoutsPage() {
 
   const confirmSubmit = () => {
     if (!confirm) return;
+    const total = confirm.rows.reduce((s, r) => s + r.amount, 0);
     downloadSheet(confirm.rows, confirm.period);
+    // Record the export in the audit trail (best-effort — never block the download).
+    adminApi
+      .logAudit({
+        action: 'export_payout',
+        targetName: `Payout sheet — ${confirm.period}`,
+        details: `Exported ${confirm.rows.length} driver payout(s) — ${rm(total)} — sent to ${FINANCE_EMAIL}`,
+        payload: { period: confirm.period, drivers: confirm.rows.length, totalRm: Number(total.toFixed(2)) },
+      })
+      .catch(() => {});
     setSelection([]);
     setConfirm(null);
-    setDone(`Sheet for ${confirm.rows.length} driver(s) — ${rm(confirm.rows.reduce((s, r) => s + r.amount, 0))} — exported and sent to ${FINANCE_EMAIL}.`);
+    setDone(`Sheet for ${confirm.rows.length} driver(s) — ${rm(total)} — exported and sent to ${FINANCE_EMAIL}.`);
   };
   const confirmTotal = confirm ? confirm.rows.reduce((s, r) => s + r.amount, 0) : 0;
 
@@ -279,7 +315,7 @@ export default function PayoutsPage() {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
         <Typography variant="h6" fontWeight={700}>Revenue Reports</Typography>
         {can('export_reports') && (
-          <Button startIcon={<Download />} size="small" variant="outlined" disabled={revenueLoading || !!revenueError}>Export CSV</Button>
+          <Button startIcon={<Download />} size="small" variant="outlined" onClick={exportRevenueCsv} disabled={revenueLoading || !!revenueError || revenue.length === 0}>Export CSV</Button>
         )}
       </Box>
 

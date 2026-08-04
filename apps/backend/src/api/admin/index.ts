@@ -18,6 +18,7 @@ import { routes as commissions } from './commissions.routes';
 import { routes as surge } from './surge.routes';
 import { routes as feedback } from './feedback.routes';
 import { routes as disputes } from './disputes.routes';
+import { routes as audit } from './audit.routes';
 
 export async function adminRoutes(app: FastifyInstance) {
   app.addHook('preHandler', auth0Verify);
@@ -39,4 +40,5 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(surge, { prefix: '/surge' });
   await app.register(feedback, { prefix: '/feedback' });
   await app.register(disputes, { prefix: '/disputes' });
+  await app.register(audit, { prefix: '/audit' });
 }

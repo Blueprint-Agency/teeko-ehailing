@@ -261,6 +261,35 @@ export interface RevenueDay {
   refunds: number;
 }
 
+// ── Audit log ─────────────────────────────────────────────────────────────────
+export interface AuditLogEntry {
+  id: string;
+  adminId: string;
+  adminName: string;
+  /** Display label, e.g. "Super Admin", "Finance". */
+  role: string;
+  /** Snake-case action verb, e.g. "adjust_commission". */
+  action: string;
+  /** Raw target id. */
+  target: string;
+  targetType: string;
+  /** Human-readable target label. */
+  targetName: string;
+  details: string;
+  ip: string;
+  /** ISO timestamp. */
+  date: string;
+}
+
+/** Client-side operations the panel is allowed to record (CSV exports). */
+export interface NewAuditEvent {
+  action: 'export_payout' | 'export_report';
+  targetId?: string;
+  targetName?: string;
+  details?: string;
+  payload?: Record<string, unknown>;
+}
+
 export const adminApi = {
   getRiders: () => get<Rider[]>('/riders'),
 
@@ -356,4 +385,10 @@ export const adminApi = {
 
   // ── Revenue reports ──────────────────────────────────────────────────────────
   getRevenueDaily: (days = 30) => get<RevenueDay[]>(`/revenue/daily?days=${days}`),
+
+  // ── Audit log ────────────────────────────────────────────────────────────────
+  getAuditLog: (limit = 500) => get<AuditLogEntry[]>(`/audit?limit=${limit}`),
+
+  /** Record a client-side operation (payout/report CSV export) in the audit trail. */
+  logAudit: (event: NewAuditEvent) => post<{ ok: boolean }>('/audit', event),
 };

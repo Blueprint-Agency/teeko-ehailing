@@ -4,6 +4,7 @@ import { db } from '../../config/db';
 import { users, userRoles } from '../../db/schema/identity';
 import { riderProfiles } from '../../db/schema/riders';
 import { trips } from '../../db/schema/trips';
+import { recordAuditSafe } from '../../modules/admin/audit';
 
 type RiderRow = {
   id: string;
@@ -109,6 +110,15 @@ export async function routes(app: FastifyInstance) {
         return user;
       });
 
+      await recordAuditSafe(req, {
+        action: 'create_rider',
+        targetType: 'rider',
+        targetId: rider.id,
+        targetName: name,
+        details: `Rider account created${phone ? ` (${phone})` : ''}`,
+        payload: { phone, email },
+      });
+
       const body: RiderRow = {
         id: rider.id,
         name,
@@ -132,7 +142,7 @@ export async function routes(app: FastifyInstance) {
 
     // Guard: only soft-delete users that actually hold the rider role.
     const [rider] = await db
-      .select({ id: users.id })
+      .select({ id: users.id, name: users.fullName })
       .from(users)
       .innerJoin(
         userRoles,
@@ -143,6 +153,14 @@ export async function routes(app: FastifyInstance) {
     if (!rider) return reply.code(404).send({ error: 'rider_not_found' });
 
     await db.update(users).set({ deletedAt: new Date() }).where(eq(users.id, id));
+
+    await recordAuditSafe(req, {
+      action: 'delete_rider',
+      targetType: 'rider',
+      targetId: id,
+      targetName: rider.name ?? id,
+      details: 'Rider account removed (soft-deleted)',
+    });
 
     return reply.send({ ok: true });
   });
