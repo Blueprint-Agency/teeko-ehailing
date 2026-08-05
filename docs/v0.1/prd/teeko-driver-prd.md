@@ -46,7 +46,7 @@ Each vehicle registered under a driver account must have the following documents
 | Car Grant / VOC | Proof of vehicle ownership |
 | Valid Road Tax | Must be renewed yearly |
 | E-hailing Insurance Cover Note | Per vehicle; renewed yearly |
-| PUSPAKOM Inspection Certificate | Required for all registered vehicles |
+| PUSPAKOM Inspection Certificate | Required for the registered vehicle |
 
 **Vehicle age restriction:** Only vehicles manufactured within the last 15 years are accepted. Vehicles older than 15 years will be rejected during document review.
 
@@ -81,14 +81,14 @@ Download App → Create Account (phone OTP) → Accept Driver Agreement (T&C)
 ### 4.4 Driver Agreement
 - Drivers must read and accept Teeko's Terms & Conditions and Driver Agreement during onboarding before proceeding to document submission.
 
-### 4.5 Multiple Vehicles
-- A driver may register **multiple vehicles** under one account.
-- Only **one vehicle can be set as Active** at any time.
-- Each registered vehicle must have its own complete set of documents (Road Tax, Car Grant/VOC, E-hailing Insurance, PUSPAKOM Certificate).
-- To change active vehicle, the driver must:
+### 4.5 One Vehicle Per Driver
+- A driver account has **exactly one registered vehicle**. There is no vehicle list, no active/inactive state, and nothing to switch between.
+- That vehicle must have a complete set of documents (Road Tax, Car Grant/VOC, E-hailing Insurance, PUSPAKOM Certificate) before the driver can go online.
+- To **change vehicle**, the driver must:
   1. Disable the current vehicle's EVP (temporarily or permanently)
   2. Apply for a new EVP for the replacement vehicle via support
-- Vehicle changes are handled through the **support channel**, not self-served in-app.
+  3. Submit the replacement vehicle's documents for review
+- Vehicle changes are handled through the **support channel** and replace the existing vehicle record — they are not self-served in-app.
 
 ---
 
@@ -322,7 +322,7 @@ The driver earnings dashboard displays:
 | Trip Active Screen | Current trip status, rider info, handoff button to Google Maps / Waze |
 | Earnings Dashboard | Today, weekly summary, trip history, early cashout |
 | Incentives | Active campaigns and bonus progress |
-| Vehicle Management | List of registered vehicles, active vehicle indicator, document status per vehicle |
+| My Vehicle | The driver's registered vehicle and the status of each of its documents |
 | Profile | Personal info, documents, rating, language preference |
 | Support | In-app chat, appeal form, EVP/vehicle change requests |
 | Notifications | EVP renewal, document expiry alerts, suspension notices, incentive updates |
@@ -347,9 +347,8 @@ The driver earnings dashboard displays:
 1. What is the exact no-show fee amount charged to riders (and credited to drivers)?
 2. Is early cashout free or does it carry a transaction fee?
 3. What are the specific vehicle categories (make/model) accepted for each ride type (Standard, Comfort, XL, Premium)?
-4. Is there a maximum number of vehicles a driver can register under one account?
-5. What is the appeal review turnaround time for suspended accounts?
-6. Will the driver app support biometric login (Face ID / fingerprint) for faster access?
+4. What is the appeal review turnaround time for suspended accounts?
+5. Will the driver app support biometric login (Face ID / fingerprint) for faster access?
 
 ---
 

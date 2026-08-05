@@ -69,8 +69,7 @@ app/
     trip.tsx                    ← Active trip screen
     earnings/
       index.tsx                 ← Dashboard: today, weekly chart, trip history
-    incentives.tsx              ← Active campaigns and bonus progress
-    vehicles.tsx                ← Registered vehicles + document status
+    vehicles.tsx                ← The driver's one vehicle + its document status
     profile.tsx                 ← Personal info, documents, rating, language
     support.tsx                 ← Static support form + chat UI (mockup)
     notifications.tsx           ← Notification list (mock)
@@ -97,8 +96,7 @@ Role is stored in the mock auth Zustand store (`useDriverAuthStore`). In the log
 | Ride Request Card | `(driver)/request` | Bottom sheet, pickup/destination, fare, rider rating, countdown ring, accept/decline |
 | Active Trip | `(driver)/trip` | Trip phase indicator, rider info, "Open in Maps" / "Open in Waze" button, SOS button |
 | Earnings Dashboard | `(driver)/earnings` | Daily bar chart, weekly line chart, trip list, early cashout button |
-| Incentives | `(driver)/incentives` | Campaign cards with progress bars |
-| Vehicle Management | `(driver)/vehicles` | Vehicle list, active indicator, per-document expiry status |
+| My Vehicle | `(driver)/vehicles` | The driver's single vehicle with per-document expiry status |
 | Profile | `(driver)/profile` | Name, rating stars, language picker, document status badges |
 | Support | `(driver)/support` | Static chat thread UI, support form |
 | Notifications | `(driver)/notifications` | Notification list (EVP approval, doc expiry, suspension) |
@@ -344,10 +342,8 @@ All mock data lives in a `data/` directory at the project root. Screens read fro
 ```
 data/
   mock-driver-profile.json        ← name, phone, rating (4.92), status, onboarding step
-  mock-vehicles.json              ← list of vehicles; doc expiry dates, active flag
   mock-earnings.json              ← daily totals (7 days), weekly totals (4 weeks), trip list
   mock-trips-driver.json          ← trip history: fare, distance, date, rider name, rating given
-  mock-incentives.json            ← active campaigns: target trips, completed trips, bonus amount
   mock-notifications-driver.json  ← EVP approved, road tax expiry warning, suspension notice
   mock-ride-request.json          ← one incoming request: pickup, destination, fare, rider rating
 ```

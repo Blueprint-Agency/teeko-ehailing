@@ -10,6 +10,12 @@ import {
   driverEarnings,
   payouts,
 } from '../../db/schema/payments';
+import { fareQuotes, trips } from '../../db/schema/trips';
+import { users } from '../../db/schema/identity';
+
+// Drivers read their earnings in Malaysian time; rows are stored in UTC.
+// Postgres does the conversion so day boundaries match the driver's calendar.
+const MYT = sql`'Asia/Kuala_Lumpur'`;
 
 export type ConnectAccountRow = typeof connectAccounts.$inferSelect;
 export type PayoutRow = typeof payouts.$inferSelect;
@@ -135,9 +141,46 @@ export async function recentEarnings(driverId: string, limit = 20) {
       netCents: driverEarnings.netCents,
       transferred: driverEarnings.transferred,
       createdAt: driverEarnings.createdAt,
+      // Trip context for the driver's history list. Left-joined so an earning
+      // whose trip row was purged still shows its amount rather than vanishing.
+      pickupAddress: trips.pickupAddress,
+      dropoffAddress: trips.dropoffAddress,
+      completedAt: trips.completedAt,
+      riderRating: trips.riderRating,
+      riderName: users.fullName,
+      distanceMeters: fareQuotes.distanceMeters,
     })
     .from(driverEarnings)
+    .leftJoin(trips, eq(trips.id, driverEarnings.tripId))
+    .leftJoin(users, eq(users.id, trips.riderId))
+    .leftJoin(fareQuotes, eq(fareQuotes.id, trips.fareQuoteId))
     .where(eq(driverEarnings.driverId, driverId))
     .orderBy(desc(driverEarnings.createdAt))
     .limit(limit);
+}
+
+/**
+ * Net earnings bucketed by Malaysian calendar day, for the dashboard chart.
+ * Only days with earnings come back — the service pads the gaps.
+ */
+export async function dailyEarnings(
+  driverId: string,
+  since: Date,
+): Promise<Array<{ day: string; netCents: number; tripCount: number }>> {
+  const day = sql<string>`to_char((${driverEarnings.createdAt} AT TIME ZONE ${MYT})::date, 'YYYY-MM-DD')`;
+  const rows = await db
+    .select({
+      day,
+      netCents: sql<number>`coalesce(sum(${driverEarnings.netCents}), 0)`,
+      tripCount: sql<number>`count(*)`,
+    })
+    .from(driverEarnings)
+    .where(and(eq(driverEarnings.driverId, driverId), gte(driverEarnings.createdAt, since)))
+    .groupBy(day)
+    .orderBy(day);
+  return rows.map((r) => ({
+    day: r.day,
+    netCents: Number(r.netCents),
+    tripCount: Number(r.tripCount),
+  }));
 }

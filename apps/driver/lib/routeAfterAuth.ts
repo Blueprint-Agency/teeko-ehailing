@@ -8,8 +8,9 @@ import { api } from './api';
  * only after document + EVP review. Drivers who registered on the web portal can
  * sign in here mid-application, so we must never assume approval.
  *
- * Document resubmission lives in the web portal, so `rejected` lands on the
- * pending screen (which shows the reason) rather than an upload flow.
+ * Document upload and resubmission live in the web portal, so every in-flight
+ * state lands on the pending screen — it shows the current step, any rejection
+ * reason, and links out to the portal to continue.
  */
 export type AuthRoute =
   | '/(driver)/(tabs)/home'
@@ -20,6 +21,11 @@ export function routeForApplicationState(state: string | null | undefined): Auth
   switch (state) {
     case 'activated':
       return '/(driver)/(tabs)/home';
+    // Anything past the agreement is mid-application: the pending screen shows
+    // where it stands and links back into the portal to finish or resubmit.
+    case 'agreement_signed':
+    case 'personal_docs_submitted':
+    case 'vehicle_added':
     case 'vehicle_docs_submitted':
     case 'in_review':
     case 'rejected':

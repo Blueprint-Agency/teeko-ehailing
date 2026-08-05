@@ -504,8 +504,7 @@ apps/driver/app/
     │   └── early-cashout.tsx          # Early cashout request screen
     │
     ├── vehicles/
-    │   ├── index.tsx                  # Vehicle list + active indicator
-    │   └── [id].tsx                   # Vehicle detail + document status
+    │   └── index.tsx                  # The driver's one vehicle + document status
     │
     ├── profile/
     │   ├── personal-info.tsx          # Edit name, phone

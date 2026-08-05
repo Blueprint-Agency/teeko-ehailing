@@ -1,26 +1,28 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import MapBackground from '../../../../components/driver/MapBackground';
+import OnlineToggle from '../../../../components/driver/OnlineToggle';
 import { useColors } from '../../../../constants/colors';
 import { useTheme } from '../../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import earnings from '../../../../data/mock-earnings.json';
-import profile from '../../../../data/mock-driver-profile.json';
-import { api } from '../../../../lib/api';
+import { api, type DriverProfile } from '../../../../lib/api';
 import { getSocket } from '../../../../lib/socket';
 import { useDriverStore } from '../../../../store/useDriverStore';
+
+// Mock surge for v0.1 — replace with the live surge feed when it exists.
+const SURGE = { multiplier: 1.4, area: 'Bukit Bintang' };
 
 export default function HomeScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
   const t = useT();
-  const { isOnline, radius, setOnline, setRadius, activeTripId, setActiveTripId, setActiveTrip, setActiveTripStatus } = useDriverStore();
+  const { isOnline, onlineSince, radius, setOnline, setRadius, activeTripId, pendingOffer, setActiveTripId, setActiveTrip, setActiveTripStatus } = useDriverStore();
   const locationSub = useRef<Location.LocationSubscription | null>(null);
   // Last known fix + a heartbeat timer. watchPositionAsync only fires when the
   // device moves (distanceInterval), so a parked online driver would stop
@@ -29,6 +31,29 @@ export default function HomeScreen() {
   // to keep that TTL alive while online.
   const lastFix = useRef<{ lat: number; lng: number; heading: number } | null>(null);
   const heartbeat = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Today's totals for the header stats. Null until the first fetch lands, and
+  // left null on failure — the tiles show a dash rather than a wrong number.
+  const [today, setToday] = useState<{ netCents: number; tripCount: number } | null>(null);
+  const [profile, setProfile] = useState<DriverProfile | null>(null);
+  // Guards the toggle while go-online/go-offline is in flight — the request can
+  // take a second (permissions + first GPS fix) and a double tap would otherwise
+  // fire two conflicting calls.
+  const [togglePending, setTogglePending] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      api.earnings
+        .get()
+        .then((res) => { if (!cancelled) setToday(res.today); })
+        .catch(() => { if (!cancelled) setToday(null); });
+      api.profile
+        .get()
+        .then((res) => { if (!cancelled) setProfile(res.profile); })
+        .catch(() => { if (!cancelled) setProfile(null); });
+      return () => { cancelled = true; };
+    }, []),
+  );
 
   const handleResumeTrip = () => {
     router.replace('/(driver)/trip');
@@ -104,13 +129,44 @@ export default function HomeScreen() {
   // so the interval/subscription don't leak. Refs only — safe to run once.
   useEffect(() => stopLocationTracking, []);
 
+  const goOfflineNow = async () => {
+    try {
+      await api.driver.goOffline();
+    } catch { /* ignore network errors — still go offline locally */ }
+    stopLocationTracking();
+    setOnline(false);
+  };
+
   const handleToggleOnline = async () => {
+    if (togglePending) return;
+    // Confirm only when going offline would strand real work — an active trip or
+    // a live offer on screen. Routine shift-end stays a single tap.
+    if (isOnline && (activeTripId || pendingOffer)) {
+      Alert.alert(
+        'Go offline?',
+        activeTripId
+          ? 'You still have an active trip. Finish or cancel it before going offline.'
+          : 'You have a trip request waiting. Going offline will decline it.',
+        activeTripId
+          ? [{ text: 'OK' }]
+          : [
+              { text: 'Stay online', style: 'cancel' },
+              {
+                text: 'Go offline',
+                style: 'destructive',
+                onPress: async () => {
+                  setTogglePending(true);
+                  await goOfflineNow();
+                  setTogglePending(false);
+                },
+              },
+            ],
+      );
+      return;
+    }
+    setTogglePending(true);
     if (isOnline) {
-      try {
-        await api.driver.goOffline();
-      } catch { /* ignore network errors — still go offline locally */ }
-      stopLocationTracking();
-      setOnline(false);
+      await goOfflineNow();
     } else {
       try {
         await api.driver.goOnline();
@@ -121,6 +177,7 @@ export default function HomeScreen() {
         Alert.alert('Error', msg);
       }
     }
+    setTogglePending(false);
   };
 
   const handleSetRadius = async (r: number) => {
@@ -136,7 +193,9 @@ export default function HomeScreen() {
       <View style={[styles.hud, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push('/(driver)/(tabs)/profile')}>
           <View style={[styles.avatar, { backgroundColor: colors.surfaceHigh, borderColor: colors.accent }]}>
-            <Text style={[styles.avatarText, { color: colors.accent }]}>{profile.name.charAt(0)}</Text>
+            <Text style={[styles.avatarText, { color: colors.accent }]}>
+              {profile?.fullName?.trim().charAt(0) ?? '·'}
+            </Text>
           </View>
           <View style={[styles.onlineDot, { borderColor: colors.bg }, isOnline ? { backgroundColor: colors.online } : { backgroundColor: colors.textMut }]} />
         </TouchableOpacity>
@@ -159,7 +218,9 @@ export default function HomeScreen() {
         {/* Surge pill */}
         <View style={styles.surgePill}>
           <View style={[styles.surgeDot, { backgroundColor: colors.surge }]} />
-          <Text style={[styles.surgeText, { color: colors.surge }]}>1.4× surge · Bukit Bintang</Text>
+          <Text style={[styles.surgeText, { color: colors.surge }]}>
+            {SURGE.multiplier.toFixed(1)}× surge · {SURGE.area}
+          </Text>
         </View>
       </MapBackground>
 
@@ -187,40 +248,47 @@ export default function HomeScreen() {
       ) : null}
 
       {/* Bottom Panel */}
-      <View style={[styles.bottomPanel, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+      {/* Ambient state cue: the panel edge lights up green while online. Colour
+          only — the border width is fixed, since changing it would resize the
+          map by a pixel on every toggle. */}
+      <View
+        style={[
+          styles.bottomPanel,
+          {
+            backgroundColor: colors.surface,
+            borderTopColor: isOnline ? colors.online : colors.border,
+          },
+        ]}
+      >
         {/* Today stats */}
         <View style={styles.statsRow}>
           <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.text }]}>RM {earnings.todayTotal.toFixed(2)}</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {today ? `RM ${(today.netCents / 100).toFixed(2)}` : 'RM —'}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.textSec }]}>{t('driver.today')}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.text }]}>{earnings.todayTrips}</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>{today?.tripCount ?? '—'}</Text>
             <Text style={[styles.statLabel, { color: colors.textSec }]}>{t('driver.trips')}</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.stat}>
-            <Text style={[styles.statValue, { color: colors.text }]}>{profile.rating}</Text>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {profile?.rating != null ? profile.rating.toFixed(2) : '—'}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.textSec }]}>{t('driver.rating')}</Text>
           </View>
         </View>
 
         {/* Online toggle */}
-        <TouchableOpacity
-          style={[
-            styles.toggleBtn,
-            isOnline
-              ? { backgroundColor: colors.surfaceHigh, borderWidth: 1, borderColor: colors.border }
-              : { backgroundColor: colors.accent },
-          ]}
-          onPress={handleToggleOnline}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.toggleBtnText, isOnline && { color: colors.textSec }]}>
-            {isOnline ? t('driver.goOffline') : t('driver.goOnline')}
-          </Text>
-        </TouchableOpacity>
+        <OnlineToggle
+          isOnline={isOnline}
+          pending={togglePending}
+          onToggle={handleToggleOnline}
+          onlineSince={onlineSince}
+        />
 
         {/* Radius selector */}
         <View style={styles.radiusRow}>
@@ -326,7 +394,7 @@ const styles = StyleSheet.create({
   recoveryBtnText: { color: '#000', fontSize: 14, fontWeight: '700' },
 
   bottomPanel: {
-    borderTopWidth: 1,
+    borderTopWidth: 2,
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 24,
@@ -341,15 +409,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5 },
   statLabel: { fontSize: 11, marginTop: 2, fontWeight: '600', letterSpacing: 0.5 },
   statDivider: { width: 1, height: 36 },
-
-  toggleBtn: {
-    height: 60,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-  },
-  toggleBtnText: { color: '#000', fontSize: 18, fontWeight: '800', letterSpacing: 0.5 },
 
   radiusRow: { marginTop: 4 },
   radiusLabel: {

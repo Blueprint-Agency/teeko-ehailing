@@ -1,43 +1,152 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  StatusBar, ScrollView, Alert,
+  StatusBar, ScrollView, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import ScreenHeader from '../../../../components/driver/ScreenHeader';
 import { useColors } from '../../../../constants/colors';
 import { useTheme } from '../../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import earnings from '../../../../data/mock-earnings.json';
-import trips from '../../../../data/mock-trips-driver.json';
+import { api, type EarningsResponse } from '../../../../lib/api';
 
-const BAR_MAX = Math.max(...earnings.dailyBreakdown.map((d) => d.amount));
+/** HH:MM in Malaysian time — the server sends UTC ISO strings. */
+function timeLabel(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Asia/Kuala_Lumpur',
+  });
+}
 
 export default function EarningsScreen() {
-  const [tab, setTab] = useState<'today' | 'week'>('today');
+  const [data, setData] = useState<EarningsResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cashingOut, setCashingOut] = useState(false);
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const router = useRouter();
   const t = useT();
   const styles = createStyles(colors);
+
+  const load = useCallback(async () => {
+    try {
+      setError(null);
+      setData(await api.earnings.get());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load earnings.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Refetch on focus — earnings change while the driver is on other tabs.
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    load();
+  }, [load]);
+
+  const handleCashout = async () => {
+    if (cashingOut) return;
+    setCashingOut(true);
+    try {
+      const res = await api.earnings.cashout();
+      Alert.alert(
+        t('driver.earlyCashout'),
+        `RM ${res.amountRm.toFixed(2)} is on its way to your bank account.`,
+      );
+      await load();
+    } catch (err) {
+      Alert.alert(
+        'Cashout failed',
+        err instanceof Error ? err.message : 'Please try again later.',
+      );
+    } finally {
+      setCashingOut(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
+        <ScreenHeader title={t('driver.earnings')} />
+        <View style={styles.centre}>
+          <ActivityIndicator color={colors.accent} />
+        </View>
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
+        <ScreenHeader title={t('driver.earnings')} />
+        <View style={styles.centre}>
+          <Text style={styles.errorText}>{error ?? 'Could not load earnings.'}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); load(); }}>
+            <Text style={styles.retryText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  const barMax = Math.max(...data.dailyBreakdown.map((d) => d.amountRm), 0);
+  const weekTotal = data.week.netCents / 100;
+  const todayTotal = data.today.netCents / 100;
+  const { cashout } = data;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title={t('driver.earnings')} />
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+        }
+      >
         {/* Hero card */}
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>{t('driver.thisWeek')}</Text>
-          <Text style={styles.heroAmount}>RM {earnings.weeklyTotal.toFixed(2)}</Text>
-          <Text style={styles.heroSub}>{t('driver.tripsCompleted', { count: earnings.weeklyTrips })}</Text>
+          <Text style={styles.heroAmount}>RM {weekTotal.toFixed(2)}</Text>
+          <Text style={styles.heroSub}>{t('driver.tripsCompleted', { count: data.week.tripCount })}</Text>
 
-          {earnings.cashoutEligible && (
+          {cashout.payoutsEnabled ? (
             <TouchableOpacity
-              style={styles.cashoutBtn}
-              onPress={() => Alert.alert('Early Cashout', 'Funds will be transferred within 2 hours.')}
+              style={[styles.cashoutBtn, (!cashout.eligible || cashingOut) && styles.cashoutBtnDisabled]}
+              disabled={!cashout.eligible || cashingOut}
+              onPress={handleCashout}
             >
-              <Text style={styles.cashoutText}>{t('driver.earlyCashout')}</Text>
+              {cashingOut
+                ? <ActivityIndicator color="#000" />
+                : <Text style={styles.cashoutText}>{t('driver.earlyCashout')}</Text>}
             </TouchableOpacity>
+          ) : (
+            // No Connect account yet — cashout is impossible, so send them to setup.
+            <TouchableOpacity style={styles.cashoutBtn} onPress={() => router.push('/(driver)/payouts')}>
+              <Text style={styles.cashoutText}>Set up payouts</Text>
+            </TouchableOpacity>
+          )}
+          {cashout.payoutsEnabled && cashout.cooldownHoursLeft > 0 && (
+            <Text style={styles.cashoutNote}>
+              Next cashout available in {cashout.cooldownHoursLeft}h
+            </Text>
           )}
         </View>
 
@@ -46,10 +155,10 @@ export default function EarningsScreen() {
           <View style={styles.todayRow}>
             <View>
               <Text style={styles.todayLabel}>{t('driver.todaysEarnings')}</Text>
-              <Text style={styles.todayAmount}>RM {earnings.todayTotal.toFixed(2)}</Text>
+              <Text style={styles.todayAmount}>RM {todayTotal.toFixed(2)}</Text>
             </View>
             <View style={styles.todayTrips}>
-              <Text style={styles.todayTripsNum}>{earnings.todayTrips}</Text>
+              <Text style={styles.todayTripsNum}>{data.today.tripCount}</Text>
               <Text style={styles.todayTripsLabel}>{t('driver.trips')}</Text>
             </View>
           </View>
@@ -59,24 +168,23 @@ export default function EarningsScreen() {
         <View style={styles.chartCard}>
           <Text style={styles.chartTitle}>{t('driver.last7Days')}</Text>
           <View style={styles.barsContainer}>
-            {earnings.dailyBreakdown.map((d) => {
-              const heightPct = BAR_MAX > 0 ? (d.amount / BAR_MAX) * 100 : 0;
-              const isToday = d.day === 'Sat';
+            {data.dailyBreakdown.map((d) => {
+              const heightPct = barMax > 0 ? (d.amountRm / barMax) * 100 : 0;
               return (
-                <View key={d.day} style={styles.barColumn}>
+                <View key={d.date} style={styles.barColumn}>
                   <Text style={styles.barAmt}>
-                    {d.amount > 0 ? `${d.amount.toFixed(0)}` : ''}
+                    {d.amountRm > 0 ? `${d.amountRm.toFixed(0)}` : ''}
                   </Text>
                   <View style={styles.barTrack}>
                     <View
                       style={[
                         styles.barFill,
                         { height: `${heightPct}%` },
-                        isToday && styles.barFillActive,
+                        d.isToday && styles.barFillActive,
                       ]}
                     />
                   </View>
-                  <Text style={[styles.barDay, isToday && styles.barDayActive]}>{d.day}</Text>
+                  <Text style={[styles.barDay, d.isToday && styles.barDayActive]}>{d.day}</Text>
                 </View>
               );
             })}
@@ -85,23 +193,36 @@ export default function EarningsScreen() {
 
         {/* Trip history */}
         <Text style={styles.sectionTitle}>{t('driver.todaysTrips')}</Text>
-        {trips.map((trip) => (
-          <View key={trip.id} style={styles.tripCard}>
-            <View style={styles.tripLeft}>
-              <Text style={styles.tripTime}>{trip.time}</Text>
-              <View style={styles.tripRoute}>
-                <Text style={styles.tripFrom} numberOfLines={1}>{trip.pickup}</Text>
-                <Text style={styles.tripArrow}>→</Text>
-                <Text style={styles.tripTo} numberOfLines={1}>{trip.destination}</Text>
-              </View>
-              <Text style={styles.tripMeta}>{trip.distance} km · {trip.riderName}</Text>
-            </View>
-            <View style={styles.tripRight}>
-              <Text style={styles.tripFare}>RM {trip.fare.toFixed(2)}</Text>
-              <Text style={styles.tripRating}>{'★'.repeat(trip.ratingGiven)}</Text>
-            </View>
+        {data.recent.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No completed trips yet.</Text>
           </View>
-        ))}
+        ) : (
+          data.recent.map((trip) => (
+            <View key={trip.tripId} style={styles.tripCard}>
+              <View style={styles.tripLeft}>
+                <Text style={styles.tripTime}>{timeLabel(trip.completedAt ?? trip.at)}</Text>
+                <View style={styles.tripRoute}>
+                  <Text style={styles.tripFrom} numberOfLines={1}>{trip.pickupAddress ?? '—'}</Text>
+                  <Text style={styles.tripArrow}>→</Text>
+                  <Text style={styles.tripTo} numberOfLines={1}>{trip.dropoffAddress ?? '—'}</Text>
+                </View>
+                <Text style={styles.tripMeta}>
+                  {[
+                    trip.distanceKm != null ? `${trip.distanceKm.toFixed(1)} km` : null,
+                    trip.riderName,
+                  ].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+              <View style={styles.tripRight}>
+                <Text style={styles.tripFare}>RM {trip.netRm.toFixed(2)}</Text>
+                {trip.ratingGiven != null && (
+                  <Text style={styles.tripRating}>{'★'.repeat(trip.ratingGiven)}</Text>
+                )}
+              </View>
+            </View>
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -129,7 +250,28 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
+  cashoutBtnDisabled: { opacity: 0.4 },
   cashoutText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  cashoutNote: { color: colors.textSec, fontSize: 11, marginTop: 8 },
+
+  centre: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14 },
+  errorText: { color: colors.textSec, fontSize: 14, textAlign: 'center' },
+  retryBtn: {
+    backgroundColor: colors.surfaceHigh,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  retryText: { color: colors.text, fontWeight: '700', fontSize: 14 },
+  emptyCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  emptyText: { color: colors.textSec, fontSize: 13 },
 
   todayCard: {
     backgroundColor: colors.surface,

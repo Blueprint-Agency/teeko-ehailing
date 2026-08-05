@@ -1,6 +1,6 @@
 import { and, eq, inArray, not } from 'drizzle-orm';
 import { db } from '../../db';
-import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, vehicles, driverActiveVehicle, users } from '../../db/schema';
+import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, vehicles, users } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
 import type { RedeemedQuote } from '../pricing/service';
 import { trackingService } from '../tracking/service';
@@ -191,15 +191,12 @@ export const tripsService = {
     ]);
 
     // Fetch driver details to include in socket payload so rider can display them immediately
-    const [driverUser, driverProfile, activeVehicleRow] = await Promise.all([
+    const [driverUser, driverProfile, vehicle] = await Promise.all([
       db.query.users.findFirst({ where: eq(users.id, driverId) }),
       db.query.driverProfiles.findFirst({ where: eq(driverProfiles.userId, driverId) }),
-      db.query.driverActiveVehicle.findFirst({ where: eq(driverActiveVehicle.driverId, driverId) }),
+      // A driver has exactly one vehicle, so this is the car they are driving.
+      db.query.vehicles.findFirst({ where: eq(vehicles.driverId, driverId) }),
     ]);
-
-    const vehicle = activeVehicleRow
-      ? await db.query.vehicles.findFirst({ where: eq(vehicles.id, activeVehicleRow.vehicleId) })
-      : null;
 
     trackingService.emitToRider(updated.riderId, 'trip.status_update', {
       trip_id: tripId,
@@ -404,7 +401,7 @@ export const tripsService = {
     });
     if (!trip) return null;
 
-    const [quote, driverUser, driverProfile, activeVehicleRow] = await Promise.all([
+    const [quote, driverUser, driverProfile, vehicle] = await Promise.all([
       trip.fareQuoteId
         ? db.query.fareQuotes.findFirst({ where: eq(fareQuotes.id, trip.fareQuoteId) })
         : Promise.resolve(null),
@@ -415,13 +412,9 @@ export const tripsService = {
         ? db.query.driverProfiles.findFirst({ where: eq(driverProfiles.userId, trip.driverId) })
         : Promise.resolve(null),
       trip.driverId
-        ? db.query.driverActiveVehicle.findFirst({ where: eq(driverActiveVehicle.driverId, trip.driverId) })
+        ? db.query.vehicles.findFirst({ where: eq(vehicles.driverId, trip.driverId) })
         : Promise.resolve(null),
     ]);
-
-    const vehicle = activeVehicleRow
-      ? await db.query.vehicles.findFirst({ where: eq(vehicles.id, activeVehicleRow.vehicleId) })
-      : null;
 
     const pickupCoords = parsePoint(trip.pickup);
     const dropoffCoords = parsePoint(trip.dropoff);
@@ -542,17 +535,14 @@ export const tripsService = {
       db.query.noShowFees.findFirst({ where: eq(noShowFees.tripId, tripId) }),
     ]);
 
-    // Vehicle: prefer the one recorded on the trip, else the driver's active one.
+    // Vehicle: prefer the one recorded on the trip (the car as it was driven),
+    // else the driver's current one — a driver only ever has the one.
     let vehicle = trip.vehicleId
       ? await db.query.vehicles.findFirst({ where: eq(vehicles.id, trip.vehicleId) })
       : null;
     if (!vehicle && trip.driverId) {
-      const activeVehicleRow = await db.query.driverActiveVehicle.findFirst({
-        where: eq(driverActiveVehicle.driverId, trip.driverId),
-      });
-      vehicle = activeVehicleRow
-        ? (await db.query.vehicles.findFirst({ where: eq(vehicles.id, activeVehicleRow.vehicleId) })) ?? null
-        : null;
+      vehicle =
+        (await db.query.vehicles.findFirst({ where: eq(vehicles.driverId, trip.driverId) })) ?? null;
     }
 
     // Fare breakdown: prefer per-trip lines, fall back to the quote's lines.

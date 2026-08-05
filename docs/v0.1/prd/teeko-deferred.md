@@ -63,8 +63,7 @@ These features will not be built at any phase.
 1. What is the exact no-show fee amount charged to riders (credited to driver)?
 2. Does early cashout carry a transaction fee?
 3. What are the confirmed vehicle makes/models accepted per ride category (Go, Comfort, XL, Premium)?
-4. Is there a maximum number of vehicles a driver can register per account?
-5. What is the appeal review turnaround time for suspended driver accounts?
+4. What is the appeal review turnaround time for suspended driver accounts?
 
 ---
 

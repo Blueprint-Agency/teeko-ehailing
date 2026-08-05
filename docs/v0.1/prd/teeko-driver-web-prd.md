@@ -51,7 +51,7 @@ Each vehicle registered under a driver account must have the following documents
 | Car Grant / VOC | Proof of vehicle ownership |
 | Valid Road Tax | Must be renewed yearly |
 | E-hailing Insurance Cover Note | Per vehicle; renewed yearly |
-| PUSPAKOM Inspection Certificate | Required for all registered vehicles |
+| PUSPAKOM Inspection Certificate | Required for the registered vehicle |
 
 **Vehicle age restriction:** Only vehicles manufactured within the last 15 years are accepted. Vehicles older than 15 years will be rejected during document review.
 
@@ -281,10 +281,8 @@ The following features are **not** included in the web portal and remain mobile-
 2. Should the web app support email + password as a login fallback for drivers who cannot receive OTP?
 3. Will the web portal and mobile app share the same backend API and authentication token system?
 4. What is the domain/URL for the driver web portal (e.g. `driver.teeko.my` or `register.teeko.my`)?
-5. Should drivers be able to register additional vehicles during web onboarding, or is only one vehicle permitted before mobile activation?
-6. *(Carried over from mobile PRD)* What is the exact no-show fee amount charged to riders (and credited to drivers)?
-7. *(Carried over from mobile PRD)* Is early cashout free or does it carry a transaction fee?
-8. *(Carried over from mobile PRD)* What is the maximum number of vehicles a driver can register under one account?
+5. *(Carried over from mobile PRD)* What is the exact no-show fee amount charged to riders (and credited to drivers)?
+6. *(Carried over from mobile PRD)* Is early cashout free or does it carry a transaction fee?
 
 ---
 

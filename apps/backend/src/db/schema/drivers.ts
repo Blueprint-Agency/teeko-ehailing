@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 import { users } from './identity';
@@ -34,26 +35,28 @@ export const driverProfiles = pgTable('driver_profiles', {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
-export const vehicles = pgTable('vehicles', {
-  id: uuid().primaryKey().defaultRandom(),
-  driverId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
-  plateNumber: text().notNull().unique(),
-  make: text().notNull(),
-  model: text().notNull(),
-  year: integer().notNull(),
-  colour: text(),
-  category: rideCategory().notNull(),
-  isActive: boolean().notNull().default(false),
-  puspakomExpiry: date(),
-  roadTaxExpiry: date(),
-  insuranceExpiry: date(),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-});
-
-export const driverActiveVehicle = pgTable('driver_active_vehicle', {
-  driverId: uuid().primaryKey().references(() => users.id, { onDelete: 'cascade' }),
-  vehicleId: uuid().notNull().references(() => vehicles.id, { onDelete: 'cascade' }),
-});
+// One vehicle per driver: the driver's account *is* the vehicle's registration.
+// The unique index on driverId is what enforces it — there is no active/inactive
+// flag and no active-vehicle mapping table, because there is nothing to choose
+// between. A driver changing car updates this row (and re-submits its documents).
+export const vehicles = pgTable(
+  'vehicles',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    driverId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+    plateNumber: text().notNull().unique(),
+    make: text().notNull(),
+    model: text().notNull(),
+    year: integer().notNull(),
+    colour: text(),
+    category: rideCategory().notNull(),
+    puspakomExpiry: date(),
+    roadTaxExpiry: date(),
+    insuranceExpiry: date(),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('uq_vehicle_driver').on(t.driverId)],
+);
 
 export const driverLocations = pgTable('driver_locations', {
   driverId: uuid().primaryKey().references(() => users.id, { onDelete: 'cascade' }),

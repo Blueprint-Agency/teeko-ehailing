@@ -139,12 +139,46 @@ export default function TripScreen() {
         text: 'Confirm SOS',
         style: 'destructive',
         onPress: async () => {
+          // Raise the alert before anything else — the record and the contact
+          // notification matter more than tidying up the trip. If the live watch
+          // hasn't produced a fix yet, fall back to the device's last known one.
+          let at = driverLocation;
+          if (!at) {
+            const last = await Location.getLastKnownPositionAsync().catch(() => null);
+            if (last) at = { lat: last.coords.latitude, lng: last.coords.longitude };
+          }
+          const alert = at
+            ? await api.safety
+                .sos({ tripId: activeTripId, lat: at.lat, lng: at.lng })
+                .catch((err: unknown) => {
+                  console.error('[sos] failed to raise alert', err);
+                  return null;
+                })
+            : null;
+
           if (activeTripId) {
             await api.driver.cancelTrip(activeTripId, 'driver_sos').catch(() => null);
             setActiveTripId(null);
             setActiveTrip(null);
           }
           router.replace('/(driver)/(tabs)/home');
+
+          if (!alert) {
+            Alert.alert(
+              'SOS not sent',
+              'We could not reach Teeko. Call 999 directly if you are in danger.',
+            );
+          } else if (alert.notifiedContacts.length === 0) {
+            Alert.alert(
+              'SOS raised',
+              'Teeko support has been alerted. You have no emergency contacts saved — add one in the driver portal.',
+            );
+          } else {
+            Alert.alert(
+              'SOS raised',
+              `Teeko support has been alerted and your ${alert.notifiedContacts.length} emergency contact(s) notified.`,
+            );
+          }
         },
       },
     ]);

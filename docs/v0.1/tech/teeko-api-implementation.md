@@ -1126,7 +1126,9 @@ CREATE TABLE driver_documents (
   UNIQUE(driver_id, type)
 );
 
--- Vehicles
+-- Vehicles — exactly one per driver, enforced by uq_vehicle_driver.
+-- No is_active flag and no driver_active_vehicle mapping: there is nothing to
+-- switch between. Changing car replaces this row (support/admin reviewed).
 CREATE TABLE vehicles (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   driver_id   UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -1134,9 +1136,9 @@ CREATE TABLE vehicles (
   model       VARCHAR(50),
   plate       VARCHAR(20),
   year        SMALLINT,
-  is_active   BOOLEAN DEFAULT false,
   doc_status  VARCHAR(20) DEFAULT 'pending'
 );
+CREATE UNIQUE INDEX uq_vehicle_driver ON vehicles (driver_id);
 
 -- Trips
 CREATE TABLE trips (

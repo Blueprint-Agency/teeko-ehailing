@@ -58,9 +58,8 @@ The landing page after login. Provides a real-time snapshot of platform health.
 Full driver profile showing:
 - Personal details (name, IC, phone, photo)
 - Documents: IC, CDL, PSV-D licence, e-hailing insurance — with expiry dates and approval status
-- Vehicle(s): plate number, make/model, year, road tax, car grant, PUSPAKOM cert, e-hailing insurance
-- Active vehicle indicator
-- EVP status (pending / approved / expired) per vehicle
+- Vehicle (one per driver): plate number, make/model, year, road tax, car grant, PUSPAKOM cert, e-hailing insurance
+- EVP status (pending / approved / expired)
 - Account status (active / suspended / deactivated)
 - Trip history summary (total trips, completion rate, cancellation rate, acceptance rate)
 - Ratings overview (average rating, total ratings)

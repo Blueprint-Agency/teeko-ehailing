@@ -4,7 +4,7 @@ import { verifyRiderClerkToken, verifyDriverClerkToken } from '../../external/cl
 import { findUserByExternalId } from '../../modules/identity/repo';
 import { trackingService } from '../../modules/tracking/service';
 import { db } from '../../db';
-import { trips, driverProfiles, users, vehicles, driverActiveVehicle } from '../../db/schema';
+import { trips, driverProfiles, users, vehicles } from '../../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { redis } from '../../config/redis';
 import { setIO } from '../../config/socketio';
@@ -97,14 +97,12 @@ export function mountSocketIO(httpServer: HttpServer): Server {
             ),
           });
           if (activeTrip?.driverId) {
-            const [driverUser, driverProfile, activeVehicleRow] = await Promise.all([
+            const [driverUser, driverProfile, vehicle] = await Promise.all([
               db.query.users.findFirst({ where: eq(users.id, activeTrip.driverId) }),
               db.query.driverProfiles.findFirst({ where: eq(driverProfiles.userId, activeTrip.driverId) }),
-              db.query.driverActiveVehicle.findFirst({ where: eq(driverActiveVehicle.driverId, activeTrip.driverId) }),
+              // One vehicle per driver — no active-vehicle indirection needed.
+              db.query.vehicles.findFirst({ where: eq(vehicles.driverId, activeTrip.driverId) }),
             ]);
-            const vehicle = activeVehicleRow
-              ? await db.query.vehicles.findFirst({ where: eq(vehicles.id, activeVehicleRow.vehicleId) })
-              : null;
             socket.emit('trip.status_update', {
               trip_id: activeTrip.id,
               status: activeTrip.status,

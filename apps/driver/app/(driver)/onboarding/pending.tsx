@@ -1,19 +1,39 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView,
+  ActivityIndicator, AppState, Alert, RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
+import { api } from '../../../lib/api';
+import { openPortal, portalPathForApplicationState } from '../../../lib/portal';
 
-const STATUS_STEP_KEYS = [
-  { key: 'submitted', labelKey: 'stepSubmitted', done: true, active: false },
-  { key: 'review', labelKey: 'stepUnderReview', done: false, active: true },
-  { key: 'background', labelKey: 'stepBackground', done: false, active: false },
-  { key: 'approved', labelKey: 'stepApproved', done: false, active: false },
-] as const;
+const STEP_LABEL_KEYS = ['stepSubmitted', 'stepUnderReview', 'stepBackground', 'stepApproved'] as const;
+
+// How far through the 4-step tracker each application state sits. Everything
+// before the documents are in counts as "not yet submitted" (index 0 active).
+const STEP_INDEX: Record<string, number> = {
+  phone_entered: 0,
+  agreement_signed: 0,
+  personal_docs_submitted: 0,
+  vehicle_added: 0,
+  vehicle_docs_submitted: 1,
+  in_review: 2,
+  rejected: 2,
+  activated: 4,
+};
+
+/** States where the driver still has portal work to do before review starts. */
+const NEEDS_PORTAL = new Set([
+  'phone_entered',
+  'agreement_signed',
+  'personal_docs_submitted',
+  'vehicle_added',
+  'rejected',
+]);
 
 export default function PendingReviewScreen() {
   const router = useRouter();
@@ -22,24 +42,113 @@ export default function PendingReviewScreen() {
   const { activeTheme } = useTheme();
   const t = useT();
   const styles = createStyles(colors);
+  const [state, setState] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const routed = useRef(false);
+
+  const load = useCallback(async () => {
+    try {
+      const me = await api.auth.me();
+      const next = me.application?.state ?? null;
+      setState(next);
+      setRejectionReason(me.application?.rejectionReason ?? null);
+      // An admin can activate the driver while this screen is open — send them
+      // straight to work rather than leaving them staring at a stale tracker.
+      if (next === 'activated' && !routed.current) {
+        routed.current = true;
+        router.replace('/(driver)/(tabs)/home');
+      }
+    } catch {
+      // Keep the last known state on a network blip; the driver can pull to refresh.
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [router]);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  // Re-check when the driver comes back from the portal in their browser.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') load();
+    });
+    return () => sub.remove();
+  }, [load]);
+
+  const stepIndex = STEP_INDEX[state ?? ''] ?? 0;
+  const needsPortal = NEEDS_PORTAL.has(state ?? '');
+  const isRejected = state === 'rejected';
+
+  const steps = STEP_LABEL_KEYS.map((labelKey, i) => ({
+    key: labelKey,
+    labelKey,
+    done: i < stepIndex,
+    active: i === stepIndex,
+  }));
+
+  const continueInPortal = () => {
+    openPortal(portalPathForApplicationState(state)).catch(() =>
+      Alert.alert('Could not open browser', 'Please visit the Teeko driver portal to continue.'),
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.root}>
+        <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
+        <View style={styles.loadingWrap}><ActivityIndicator color={colors.accent} /></View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); load(); }}
+            tintColor={colors.accent}
+          />
+        }
+      >
         <View style={styles.container}>
           {/* Icon */}
           <View style={styles.iconRing}>
-            <Text style={styles.iconEmoji}>🔍</Text>
+            <Text style={styles.iconEmoji}>{isRejected ? '⚠️' : needsPortal ? '📄' : '🔍'}</Text>
           </View>
 
-          <Text style={styles.title}>{t('driver.pendingTitle')}</Text>
-          <Text style={styles.subtitle}>{t('driver.pendingSubtitle')}</Text>
+          <Text style={styles.title}>
+            {isRejected
+              ? 'Application needs attention'
+              : needsPortal
+                ? 'Finish your application'
+                : t('driver.pendingTitle')}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isRejected
+              ? 'Our team could not approve your application as submitted. Update the details below and resubmit.'
+              : needsPortal
+                ? 'Your documents are not all in yet. Continue in the driver portal to complete your application.'
+                : t('driver.pendingSubtitle')}
+          </Text>
+
+          {isRejected && rejectionReason && (
+            <View style={styles.rejectCard}>
+              <Text style={styles.rejectTitle}>Reason</Text>
+              <Text style={styles.rejectBody}>{rejectionReason}</Text>
+            </View>
+          )}
 
           {/* Status tracker */}
           <View style={styles.tracker}>
-            {STATUS_STEP_KEYS.map((step, i) => (
+            {steps.map((step, i) => (
               <View key={step.key} style={styles.trackRow}>
                 <View style={styles.trackLeft}>
                   <View style={[
@@ -50,7 +159,7 @@ export default function PendingReviewScreen() {
                     {step.done && <Text style={styles.trackCheck}>✓</Text>}
                     {step.active && <View style={styles.trackPulse} />}
                   </View>
-                  {i < STATUS_STEP_KEYS.length - 1 && (
+                  {i < steps.length - 1 && (
                     <View style={[styles.trackLine, step.done && styles.trackLineDone]} />
                   )}
                 </View>
@@ -74,6 +183,14 @@ export default function PendingReviewScreen() {
             <Text style={styles.infoTitle}>{t('driver.whatToExpect')}</Text>
             <Text style={styles.infoBody}>{t('driver.whatToExpectBody')}</Text>
           </View>
+
+          {needsPortal && (
+            <TouchableOpacity style={styles.portalBtn} onPress={continueInPortal}>
+              <Text style={styles.portalBtnText}>
+                {isRejected ? 'Update my application' : 'Continue in browser'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TouchableOpacity
             style={styles.supportBtn}
@@ -145,6 +262,25 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   infoTitle: { color: colors.text, fontSize: 14, fontWeight: '700', marginBottom: 10 },
   infoBody: { color: colors.textSec, fontSize: 13, lineHeight: 22 },
+
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+
+  rejectCard: {
+    width: '100%', backgroundColor: colors.danger + '14',
+    borderRadius: 14, padding: 16,
+    borderWidth: 1, borderColor: colors.danger + '55',
+    marginBottom: 24,
+  },
+  rejectTitle: { color: colors.danger, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, marginBottom: 6 },
+  rejectBody: { color: colors.text, fontSize: 13, lineHeight: 20 },
+
+  portalBtn: {
+    width: '100%', height: 52, borderRadius: 14,
+    backgroundColor: colors.accent,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 12,
+  },
+  portalBtnText: { color: '#000', fontSize: 15, fontWeight: '800' },
 
   supportBtn: {
     width: '100%', height: 52, borderRadius: 14,

@@ -14,6 +14,13 @@ export interface TripOffer {
 interface DriverStore {
   token: string | null;
   isOnline: boolean;
+  /**
+   * Epoch ms of when this online session started, or null while offline. Drives
+   * the live session timer on the home screen. Memory-only like the rest of this
+   * store, so it restarts with the app — the UI labels it "this session" rather
+   * than claiming a cumulative total it cannot back up.
+   */
+  onlineSince: number | null;
   radius: number;
   pendingOffer: TripOffer | null;
   activeTrip: TripOffer | null;
@@ -32,13 +39,20 @@ interface DriverStore {
 export const useDriverStore = create<DriverStore>((set) => ({
   token: null,
   isOnline: false,
+  onlineSince: null,
   radius: 5,
   pendingOffer: null,
   activeTrip: null,
   activeTripId: null,
   activeTripStatus: null,
   setToken: (token) => set({ token }),
-  setOnline: (isOnline) => set({ isOnline }),
+  // The session clock is owned by the store, not the screen, so it survives
+  // navigating away from home and can never drift out of sync with isOnline.
+  setOnline: (isOnline) =>
+    set((s) => ({
+      isOnline,
+      onlineSince: isOnline ? (s.onlineSince ?? Date.now()) : null,
+    })),
   setRadius: (radius) => set({ radius }),
   setPendingOffer: (pendingOffer) => set({ pendingOffer }),
   setActiveTrip: (activeTrip) => set({ activeTrip }),

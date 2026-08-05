@@ -83,14 +83,13 @@ Tokens are issued by `POST /auth/verify-otp`.
 | `POST` | `/driver/onboard/documents` | `{ nric, cdl, psv_d, selfie, insurance }` (multipart files) | `{ submission_id, status: "under_review" }` |
 | `GET` | `/driver/onboard/status` | — | `{ doc_status, evp_status, can_go_online: bool }` |
 
-### 3.2 Vehicles
+### 3.2 Vehicle
+
+A driver has exactly one vehicle, so this is a singular resource — there is no list and no active-vehicle selection. Registering and re-submitting documents happens in the driver web portal; the mobile app is read-only here.
 
 | Method | Endpoint | Input | Output |
 |--------|----------|-------|--------|
-| `POST` | `/driver/vehicles` | `{ car_grant, road_tax, insurance, puspakom, year }` (multipart files) | `{ vehicle_id, status }` |
-| `GET` | `/driver/vehicles` | — | `[{ vehicle_id, make, model, plate, active, doc_status }]` |
-| `PUT` | `/driver/vehicles/:id/active` | — | `{ ok: bool }` |
-| `PUT` | `/driver/vehicles/:id/documents` | Updated files (multipart) | `{ status }` |
+| `GET` | `/driver/vehicle` | — | `{ vehicle: { id, plateNumber, make, model, year, colour, category, documents: [{ kind, status, expiry }] } \| null }` |
 
 ### 3.3 Presence & Location
 
@@ -187,12 +186,12 @@ searching → matched → en_route_to_pickup → arrived_at_pickup
 | Rider — Trips & Rating | 3 |
 | Rider — Payments | 4 |
 | Driver — Onboarding | 2 |
-| Driver — Vehicles | 4 |
+| Driver — Vehicle | 1 |
 | Driver — Presence | 3 |
 | Driver — Trip | 7 |
 | Driver — Earnings | 3 |
 | Driver — Ratings & Incentives | 2 |
-| **Total REST** | **37** |
+| **Total REST** | **34** |
 | WebSocket events | 6 |
 | Push notification triggers | 10 |
 

@@ -321,7 +321,6 @@ async function seedDriverDirectory() {
       model,
       year,
       category: CATEGORY[d.tier],
-      isActive: d.status === 'active',
     }).onConflictDoNothing();
 
     // EVP application row (the admin list reads `evp` from here). `not_applied`

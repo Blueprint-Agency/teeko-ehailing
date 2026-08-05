@@ -9,6 +9,7 @@ export default function DriverStackLayout() {
       <Stack.Screen name="trip" options={{ animation: 'fade' }} />
       <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="support" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="payouts" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

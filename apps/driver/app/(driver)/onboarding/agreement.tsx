@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet, Alert,
   StatusBar, ScrollView, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -8,6 +8,7 @@ import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
+import { openPortal } from '../../../lib/portal';
 
 const TC_SECTIONS = [
   {
@@ -52,6 +53,17 @@ export default function AgreementScreen() {
   const styles = createStyles(colors);
   const [scrolledToBottom, setScrolledToBottom] = useState(false);
 
+  // The binding consent record is captured by the portal (it holds the PDPA
+  // checkbox and the IP/user-agent audit trail), so the app hands off rather
+  // than accepting on its own. Pending is where the driver lands on return.
+  const handleAccept = () => {
+    if (!scrolledToBottom) return;
+    openPortal('/onboarding/agreement').catch(() =>
+      Alert.alert('Could not open browser', 'Please visit the Teeko driver portal to continue.'),
+    );
+    router.replace('/(driver)/onboarding/pending');
+  };
+
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
     const isBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - 40;
@@ -93,13 +105,16 @@ export default function AgreementScreen() {
         )}
         <TouchableOpacity
           style={[styles.acceptBtn, !scrolledToBottom && styles.acceptBtnDisabled]}
-          onPress={() => scrolledToBottom && router.push('/(driver)/onboarding/personal-docs')}
+          onPress={handleAccept}
           activeOpacity={scrolledToBottom ? 0.85 : 1}
         >
           <Text style={[styles.acceptText, !scrolledToBottom && styles.acceptTextDisabled]}>
             {t('driver.acceptAndContinue')}
           </Text>
         </TouchableOpacity>
+        <Text style={styles.portalHint}>
+          You'll sign the agreement and upload your documents in your browser, then return here.
+        </Text>
       </View>
     </View>
   );
@@ -133,6 +148,7 @@ const createStyles = (colors: any) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   scrollHint: { color: colors.textSec, fontSize: 12, textAlign: 'center', marginBottom: 10 },
+  portalHint: { color: colors.textMut, fontSize: 11, lineHeight: 16, textAlign: 'center', marginTop: 10 },
   acceptBtn: { height: 56, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
   acceptBtnDisabled: { backgroundColor: colors.surfaceHigh, borderWidth: 1, borderColor: colors.border },
   acceptText: { color: '#000', fontSize: 16, fontWeight: '800' },

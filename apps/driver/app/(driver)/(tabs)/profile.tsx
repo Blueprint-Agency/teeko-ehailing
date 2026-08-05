@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  StatusBar, ScrollView, Alert,
+  StatusBar, ScrollView, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
 import { User, FileText, Car, Landmark, HelpCircle, ClipboardList, Lock, ChevronRight, LogOut } from 'lucide-react-native';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
@@ -11,8 +11,9 @@ import { useColors } from '../../../constants/colors';
 import { useTheme, ThemeType } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { useLocale } from '../../../providers/LocaleProvider';
+import { openPortal } from '../../../lib/portal';
 import type { Locale } from '@teeko/shared';
-import profile from '../../../data/mock-driver-profile.json';
+import { api, type DriverProfile } from '../../../lib/api';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -35,47 +36,112 @@ export default function ProfileScreen() {
   const t = useT();
   const { locale, changeLocale } = useLocale();
   const [lang, setLang] = useState<string>(locale);
+  const [profile, setProfile] = useState<DriverProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const stars = Math.round(profile.rating);
+  const load = useCallback(async () => {
+    try {
+      const res = await api.profile.get();
+      setProfile(res.profile);
+    } catch {
+      // Leave the last known profile in place; the settings below still work
+      // offline, so a failed fetch shouldn't block the whole screen.
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
   const styles = createStyles(colors);
+
+  // Null rating means "not rated yet" — show a dash, never a made-up score.
+  const stars = profile?.rating != null ? Math.round(profile.rating) : 0;
+  const displayName = profile?.fullName?.trim() || '—';
+
+  const STATUS_LABEL: Record<string, string> = {
+    active: t('driver.active'),
+    suspended: t('driver.statusSuspended'),
+    deactivated: t('driver.statusDeactivated'),
+    pending: t('driver.statusPending'),
+  };
+  const STATUS_COLOR: Record<string, string> = {
+    active: colors.success,
+    suspended: colors.danger,
+    deactivated: colors.danger,
+    pending: colors.warning,
+  };
+  // The account is only truly "active" once onboarding approved it too.
+  const accountState =
+    profile == null
+      ? 'pending'
+      : profile.status !== 'active'
+        ? profile.status
+        : profile.approvalStatus === 'approved'
+          ? 'active'
+          : profile.approvalStatus;
+  const stateColor = STATUS_COLOR[accountState] ?? colors.warning;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
       <ScreenHeader title={t('driver.profile')} />
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); load(); }}
+            tintColor={colors.accent}
+          />
+        }
+      >
         {/* Avatar + name */}
         <View style={styles.avatarSection}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{profile.name.charAt(0)}</Text>
-          </View>
-          <Text style={styles.name}>{profile.name}</Text>
-          <Text style={styles.phone}>{profile.phone}</Text>
-
-          <View style={styles.ratingRow}>
-            <Text style={styles.ratingStars}>{'★'.repeat(stars)}{'☆'.repeat(5 - stars)}</Text>
-            <Text style={styles.ratingNum}>{profile.rating}</Text>
-          </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statNum}>{profile.totalTrips.toLocaleString()}</Text>
-              <Text style={styles.statLbl}>{t('driver.trips')}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statNum}>{t('driver.since', { year: new Date(profile.joinedDate).getFullYear() })}</Text>
-              <Text style={styles.statLbl}>{t('driver.member')}</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <View style={[styles.statusBadge, { backgroundColor: colors.success + '20', borderColor: colors.success }]}>
-                <Text style={[styles.statusBadgeText, { color: colors.success }]}>{t('driver.active')}</Text>
+          {loading && !profile ? (
+            <ActivityIndicator color={colors.accent} style={styles.headerLoader} />
+          ) : (
+            <>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{displayName.charAt(0)}</Text>
               </View>
-              <Text style={styles.statLbl}>{t('driver.status')}</Text>
-            </View>
-          </View>
+              <Text style={styles.name}>{displayName}</Text>
+              <Text style={styles.phone}>{profile?.phone ?? profile?.email ?? ''}</Text>
+
+              <View style={styles.ratingRow}>
+                <Text style={styles.ratingStars}>{'★'.repeat(stars)}{'☆'.repeat(5 - stars)}</Text>
+                <Text style={styles.ratingNum}>
+                  {profile?.rating != null ? profile.rating.toFixed(2) : '—'}
+                </Text>
+              </View>
+
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statNum}>{(profile?.totalTrips ?? 0).toLocaleString()}</Text>
+                  <Text style={styles.statLbl}>{t('driver.trips')}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={styles.statNum}>
+                    {profile ? t('driver.since', { year: new Date(profile.joinedAt).getFullYear() }) : '—'}
+                  </Text>
+                  <Text style={styles.statLbl}>{t('driver.member')}</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <View style={[styles.statusBadge, { backgroundColor: stateColor + '20', borderColor: stateColor }]}>
+                    <Text style={[styles.statusBadgeText, { color: stateColor }]}>
+                      {STATUS_LABEL[accountState] ?? accountState}
+                    </Text>
+                  </View>
+                  <Text style={styles.statLbl}>{t('driver.status')}</Text>
+                </View>
+              </View>
+            </>
+          )}
         </View>
 
         {/* Appearance Section */}
@@ -119,9 +185,10 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>{t('driver.account')}</Text>
           {([
             { label: t('driver.personalInfo'), Icon: User, action: () => Alert.alert(t('driver.personalInfo'), 'Edit personal information') },
-            { label: t('driver.documents'), Icon: FileText, action: () => router.push('/(driver)/onboarding/personal-docs') },
-            { label: t('driver.myVehicles'), Icon: Car, action: () => router.push('/(driver)/(tabs)/vehicles') },
-            { label: t('driver.bankAccount'), Icon: Landmark, action: () => Alert.alert(t('driver.bankAccount'), 'Bank account management') },
+            // Documents are uploaded and re-verified in the web portal only.
+            { label: t('driver.documents'), Icon: FileText, action: () => openPortal('/profile') },
+            { label: t('driver.myVehicle'), Icon: Car, action: () => router.push('/(driver)/(tabs)/vehicles') },
+            { label: t('driver.bankAccount'), Icon: Landmark, action: () => router.push('/(driver)/payouts') },
           ] as const).map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
               <item.Icon size={18} color={colors.textSec} strokeWidth={1.75} style={styles.settingIconView} />
@@ -162,6 +229,9 @@ export default function ProfileScreen() {
 const createStyles = (colors: any) => StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   scroll: { paddingBottom: 40 },
+
+  // Roughly the height of the loaded header, so the screen doesn't jump.
+  headerLoader: { height: 180 },
 
   avatarSection: {
     backgroundColor: colors.surface,

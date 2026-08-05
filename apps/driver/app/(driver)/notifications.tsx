@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { CheckCircle, AlertTriangle, Target, Wallet, Ban } from 'lucide-react-native';
+import { CheckCircle, AlertTriangle, Wallet, Ban } from 'lucide-react-native';
 import ScreenHeader from '../../components/driver/ScreenHeader';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
@@ -14,7 +14,6 @@ type LucideIcon = React.ComponentType<{ size?: number; color?: string; strokeWid
 const TYPE_ICON: Record<string, LucideIcon> = {
   approval: CheckCircle,
   doc_expiry: AlertTriangle,
-  incentive: Target,
   payment: Wallet,
   suspension: Ban,
 };
@@ -42,7 +41,6 @@ export default function NotificationsScreen() {
   const TYPE_COLOR: Record<string, string> = {
     approval: colors.success,
     doc_expiry: colors.warning,
-    incentive: colors.accent,
     payment: colors.info,
     suspension: colors.danger,
   };

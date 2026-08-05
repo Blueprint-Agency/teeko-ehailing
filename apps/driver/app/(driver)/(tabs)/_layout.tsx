@@ -2,7 +2,7 @@ import React from 'react';
 import { Tabs } from 'expo-router';
 import { View, Text, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Map, Wallet, Target, Car, User } from 'lucide-react-native';
+import { Map, Wallet, Car, User } from 'lucide-react-native';
 import { useColors } from '../../../constants/colors';
 import { useT } from '@teeko/i18n';
 
@@ -59,12 +59,6 @@ export default function TabsLayout() {
         name="earnings/index"
         options={{
           tabBarIcon: ({ focused }) => <TabIcon Icon={Wallet} label={t('driver.tabEarnings')} focused={focused} colors={colors} />,
-        }}
-      />
-      <Tabs.Screen
-        name="incentives"
-        options={{
-          tabBarIcon: ({ focused }) => <TabIcon Icon={Target} label={t('driver.tabBonus')} focused={focused} colors={colors} />,
         }}
       />
       <Tabs.Screen

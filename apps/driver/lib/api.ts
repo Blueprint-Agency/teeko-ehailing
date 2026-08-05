@@ -51,6 +51,112 @@ export type DriverMe = {
   application: { state: string; rejectionReason: string | null; submittedAt: string | null } | null;
 };
 
+export type EarningsSummary = {
+  tripCount: number;
+  grossCents: number;
+  commissionCents: number;
+  netCents: number;
+};
+
+export type EarningsResponse = {
+  lifetime: EarningsSummary;
+  today: EarningsSummary;
+  week: EarningsSummary;
+  dailyBreakdown: Array<{
+    date: string;
+    day: string;
+    amountRm: number;
+    trips: number;
+    isToday: boolean;
+  }>;
+  recent: Array<{
+    tripId: string;
+    grossRm: number;
+    netRm: number;
+    transferred: boolean;
+    at: string;
+    pickupAddress: string | null;
+    dropoffAddress: string | null;
+    riderName: string | null;
+    ratingGiven: number | null;
+    distanceKm: number | null;
+    completedAt: string | null;
+  }>;
+  payouts: Array<{
+    id: string;
+    amountRm: number;
+    method: string;
+    status: string;
+    at: string;
+  }>;
+  cashout: {
+    eligible: boolean;
+    connectStatus: string;
+    payoutsEnabled: boolean;
+    cooldownHoursLeft: number;
+    minCashoutRm: number;
+  };
+};
+
+export type DriverProfile = {
+  id: string;
+  fullName: string | null;
+  phone: string | null;
+  email: string | null;
+  status: string;
+  approvalStatus: string;
+  availability: string;
+  /** Null until the driver has been rated at least once. */
+  rating: number | null;
+  ratingCount: number;
+  totalTrips: number;
+  acceptanceRate: number | null;
+  cancellationRate: number | null;
+  completionRate: number | null;
+  joinedAt: string;
+};
+
+export type VehicleDocKind = 'car_grant' | 'road_tax' | 'insurance' | 'puspakom';
+
+export type VehicleDocStatus =
+  | 'approved'
+  | 'pending'
+  | 'rejected'
+  | 'expiring_soon'
+  | 'expired'
+  | 'missing';
+
+export type DriverVehicle = {
+  id: string;
+  plateNumber: string;
+  make: string;
+  model: string;
+  year: number;
+  colour: string | null;
+  category: string;
+  documents: Array<{ kind: VehicleDocKind; status: VehicleDocStatus; expiry: string | null }>;
+};
+
+export type EmergencyContact = {
+  id: string;
+  name: string;
+  phone: string;
+  relation: string | null;
+};
+
+export type SosAlert = {
+  id: string;
+  tripId: string | null;
+  createdAt: string;
+  resolvedAt: string | null;
+  notifiedContacts: EmergencyContact[];
+};
+
+export type ConnectStatus = {
+  status: 'not_started' | 'pending' | 'active' | 'restricted' | string;
+  payoutsEnabled: boolean;
+};
+
 export const api = {
   auth: {
     me: () =>
@@ -98,5 +204,38 @@ export const api = {
         method: 'POST',
         body: JSON.stringify({ origin, destination, ...options }),
       }),
+  },
+  earnings: {
+    get: () => req<EarningsResponse>('/driver/earnings'),
+    cashout: () =>
+      req<{ amountRm: number; status: string }>('/driver/earnings/cashout', { method: 'POST' }),
+  },
+  profile: {
+    get: () => req<{ profile: DriverProfile }>('/driver/profile'),
+  },
+  // A driver has exactly one vehicle — there is no list and nothing to switch.
+  vehicle: {
+    get: () => req<{ vehicle: DriverVehicle | null }>('/driver/vehicle'),
+  },
+  safety: {
+    // Panic button. Records the alert server-side with the driver's location and
+    // a snapshot of their emergency contacts; dialling 999 stays on the device.
+    sos: (input: { tripId?: string | null; lat: number; lng: number }) =>
+      req<SosAlert>('/driver/safety/sos', { method: 'POST', body: JSON.stringify(input) }),
+    activeSos: () => req<{ alert: SosAlert | null }>('/driver/safety/sos/active'),
+    resolveSos: (id: string) =>
+      req<SosAlert>(`/driver/safety/sos/${id}/resolve`, { method: 'POST' }),
+    contacts: () => req<{ contacts: EmergencyContact[] }>('/driver/safety/contacts'),
+    reportIncident: (input: { tripId?: string | null; reason: string }) =>
+      req<{ id: string; status: string; createdAt: string }>('/driver/safety/incident-reports', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+  },
+  // Stripe Connect payout onboarding. `onboard` returns a hosted Stripe URL the
+  // app opens in the system browser; status is polled on return.
+  connect: {
+    onboard: () => req<{ onboardingUrl: string }>('/driver/connect/onboard', { method: 'POST' }),
+    status: () => req<ConnectStatus>('/driver/connect/status'),
   },
 };
