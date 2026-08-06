@@ -127,8 +127,15 @@ export default function RideSelectionScreen() {
         router.replace('/(main)/driver-matched');
       } else if (status === 'in_trip') {
         router.replace('/(main)/in-trip');
-      } else {
+      } else if (status === 'searching' || status === 'no_drivers') {
         router.replace('/(main)/finding-driver');
+      } else {
+        // book() resolves without throwing when the backend rejects the request
+        // (409 conflict, 410 lapsed quote) — it leaves status at 'idle'/'pending'
+        // and puts the reason in `error`. Navigating anyway sent the rider to
+        // finding-driver, whose 'idle' guard immediately replaced it with home,
+        // so the error was never seen. Stay put and surface it instead.
+        setBooking(false);
       }
     } catch {
       setBooking(false);
@@ -186,6 +193,12 @@ export default function RideSelectionScreen() {
           <Text weight="bold" className="mb-3 text-lg">
             Choose a ride
           </Text>
+          {quoteError ? (
+            <View className="mb-3 flex-row items-start rounded-lg bg-warning-50 px-3 py-2">
+              <Icon name="error-outline" size={16} color="#B45309" />
+              <Text className="ml-1.5 flex-1 text-xs text-warning-700">{quoteError}</Text>
+            </View>
+          ) : null}
           {surged ? (
             <View className="mb-3 flex-row items-start rounded-lg bg-warning-50 px-3 py-2">
               <Icon name="bolt" size={16} color="#B45309" />

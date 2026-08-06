@@ -47,6 +47,7 @@ export type TripState = {
   rateTrip: (rating: number, comment?: string) => void;
   loadHistory: () => Promise<void>;
   reset: () => void;
+  clearFailedBooking: () => void;
   applyTripUpdate: (status: TripStatus, driver?: Driver) => void;
   connectSocket: (socket: TripSocket) => void;
   pollStatus: () => Promise<void>;
@@ -353,6 +354,26 @@ export const useTripStore = create<TripState>((set, get) => ({
       driverPosition: null,
       driverHeading: 0,
       error: null,
+    });
+  },
+
+  /**
+   * Drop a booking that ended without a ride (no drivers / cancelled server-side)
+   * while keeping the route the rider chose, so "Try again" returns them to the
+   * ride picker instead of the start of the flow. Quotes are cleared because the
+   * previous quoteId was already consumed by the failed booking — reusing it
+   * makes the backend reject the retry with a 409.
+   */
+  clearFailedBooking() {
+    set({
+      status: 'pending',
+      trip: null,
+      driver: null,
+      driverPosition: null,
+      driverHeading: 0,
+      driverEtaMin: null,
+      error: null,
+      ...CLEARED_QUOTES,
     });
   },
 }));

@@ -14,6 +14,7 @@ export default function FindingDriverScreen() {
   const cancel = useTripStore((s) => s.cancel);
   const destination = useTripStore((s) => s.destination);
   const pollStatus = useTripStore((s) => s.pollStatus);
+  const clearFailedBooking = useTripStore((s) => s.clearFailedBooking);
 
   // Set when the rider taps Cancel, so their own cancellation goes straight home
   // instead of surfacing the "no drivers" screen.
@@ -67,11 +68,26 @@ export default function FindingDriverScreen() {
           {destination?.name ?? 'your destination'} right now. Try again in a few minutes.
         </Text>
         <View className="mt-2 w-full gap-2">
-          <Button label="Try again" onPress={() => router.back()} />
+          {/* Clear the dead trip and its consumed quote before going back, so the
+              retry re-quotes and books cleanly. router.back() would land on
+              confirm-destination (ride-selection was replaced by this screen) and
+              rebook the stale quoteId → 409 → bounced home. */}
+          <Button
+            label="Try again"
+            onPress={() => {
+              clearFailedBooking();
+              router.replace('/(main)/ride-selection');
+            }}
+          />
           <Button
             label="Go back home"
             variant="ghost"
-            onPress={() => router.replace('/(main)/(tabs)')}
+            onPress={() => {
+              // Same stale-quote trap applies when the rider rebooks the same
+              // route from home, so clear the dead booking on this path too.
+              clearFailedBooking();
+              router.replace('/(main)/(tabs)');
+            }}
           />
         </View>
       </SafeAreaView>
