@@ -5,7 +5,7 @@ const mapsKey = process.env.GOOGLE_MAPS_API_KEY ?? '';
 const config: ExpoConfig = {
   name: 'Teeko',
   slug: 'teeko-rider',
-  version: '0.0.9',
+  version: '0.0.10',
   orientation: 'portrait',
   scheme: 'teeko',
   userInterfaceStyle: 'light',
