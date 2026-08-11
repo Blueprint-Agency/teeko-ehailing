@@ -190,6 +190,46 @@ export interface SurgeZone {
   multiplier: number;
   active: boolean;
   color: string | null;
+  /** Outer-ring boundary of the zone, for rendering on the surge map. */
+  polygon: { lat: number; lng: number }[];
+}
+
+export interface Trip {
+  id: string;
+  driverId: string;
+  riderId: string;
+  status: string;
+  category: string;
+  city: string;
+  /** ISO timestamp. */
+  date: string;
+  pickup: string;
+  dropoff: string;
+  /** Kilometres. */
+  distance: number;
+  /** Ringgit (RM), not sen. */
+  fare: number;
+  /** Teeko's commission on this trip, in RM. */
+  commission: number;
+  surge: number;
+  paymentMethod: string;
+  dispute: boolean;
+}
+
+export interface MetricsOverview {
+  activeTrips: number;
+  driversOnline: number;
+  activeDrivers: number;
+  todayTrips: number;
+  /** Day-over-day % change; null when yesterday had none to compare against. */
+  todayTripsDeltaPct: number | null;
+  /** Ringgit (RM). */
+  todayRevenue: number;
+  todayRevenueDeltaPct: number | null;
+  openDisputes: number;
+  totalRiders: number;
+  newRidersThisWeek: number;
+  todayByCategory: { category: string; trips: number }[];
 }
 
 export interface LiveTrip {
@@ -298,6 +338,10 @@ export const adminApi = {
   deleteRider: (id: string) => del<{ ok: boolean }>(`/riders/${id}`),
 
   getDrivers: () => get<Driver[]>('/drivers'),
+
+  getMetricsOverview: () => get<MetricsOverview>('/metrics/overview'),
+
+  getTrips: (limit = 500) => get<Trip[]>(`/trips?limit=${limit}`),
 
   getLiveTrips: () => get<LiveTrip[]>('/trips/live'),
 

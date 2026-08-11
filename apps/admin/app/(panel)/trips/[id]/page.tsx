@@ -10,23 +10,38 @@ import { useRiderStore } from '@/stores/rider';
 import { useRbac } from '@/hooks/useRbac';
 import { StatusChip } from '@/components/data/StatusChip';
 import { ArrowBack } from '@mui/icons-material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function TripDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? '';
   const router = useRouter();
   const trips = useTripStore((s) => s.trips);
+  const loading = useTripStore((s) => s.loading);
+  const loadTrips = useTripStore((s) => s.loadTrips);
   const drivers = useDriverStore((s) => s.drivers);
   const riders = useRiderStore((s) => s.riders);
   const { can } = useRbac();
   const [done, setDone] = useState('');
 
+  // Populate the store on direct navigation to a trip URL (deep link / refresh).
+  useEffect(() => {
+    loadTrips();
+  }, [loadTrips]);
+
   const trip = trips.find((t) => t.id === id);
   const driver = drivers.find((d) => d.id === trip?.driverId);
   const rider = riders.find((r) => r.id === trip?.riderId);
 
-  if (!trip) return <Box p={4}><Alert severity="error">Trip not found.</Alert></Box>;
+  if (!trip) {
+    return (
+      <Box p={4}>
+        {loading
+          ? <Typography variant="body2" color="text.secondary">Loading trip…</Typography>
+          : <Alert severity="error">Trip not found.</Alert>}
+      </Box>
+    );
+  }
 
   const platformFee = trip.commission;
   const driverEarning = trip.fare - trip.commission;
