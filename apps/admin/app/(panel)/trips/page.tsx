@@ -1,13 +1,21 @@
 'use client';
-import { Box, Typography, Button, Chip } from '@mui/material';
+import { Box, Typography, Button, Chip, Alert } from '@mui/material';
 import { DataGrid, GridColDef, GridToolbar } from '@mui/x-data-grid';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useTripStore } from '@/stores/trip';
 import { StatusChip } from '@/components/data/StatusChip';
 
 export default function TripHistoryPage() {
   const trips = useTripStore((s) => s.trips);
+  const loading = useTripStore((s) => s.loading);
+  const error = useTripStore((s) => s.error);
+  const loadTrips = useTripStore((s) => s.loadTrips);
   const router = useRouter();
+
+  useEffect(() => {
+    loadTrips();
+  }, [loadTrips]);
 
   const columns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70 },
@@ -27,9 +35,10 @@ export default function TripHistoryPage() {
   return (
     <Box>
       <Typography variant="h6" fontWeight={700} mb={2.5}>Trip History</Typography>
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       <Box sx={{ height: 620 }}>
         <DataGrid
-          rows={trips} columns={columns}
+          rows={trips} columns={columns} loading={loading}
           pageSizeOptions={[25, 50, 100]} checkboxSelection disableRowSelectionOnClick
           slots={{ toolbar: GridToolbar }} slotProps={{ toolbar: { showQuickFilter: true } }}
           onRowDoubleClick={({ row }) => router.push(`/trips/${row.id}`)}

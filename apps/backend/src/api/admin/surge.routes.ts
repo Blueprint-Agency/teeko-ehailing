@@ -1,8 +1,29 @@
 import type { FastifyInstance } from 'fastify';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import { db } from '../../config/db';
 import { surgeZones } from '../../db/schema/pricing-incentives';
 import { recordAuditSafe } from '../../modules/admin/audit';
+
+type LatLng = { lat: number; lng: number };
+
+// PostGIS polygons are stored as geography and read back as opaque EWKB hex, so
+// we ask Postgres to render GeoJSON and pull the outer ring out of that. The map
+// only needs the boundary; holes (inner rings) aren't used by surge zones.
+const polygonGeoJson = (col: typeof surgeZones.polygon) =>
+  sql<string | null>`ST_AsGeoJSON(${col})`;
+
+// GeoJSON Polygon coordinates are [[[lng, lat], ...]] with the outer ring first;
+// Google Maps wants { lat, lng }. Returns [] on any missing/unparseable value.
+function parsePolygon(geojson: string | null): LatLng[] {
+  if (!geojson) return [];
+  try {
+    const ring = JSON.parse(geojson)?.coordinates?.[0];
+    if (!Array.isArray(ring)) return [];
+    return ring.map(([lng, lat]: [number, number]) => ({ lat, lng }));
+  } catch {
+    return [];
+  }
+}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const MIN_MULTIPLIER = 1.0;
@@ -48,7 +69,7 @@ function effectiveMultiplier(row: Pick<ZoneRow, 'manualMultiplier' | 'manualUnti
   return { value: MIN_MULTIPLIER, source: 'default' as const };
 }
 
-function serialize(row: ZoneRow) {
+function serialize(row: ZoneRow, polygon: LatLng[] = []) {
   const effective = effectiveMultiplier(row);
   return {
     id: row.id,
@@ -61,6 +82,8 @@ function serialize(row: ZoneRow) {
     manualUntil: row.manualUntil?.toISOString() ?? null,
     active: row.active,
     color: row.color,
+    // Outer-ring coordinates for rendering the zone on the admin surge map.
+    polygon,
   };
 }
 
@@ -69,8 +92,11 @@ export async function routes(app: FastifyInstance) {
   // ── GET /surge/zones ───────────────────────────────────────────────────────
   // List all surge zones with their multiplier, active state and render colour.
   app.get('/zones', async () => {
-    const rows = await db.select().from(surgeZones).orderBy(asc(surgeZones.label));
-    return rows.map(serialize);
+    const rows = await db
+      .select({ zone: surgeZones, polygon: polygonGeoJson(surgeZones.polygon) })
+      .from(surgeZones)
+      .orderBy(asc(surgeZones.label));
+    return rows.map((r) => serialize(r.zone, parsePolygon(r.polygon)));
   });
 
   // ── PUT /surge/zones/:id ───────────────────────────────────────────────────
@@ -134,6 +160,13 @@ export async function routes(app: FastifyInstance) {
 
       if (!row) return reply.code(404).send({ error: 'zone_not_found' });
 
+      // The `returning()` geography column is opaque EWKB; re-read it as GeoJSON
+      // so the panel (which swaps in the whole returned zone) keeps its polygon.
+      const [geo] = await db
+        .select({ polygon: polygonGeoJson(surgeZones.polygon) })
+        .from(surgeZones)
+        .where(eq(surgeZones.id, id));
+
       // Describe exactly what the admin changed for the audit trail.
       const changes: string[] = [];
       if (multiplier === null) changes.push('override released (back to auto)');
@@ -149,7 +182,7 @@ export async function routes(app: FastifyInstance) {
         payload: { multiplier: multiplier ?? null, active: active ?? null, overrideMinutes: overrideMinutes ?? null },
       });
 
-      return { ok: true, zone: serialize(row) };
+      return { ok: true, zone: serialize(row, parsePolygon(geo?.polygon ?? null)) };
     },
   );
 }

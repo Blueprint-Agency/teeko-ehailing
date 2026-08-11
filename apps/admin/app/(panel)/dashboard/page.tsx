@@ -1,17 +1,17 @@
 'use client';
 import {
   Box, Grid, Card, CardContent, Typography, Chip, Alert,
-  Stack, Divider, List, ListItem, ListItemText, LinearProgress,
+  Stack, List, ListItem, ListItemText, LinearProgress, CircularProgress,
 } from '@mui/material';
 import {
   DirectionsCar, People, LocalTaxi, AttachMoney,
   TrendingUp, Warning,
 } from '@mui/icons-material';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useDriverStore } from '@/stores/driver';
-import { useTripStore } from '@/stores/trip';
-import { useRiderStore } from '@/stores/rider';
-import { useDisputeStore } from '@/stores/dispute';
+import { adminApi, type MetricsOverview } from '@/lib/api';
+
+const POLL_MS = 10000;
 
 interface Metric {
   label: string;
@@ -20,6 +20,12 @@ interface Metric {
   positive: boolean;
   icon: React.ReactNode;
   color: string;
+}
+
+// A signed percentage like "+12.5%", or "No data" when there's no baseline.
+function fmtDelta(pct: number | null): string {
+  if (pct === null) return 'No data';
+  return `${pct >= 0 ? '+' : ''}${pct}%`;
 }
 
 function MetricCard({ metric }: { metric: Metric }) {
@@ -53,57 +59,68 @@ function MetricCard({ metric }: { metric: Metric }) {
 export default function DashboardPage() {
   const drivers = useDriverStore((s) => s.drivers);
   const loadDrivers = useDriverStore((s) => s.loadDrivers);
-  const trips = useTripStore((s) => s.trips);
-  const riders = useRiderStore((s) => s.riders);
-  const disputes = useDisputeStore((s) => s.disputes);
 
-  const [tick, setTick] = useState(0);
+  const [metrics, setMetrics] = useState<MetricsOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      setMetrics(await adminApi.getMetricsOverview());
+      setError('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load dashboard metrics');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadDrivers();
-    const id = setInterval(() => setTick((t) => t + 1), 10000);
+    load();
+    const id = setInterval(load, POLL_MS);
     return () => clearInterval(id);
-  }, [loadDrivers]);
-
-  const activeDrivers = drivers.filter((d) => d.status === 'active').length;
-  const onlineDrivers = Math.floor(activeDrivers * (0.6 + (tick % 3) * 0.05));
-  const activeTrips = trips.filter((t) => t.status === 'in_progress').length + (tick % 2);
-  const todayTrips = trips.filter((t) => t.date.startsWith('2026-05-14')).length;
-  const todayRevenue = trips
-    .filter((t) => t.date.startsWith('2026-05-14') && t.status === 'completed')
-    .reduce((s, t) => s + t.fare, 0);
-  const openDisputes = disputes.filter((d) => d.status === 'open').length;
-
-  const metrics: Metric[] = [
-    { label: 'Active Trips', value: activeTrips, delta: `+${tick % 3} last 10 min`, positive: true, icon: <LocalTaxi sx={{ fontSize: 32 }} />, color: '#1A56DB' },
-    { label: 'Drivers Online', value: onlineDrivers, delta: `of ${activeDrivers} active`, positive: true, icon: <DirectionsCar sx={{ fontSize: 32 }} />, color: '#7E3AF2' },
-    { label: "Today's Trips", value: todayTrips, delta: '+12% vs yesterday', positive: true, icon: <TrendingUp sx={{ fontSize: 32 }} />, color: '#057A55' },
-    { label: "Today's Revenue", value: `RM ${todayRevenue.toFixed(2)}`, delta: '+8.4% vs yesterday', positive: true, icon: <AttachMoney sx={{ fontSize: 32 }} />, color: '#FF5A1F' },
-    { label: 'Open Disputes', value: openDisputes, delta: 'needs review', positive: false, icon: <Warning sx={{ fontSize: 32 }} />, color: '#E02424' },
-    { label: 'Total Riders', value: riders.length, delta: '+3 this week', positive: true, icon: <People sx={{ fontSize: 32 }} />, color: '#057A55' },
-  ];
-
-  const recentAlerts = [
-    { id: 1, msg: 'Dispute #dis4 flagged — double charge confirmed', sev: 'error' as const },
-    { id: 2, msg: 'Payout failed for Mohd Hafiz (RHB) — invalid account', sev: 'warning' as const },
-    { id: 3, msg: 'Driver EVP expired: Siti Aminah Binti Kadir', sev: 'warning' as const },
-    { id: 4, msg: 'New pending driver application: Mohd Azlan Bin Che Hassan', sev: 'info' as const },
-  ];
+  }, [loadDrivers, load]);
 
   const pendingDrivers = drivers.filter((d) => d.status === 'pending');
-  const cityBreakdown = [
-    { city: 'Kuala Lumpur', trips: 142, pct: 72 },
-    { city: 'Petaling Jaya', trips: 38, pct: 52 },
-    { city: 'Shah Alam', trips: 22, pct: 38 },
-    { city: 'Subang Jaya', trips: 18, pct: 30 },
-    { city: 'Others', trips: 15, pct: 22 },
-  ];
+
+  const cards: Metric[] = metrics
+    ? [
+        { label: 'Active Trips', value: metrics.activeTrips, delta: 'live now', positive: true, icon: <LocalTaxi sx={{ fontSize: 32 }} />, color: '#1A56DB' },
+        { label: 'Drivers Online', value: metrics.driversOnline, delta: `of ${metrics.activeDrivers} active`, positive: true, icon: <DirectionsCar sx={{ fontSize: 32 }} />, color: '#7E3AF2' },
+        { label: "Today's Trips", value: metrics.todayTrips, delta: `${fmtDelta(metrics.todayTripsDeltaPct)} vs yesterday`, positive: (metrics.todayTripsDeltaPct ?? 0) >= 0, icon: <TrendingUp sx={{ fontSize: 32 }} />, color: '#057A55' },
+        { label: "Today's Revenue", value: `RM ${metrics.todayRevenue.toFixed(2)}`, delta: `${fmtDelta(metrics.todayRevenueDeltaPct)} vs yesterday`, positive: (metrics.todayRevenueDeltaPct ?? 0) >= 0, icon: <AttachMoney sx={{ fontSize: 32 }} />, color: '#FF5A1F' },
+        { label: 'Open Disputes', value: metrics.openDisputes, delta: metrics.openDisputes > 0 ? 'needs review' : 'all clear', positive: metrics.openDisputes === 0, icon: <Warning sx={{ fontSize: 32 }} />, color: '#E02424' },
+        { label: 'Total Riders', value: metrics.totalRiders, delta: `+${metrics.newRidersThisWeek} this week`, positive: true, icon: <People sx={{ fontSize: 32 }} />, color: '#057A55' },
+      ]
+    : [];
+
+  // Alerts derived from real signals rather than a canned list.
+  const alerts: { id: string; msg: string; sev: 'error' | 'warning' | 'info' }[] = [];
+  if (metrics && metrics.openDisputes > 0) {
+    alerts.push({ id: 'disputes', msg: `${metrics.openDisputes} open dispute${metrics.openDisputes > 1 ? 's' : ''} awaiting review`, sev: 'error' });
+  }
+  if (pendingDrivers.length > 0) {
+    alerts.push({ id: 'pending', msg: `${pendingDrivers.length} pending driver application${pendingDrivers.length > 1 ? 's' : ''} to review`, sev: 'warning' });
+  }
+  if (alerts.length === 0) {
+    alerts.push({ id: 'clear', msg: 'All clear — nothing needs attention right now.', sev: 'info' });
+  }
+
+  const maxCategoryTrips = Math.max(1, ...(metrics?.todayByCategory.map((c) => c.trips) ?? [0]));
 
   return (
     <Box>
       <Typography variant="h6" fontWeight={700} mb={2.5}>Platform Overview</Typography>
 
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+
+      {loading && !metrics ? (
+        <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>
+      ) : (
+      <>
       <Grid container spacing={2} mb={3}>
-        {metrics.map((m) => (
+        {cards.map((m) => (
           <Grid item xs={12} sm={6} md={4} key={m.label}>
             <MetricCard metric={m} />
           </Grid>
@@ -117,7 +134,7 @@ export default function DashboardPage() {
             <CardContent sx={{ p: 2 }}>
               <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Alerts & Attention Required</Typography>
               <Stack spacing={1}>
-                {recentAlerts.map((a) => (
+                {alerts.map((a) => (
                   <Alert key={a.id} severity={a.sev} sx={{ py: 0.5 }}>
                     <Typography variant="caption">{a.msg}</Typography>
                   </Alert>
@@ -135,6 +152,9 @@ export default function DashboardPage() {
                 Pending Applications
                 <Chip label={pendingDrivers.length} size="small" color="warning" sx={{ ml: 1 }} />
               </Typography>
+              {pendingDrivers.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">No pending applications.</Typography>
+              ) : (
               <List dense disablePadding>
                 {pendingDrivers.map((d) => (
                   <ListItem key={d.id} disablePadding sx={{ py: 0.5 }}>
@@ -147,30 +167,37 @@ export default function DashboardPage() {
                   </ListItem>
                 ))}
               </List>
+              )}
             </CardContent>
           </Card>
         </Grid>
 
-        {/* City breakdown */}
+        {/* Trips by category */}
         <Grid item xs={12} md={3}>
           <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
             <CardContent sx={{ p: 2 }}>
-              <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Today — Trips by City</Typography>
+              <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Today — Trips by Category</Typography>
+              {!metrics || metrics.todayByCategory.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">No trips yet today.</Typography>
+              ) : (
               <Stack spacing={1.5}>
-                {cityBreakdown.map((c) => (
-                  <Box key={c.city}>
+                {metrics.todayByCategory.map((c) => (
+                  <Box key={c.category}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                      <Typography variant="caption" fontWeight={500}>{c.city}</Typography>
+                      <Typography variant="caption" fontWeight={500} textTransform="capitalize">{c.category}</Typography>
                       <Typography variant="caption" color="text.secondary">{c.trips}</Typography>
                     </Box>
-                    <LinearProgress variant="determinate" value={c.pct} sx={{ height: 6, borderRadius: 3 }} />
+                    <LinearProgress variant="determinate" value={(c.trips / maxCategoryTrips) * 100} sx={{ height: 6, borderRadius: 3 }} />
                   </Box>
                 ))}
               </Stack>
+              )}
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+      </>
+      )}
     </Box>
   );
 }

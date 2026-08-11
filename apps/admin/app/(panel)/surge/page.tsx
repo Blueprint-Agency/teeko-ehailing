@@ -3,11 +3,31 @@ import {
   Box, Typography, Grid, Card, CardContent, Switch, Chip,
   Stack, Slider, Alert, Button, Divider, CircularProgress,
 } from '@mui/material';
+import { APIProvider, Map, Marker, Polygon } from '@vis.gl/react-google-maps';
 import { useRbac } from '@/hooks/useRbac';
-import { useState, useEffect, useCallback } from 'react';
+import { Fragment, useState, useEffect, useCallback } from 'react';
 import { adminApi, SurgeZone } from '@/lib/api';
 
 const DEFAULT_ZONE_COLOR = '#FF8C00';
+const KL_CENTER = { lat: 3.1478, lng: 101.6953 };
+const MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+// Rough centroid of a zone's boundary — good enough to anchor its multiplier
+// label. Averaging the ring vertices, not an area-weighted centroid.
+function centroid(pts: { lat: number; lng: number }[]) {
+  if (pts.length === 0) return null;
+  const sum = pts.reduce((a, p) => ({ lat: a.lat + p.lat, lng: a.lng + p.lng }), { lat: 0, lng: 0 });
+  return { lat: sum.lat / pts.length, lng: sum.lng / pts.length };
+}
+
+// A small rounded pill (rendered as a marker icon) showing the zone multiplier.
+const labelIcon = (text: string, color: string) =>
+  'data:image/svg+xml;charset=UTF-8,' +
+  encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="46" height="24" viewBox="0 0 46 24">` +
+      `<rect x="1" y="1" width="44" height="22" rx="11" fill="${color}" stroke="#fff" stroke-width="1.5"/>` +
+      `<text x="23" y="16" font-family="sans-serif" font-size="11" font-weight="700" text-anchor="middle" fill="#000">${text}</text></svg>`,
+  );
 
 export default function SurgePage() {
   const { can } = useRbac();
@@ -66,42 +86,60 @@ export default function SurgePage() {
       {done && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setDone('')}>{done}</Alert>}
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
+      {!MAPS_API_KEY && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Set <code>NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to render the surge map.
+        </Alert>
+      )}
+
       {loading ? (
         <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>
       ) : (
       <Grid container spacing={2}>
-        {/* Map placeholder */}
+        {/* Surge zone map */}
         <Grid item xs={12} md={7}>
           <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
-            <Box
-              sx={{
-                height: 400, bgcolor: 'action.hover', borderRadius: 1, position: 'relative',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 39px, rgba(128,128,128,0.12) 40px), repeating-linear-gradient(90deg, transparent, transparent 39px, rgba(128,128,128,0.12) 40px)',
-              }}
-            >
-              {zones.filter((z) => z.active).map((z, i) => (
-                <Box
-                  key={z.id}
-                  sx={{
-                    position: 'absolute',
-                    top: `${20 + i * 18}%`,
-                    left: `${15 + i * 18}%`,
-                    width: 90, height: 60,
-                    bgcolor: z.color ?? DEFAULT_ZONE_COLOR,
-                    opacity: 0.4,
-                    borderRadius: 2,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Typography variant="caption" fontWeight={700} sx={{ color: '#000' }}>{z.multiplier}×</Typography>
+            <Box sx={{ height: 400, borderRadius: 1, overflow: 'hidden', position: 'relative' }}>
+              {MAPS_API_KEY ? (
+                <APIProvider apiKey={MAPS_API_KEY}>
+                  <Map
+                    defaultCenter={KL_CENTER}
+                    defaultZoom={12}
+                    gestureHandling="greedy"
+                    disableDefaultUI
+                    style={{ width: '100%', height: '100%' }}
+                  >
+                    {zones.map((z) => {
+                      if (z.polygon.length < 3) return null;
+                      const color = z.color ?? DEFAULT_ZONE_COLOR;
+                      const center = centroid(z.polygon);
+                      return (
+                        <Fragment key={z.id}>
+                          <Polygon
+                            paths={z.polygon}
+                            strokeColor={color}
+                            strokeOpacity={z.active ? 0.9 : 0.4}
+                            strokeWeight={2}
+                            fillColor={color}
+                            fillOpacity={z.active ? 0.35 : 0.1}
+                          />
+                          {z.active && center && (
+                            <Marker
+                              position={center}
+                              icon={labelIcon(`${z.multiplier}×`, color)}
+                              title={`${z.name} · ${z.multiplier}×`}
+                            />
+                          )}
+                        </Fragment>
+                      );
+                    })}
+                  </Map>
+                </APIProvider>
+              ) : (
+                <Box sx={{ height: '100%', bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Typography variant="caption" sx={{ opacity: 0.5 }}>Map unavailable — API key missing</Typography>
                 </Box>
-              ))}
-              <Typography variant="caption" sx={{ opacity: 0.4, position: 'absolute', bottom: 16 }}>
-                Google Maps API key required for live map
-              </Typography>
+              )}
             </Box>
           </Card>
         </Grid>
