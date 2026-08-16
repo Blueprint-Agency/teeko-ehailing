@@ -146,7 +146,12 @@ export async function recordPdpaConsent(userId: string): Promise<void> {
 
 export async function updateRiderFields(
   userId: string,
-  patch: { fullName?: string | null; locale?: Locale; email?: string | null },
+  patch: {
+    fullName?: string | null;
+    locale?: Locale;
+    email?: string | null;
+    phone?: string | null;
+  },
 ): Promise<void> {
   await db
     .update(users)
@@ -154,6 +159,9 @@ export async function updateRiderFields(
       ...(patch.fullName !== undefined ? { fullName: patch.fullName } : {}),
       ...(patch.locale !== undefined ? { locale: patch.locale } : {}),
       ...(patch.email !== undefined ? { email: patch.email } : {}),
+      // users.phone is UNIQUE — a clash surfaces as a unique violation, which
+      // the routes translate into 409 phone_taken.
+      ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
     })
     .where(eq(users.id, userId));
 }
@@ -172,6 +180,7 @@ export async function getRiderProfileBundle(userId: string) {
       email: users.email,
       emailVerified: users.emailVerified,
       fullName: users.fullName,
+      phone: users.phone,
       locale: users.locale,
       status: users.status,
       ratingAvg: riderProfiles.ratingAvg,

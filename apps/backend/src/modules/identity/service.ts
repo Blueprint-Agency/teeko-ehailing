@@ -23,6 +23,7 @@ export type RiderMeResponse = {
     email: string | null;
     emailVerified: boolean;
     fullName: string | null;
+    phone: string | null;
     locale: 'en' | 'ms' | 'zh' | 'ta';
     status: 'active' | 'suspended' | 'deactivated';
   };
@@ -129,6 +130,7 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
       email: bundle.email,
       emailVerified: bundle.emailVerified,
       fullName: bundle.fullName,
+      phone: bundle.phone,
       locale: bundle.locale,
       status: bundle.status,
     },
@@ -145,6 +147,7 @@ export type DriverMeResponse = {
     email: string | null;
     emailVerified: boolean;
     fullName: string | null;
+    phone: string | null;
     status: 'active' | 'suspended' | 'deactivated';
     pdpaConsentAt: string | null;
   };
@@ -215,7 +218,11 @@ export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<Drive
     .limit(1);
 
   const [userRow] = await db
-    .select({ emailVerified: users.emailVerified, pdpaConsentAt: users.pdpaConsentAt })
+    .select({
+      emailVerified: users.emailVerified,
+      phone: users.phone,
+      pdpaConsentAt: users.pdpaConsentAt,
+    })
     .from(users)
     .where(eq(users.id, row.id))
     .limit(1);
@@ -242,6 +249,7 @@ export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<Drive
       email: row.email,
       emailVerified: userRow?.emailVerified ?? false,
       fullName: row.fullName,
+      phone: userRow?.phone ?? null,
       status: row.status,
       pdpaConsentAt: userRow?.pdpaConsentAt?.toISOString() ?? null,
     },
@@ -265,11 +273,46 @@ export async function acceptPdpaConsent(userId: string): Promise<void> {
 
 export type RiderMePatch = {
   fullName?: string;
+  phone?: string;
   locale?: 'en' | 'ms' | 'zh' | 'ta';
 };
 
+/**
+ * Store one canonical form per number so the UNIQUE constraint on users.phone
+ * actually bites: strip spaces, dashes and brackets, and rewrite a local
+ * Malaysian `01x…` into `+601x…`. Anything else keeps its leading `+`.
+ */
+export function normalizePhone(input: string): string | null {
+  const cleaned = input.replace(/[\s\-()]/g, '');
+  if (!cleaned) return null;
+  if (cleaned.startsWith('+')) return cleaned;
+  if (cleaned.startsWith('0')) return `+60${cleaned.slice(1)}`;
+  if (cleaned.startsWith('60')) return `+${cleaned}`;
+  return `+${cleaned}`;
+}
+
+function withNormalizedPhone<T extends { phone?: string }>(patch: T) {
+  if (patch.phone === undefined) return patch;
+  // An emptied field means "remove my number", not "store an empty string" —
+  // NULL is what the UNIQUE index tolerates more than once.
+  return { ...patch, phone: normalizePhone(patch.phone) };
+}
+
 export async function patchRiderMe(userId: string, patch: RiderMePatch): Promise<void> {
-  await updateRiderFields(userId, patch);
+  await updateRiderFields(userId, withNormalizedPhone(patch));
+}
+
+export type DriverMePatch = {
+  fullName?: string;
+  phone?: string;
+};
+
+/**
+ * Drivers edit the same users row as riders — only the editable field set
+ * differs (no locale here; the driver app keeps that device-side).
+ */
+export async function patchDriverMe(userId: string, patch: DriverMePatch): Promise<void> {
+  await updateRiderFields(userId, withNormalizedPhone(patch));
 }
 
 /**

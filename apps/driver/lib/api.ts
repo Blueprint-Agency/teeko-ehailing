@@ -12,6 +12,22 @@ export function registerTokenGetter(fn: () => Promise<string | null>): void {
   _tokenGetter = fn;
 }
 
+/**
+ * Carries the parsed error body alongside the message. Screens that need to
+ * branch on *which* error came back (change-password: bad code vs. rejected
+ * password) read `.data`; everything else keeps using `.message` as before.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly data: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 async function req<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await _tokenGetter();
   const headers: Record<string, string> = {
@@ -31,7 +47,7 @@ async function req<T = unknown>(path: string, options: RequestInit = {}): Promis
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = data?.message ?? data?.error?.message ?? data?.error ?? `HTTP ${res.status}`;
-    throw new Error(String(msg));
+    throw new ApiError(String(msg), res.status, (data ?? {}) as Record<string, unknown>);
   }
   return data as T;
 }
@@ -163,6 +179,13 @@ export const api = {
       req<DriverMe>('/driver/auth/me'),
     sendOtp: () => req<{ ok: true }>('/driver/auth/send-otp', { method: 'POST', body: JSON.stringify({}) }),
     verifyOtp: (code: string) => req<{ ok: true }>('/driver/auth/verify-otp', { method: 'POST', body: JSON.stringify({ code }) }),
+    // Verifies the emailed OTP and writes the new password in one call — the
+    // server uses Clerk's admin API, so the current password isn't needed.
+    changePassword: (code: string, newPassword: string) =>
+      req<{ ok: true }>('/driver/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ code, newPassword }),
+      }),
   },
   driver: {
     goOnline: () => req('/driver/status/online', { method: 'PUT' }),
@@ -212,6 +235,13 @@ export const api = {
   },
   profile: {
     get: () => req<{ profile: DriverProfile }>('/driver/profile'),
+    // Name and phone only — licence, vehicle and approval data are verified
+    // records and change through the web portal, not here.
+    update: (patch: { fullName?: string; phone?: string }) =>
+      req<{ profile: DriverProfile }>('/driver/profile', {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
   },
   // A driver has exactly one vehicle — there is no list and nothing to switch.
   vehicle: {

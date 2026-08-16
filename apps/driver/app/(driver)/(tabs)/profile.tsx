@@ -184,11 +184,12 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('driver.account')}</Text>
           {([
-            { label: t('driver.personalInfo'), Icon: User, action: () => Alert.alert(t('driver.personalInfo'), 'Edit personal information') },
+            { label: t('driver.personalInfo'), Icon: User, action: () => router.push('/(driver)/account/personal') },
             // Documents are uploaded and re-verified in the web portal only.
             { label: t('driver.documents'), Icon: FileText, action: () => openPortal('/profile') },
             { label: t('driver.myVehicle'), Icon: Car, action: () => router.push('/(driver)/(tabs)/vehicles') },
             { label: t('driver.bankAccount'), Icon: Landmark, action: () => router.push('/(driver)/payouts') },
+            { label: t('driver.changePassword'), Icon: Lock, action: () => router.push('/(driver)/account/change-password') },
           ] as const).map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
               <item.Icon size={18} color={colors.textSec} strokeWidth={1.75} style={styles.settingIconView} />

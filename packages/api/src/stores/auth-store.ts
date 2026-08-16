@@ -8,7 +8,7 @@ export type AuthState = {
   languagePref: Locale;
 
   fetchProfile: () => Promise<void>;
-  updateProfile: (patch: { fullName?: string; locale?: Locale }) => Promise<void>;
+  updateProfile: (patch: { fullName?: string; phone?: string; locale?: Locale }) => Promise<void>;
   setLanguage: (locale: Locale) => Promise<void>;
   clear: () => void;
 };
@@ -30,6 +30,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         rider: {
           ...current,
           ...(patch.fullName !== undefined ? { name: patch.fullName } : {}),
+          ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
           ...(patch.locale !== undefined ? { languagePref: patch.locale } : {}),
         },
       });

@@ -10,6 +10,8 @@ export default function DriverStackLayout() {
       <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="support" options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="payouts" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="account/personal" options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="account/change-password" options={{ animation: 'slide_from_right' }} />
     </Stack>
   );
 }

@@ -3,34 +3,15 @@ import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutF
 
 import { useAuthStore, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
-import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
+import { Button, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useSignUp } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 import { GoogleButton } from '../../components/GoogleButton';
+import { PasswordToggle } from '../../components/PasswordToggle';
 import { useGoogleAuth } from '../../lib/useGoogleAuth';
 
 const PASSWORD_MIN = 8;
-
-function PasswordToggle({
-  visible,
-  onToggle,
-}: {
-  visible: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onToggle}
-      haptic="selection"
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={visible ? 'Hide password' : 'Show password'}
-    >
-      <Icon name={visible ? 'visibility-off' : 'visibility'} size={20} color="#4B5563" />
-    </Pressable>
-  );
-}
 
 export default function SignupScreen() {
   const router = useRouter();

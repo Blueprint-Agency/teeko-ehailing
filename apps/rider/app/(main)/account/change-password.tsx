@@ -6,33 +6,15 @@ import { ApiError, authApi, useAuthStore, useUIStore } from '@teeko/api';
 import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
+import { PasswordToggle } from '../../../components/PasswordToggle';
+
 const PASSWORD_MIN = 8;
 
 type Step = 'send' | 'verify';
 
-function PasswordToggle({
-  visible,
-  onToggle,
-}: {
-  visible: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onToggle}
-      haptic="selection"
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={visible ? 'Hide password' : 'Show password'}
-    >
-      <Icon name={visible ? 'visibility-off' : 'visibility'} size={20} color="#4B5563" />
-    </Pressable>
-  );
-}
-
 export default function ChangePasswordScreen() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { user } = useUser();
   const rider = useAuthStore((s) => s.rider);
   const pushToast = useUIStore((s) => s.pushToast);
 
@@ -103,51 +85,40 @@ export default function ChangePasswordScreen() {
       setPasswordError("Passwords don't match");
       return;
     }
-    if (!isLoaded || !user) return;
-
     setBusy(true);
     try {
-      // 1) Verify identity with our backend OTP (Gmail SMTP).
-      try {
-        await authApi.verifyOtp(code.trim());
-      } catch (err) {
-        if (err instanceof ApiError) {
-          try {
-            const body = JSON.parse(err.body) as { error: string };
-            if (body.error === 'incorrect' || body.error === 'no_active_code') {
-              setCodeError('Invalid or expired code');
-            } else if (body.error === 'expired') {
-              setCodeError('Code expired — tap resend');
-            } else if (body.error === 'too_many_attempts') {
-              setCodeError('Too many attempts — tap resend');
-            } else {
-              setCodeError('Verification failed');
-            }
-          } catch {
-            setCodeError('Verification failed');
-          }
-        } else {
-          setCodeError('Verification failed');
-        }
-        return;
-      }
-
-      // 2) Apply the new password via Clerk (still owns the credential).
-      await user.updatePassword({ newPassword, signOutOfOtherSessions: true });
+      // One call: the backend verifies the OTP and writes the password through
+      // Clerk's admin API. Clerk's client-side user.updatePassword() would
+      // demand the current password, which this screen doesn't ask for.
+      await authApi.changePassword(code.trim(), newPassword);
       pushToast({ kind: 'info', message: 'Password updated.' });
       router.back();
     } catch (err) {
-      const errCode = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
-      const message = (err as { errors?: Array<{ message?: string }> })
-        .errors?.[0]?.message;
-      if (
-        errCode === 'form_password_pwned' ||
-        errCode === 'form_password_length_too_short' ||
-        errCode === 'form_password_validation_failed'
-      ) {
-        setPasswordError(message ?? 'Password rejected');
+      if (err instanceof ApiError) {
+        let body: { error?: string; code?: string; message?: string } = {};
+        try {
+          body = JSON.parse(err.body);
+        } catch {
+          // Non-JSON body — fall through to the generic toast.
+        }
+        if (body.error === 'incorrect' || body.error === 'no_active_code') {
+          setCodeError('Invalid or expired code');
+        } else if (body.error === 'expired') {
+          setCodeError('Code expired — tap resend');
+        } else if (body.error === 'too_many_attempts') {
+          setCodeError('Too many attempts — tap resend');
+        } else if (body.error === 'password_rejected') {
+          // The code is still valid — only the password was refused.
+          setPasswordError(
+            body.code === 'form_password_pwned'
+              ? 'That password has appeared in a data breach'
+              : (body.message ?? 'Choose a stronger password'),
+          );
+        } else {
+          pushToast({ kind: 'error', message: 'Could not update password.' });
+        }
       } else {
-        pushToast({ kind: 'error', message: message ?? 'Could not update password.' });
+        pushToast({ kind: 'error', message: 'Could not update password.' });
       }
     } finally {
       setBusy(false);
