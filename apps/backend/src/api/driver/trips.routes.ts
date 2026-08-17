@@ -14,6 +14,16 @@ export async function routes(app: FastifyInstance) {
     return { ok: true, data: data ?? null };
   });
 
+  // GET /api/v1/driver/trips/history — finished trips, newest first. Feeds the
+  // trip picker on Support → Report Issue, so it only returns trips a driver is
+  // actually allowed to dispute.
+  app.get<{ Querystring: { limit?: string } }>('/history', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 50);
+    const data = await tripsService.getDriverFinishedTrips(req.user.id, limit);
+    return { ok: true, data };
+  });
+
   // GET /api/v1/driver/trips/:id/route — recorded GPS breadcrumbs for route replay
   app.get<{ Params: { id: string } }>('/:id/route', async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });

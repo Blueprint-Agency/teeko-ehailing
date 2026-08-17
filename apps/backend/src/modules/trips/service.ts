@@ -454,6 +454,30 @@ export const tripsService = {
     };
   },
 
+  // ---- driver: finished trips ----
+  // The driver's most recent completed / cancelled / no-show trips — exactly
+  // the set they may raise a dispute against (see the trip picker on Support →
+  // Report Issue). Deliberately lean: enough to identify a trip in a list.
+  async getDriverFinishedTrips(driverId: string, limit = 30) {
+    const rows = await db.query.trips.findMany({
+      where: and(
+        eq(trips.driverId, driverId),
+        inArray(trips.status, ['completed', 'cancelled', 'no_show']),
+      ),
+      orderBy: (t, { desc }) => [desc(t.createdAt)],
+      limit,
+    });
+
+    return rows.map((trip) => ({
+      id: trip.id,
+      status: trip.status,
+      pickupAddress: trip.pickupAddress ?? null,
+      dropoffAddress: trip.dropoffAddress ?? null,
+      fareMyr: (trip.finalFareCents ?? 0) / 100,
+      finishedAt: (trip.completedAt ?? trip.cancelledAt ?? trip.createdAt).toISOString(),
+    }));
+  },
+
   // ---- rider: trip history ----
   // Returns the rider's 50 most recent trips mapped to the shared `Trip` shape
   // consumed by @teeko/api (client/trips.ts `history()` → trip-store `history`).

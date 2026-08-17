@@ -142,7 +142,16 @@ export type DisputeCategory =
   | 'service'
   | 'safety'
   | 'lost_item'
-  | 'other';
+  | 'other'
+  // Driver-raised only — filed from the driver app's Report Issue screen.
+  | 'document'
+  | 'account';
+
+/** The subset a driver can file under (driver Support → Report Issue). */
+export type DriverDisputeCategory = Extract<
+  DisputeCategory,
+  'overcharge' | 'payment' | 'document' | 'account' | 'other'
+>;
 
 // Full dispute lifecycle — mirrors the backend `dispute_status` pgEnum
 // (apps/backend/src/db/schema/trips.ts). Riders only ever create disputes as
@@ -176,6 +185,32 @@ export interface RiderDispute {
 export interface CreateDisputeInput {
   tripId: string;
   category: DisputeCategory;
+  amountMyr?: number;
+  description: string;
+}
+
+/**
+ * A driver-raised dispute (POST/GET /driver/disputes). Same table and admin
+ * queues as the rider's, but the trip is optional — a document or account
+ * report isn't tied to one.
+ */
+export interface DriverDispute {
+  id: string;
+  tripId: string | null;
+  category: DriverDisputeCategory;
+  status: DisputeStatus;
+  /** Present only for money categories (overcharge / payment). */
+  amountMyr?: number;
+  description: string;
+  /** Filled by an admin once the dispute is resolved or rejected. */
+  resolution?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface CreateDriverDisputeInput {
+  tripId?: string | null;
+  category: DriverDisputeCategory;
   amountMyr?: number;
   description: string;
 }

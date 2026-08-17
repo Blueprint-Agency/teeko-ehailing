@@ -198,10 +198,13 @@ export const lostItemReports = pgTable('lost_item_reports', {
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });
 
-// Rider-raised disputes on a finished trip (fare overcharge, wrong payment,
-// driver conduct, safety, lost item, other). Surfaces in the admin Disputes
-// Queue for resolution. Money is stored as integer sen (amountCents), matching
-// the payment ledger convention. See docs/v0.1/prd/teeko-rider-disputes.md.
+// Disputes raised on a trip. Riders raise them from a receipt (fare
+// overcharge, wrong payment, driver conduct, safety, lost item); drivers raise
+// them from the driver app's Report Issue screen (payout, document upload,
+// account suspension), where they need not be tied to a trip. Surfaces in the
+// admin Disputes Queue for resolution. Money is stored as integer sen
+// (amountCents), matching the payment ledger convention.
+// See docs/v0.1/prd/teeko-rider-disputes.md.
 export const disputeCategory = pgEnum('dispute_category', [
   'overcharge',
   'payment',
@@ -209,7 +212,14 @@ export const disputeCategory = pgEnum('dispute_category', [
   'safety',
   'lost_item',
   'other',
+  // Driver-raised only (added in 0019).
+  'document',
+  'account',
 ]);
+// Which side raised the dispute. Lives here rather than in ./feedback-disputes
+// so `disputes` can use it without a circular import; that file re-exports it
+// for the `feedback` table.
+export const disputeRaiserRole = pgEnum('dispute_raiser_role', ['rider', 'driver']);
 // Lifecycle. Riders only ever create disputes as `open`; the extra statuses
 // drive the admin queues added in the feedback/dispute merge:
 //   Dispute Queue → open, under_review, escalated
@@ -231,8 +241,13 @@ export const disputes = pgTable(
   'disputes',
   {
     id: uuid().primaryKey().defaultRandom(),
-    tripId: uuid().notNull().references(() => trips.id, { onDelete: 'cascade' }),
-    riderId: uuid().notNull().references(() => users.id),
+    // Nullable since 0019 — a driver may report a document or account issue
+    // that isn't tied to any trip.
+    tripId: uuid().references(() => trips.id, { onDelete: 'cascade' }),
+    // Exactly one of riderId / driverId is set, matching `raisedBy`.
+    riderId: uuid().references(() => users.id),
+    driverId: uuid().references(() => users.id),
+    raisedBy: disputeRaiserRole().notNull().default('rider'),
     category: disputeCategory().notNull(),
     status: disputeStatus().notNull().default('open'),
     amountCents: integer(),
@@ -245,5 +260,9 @@ export const disputes = pgTable(
     resolvedAt: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('disputes_trip_idx').on(t.tripId), index('disputes_rider_idx').on(t.riderId)],
+  (t) => [
+    index('disputes_trip_idx').on(t.tripId),
+    index('disputes_rider_idx').on(t.riderId),
+    index('disputes_driver_idx').on(t.driverId),
+  ],
 );

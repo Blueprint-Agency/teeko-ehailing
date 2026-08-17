@@ -173,6 +173,58 @@ export type ConnectStatus = {
   payoutsEnabled: boolean;
 };
 
+// A dispute the driver filed from Support → Report Issue. Same record and
+// admin queues as a rider-raised dispute; the trip is optional because a
+// document or account report isn't tied to one.
+export type DriverDisputeCategory =
+  | 'overcharge'
+  | 'payment'
+  | 'document'
+  | 'account'
+  | 'other';
+
+export type DriverDisputeStatus =
+  | 'open'
+  | 'under_review'
+  | 'escalated'
+  | 'resolved'
+  | 'rejected'
+  | 'refund_pending'
+  | 'refund_processing'
+  | 'refund_completed'
+  | 'refund_failed';
+
+export type DriverDispute = {
+  id: string;
+  tripId: string | null;
+  category: DriverDisputeCategory;
+  status: DriverDisputeStatus;
+  /** Present only for money categories (overcharge / payment). */
+  amountMyr?: number;
+  description: string;
+  /** Filled by an admin once the dispute is resolved or rejected. */
+  resolution?: string;
+  createdAt: string;
+  resolvedAt?: string;
+};
+
+// A finished trip, as listed in the Report Issue trip picker.
+export type DriverFinishedTrip = {
+  id: string;
+  status: 'completed' | 'cancelled' | 'no_show';
+  pickupAddress: string | null;
+  dropoffAddress: string | null;
+  fareMyr: number;
+  finishedAt: string;
+};
+
+export type CreateDriverDisputeInput = {
+  tripId?: string | null;
+  category: DriverDisputeCategory;
+  amountMyr?: number;
+  description: string;
+};
+
 export const api = {
   auth: {
     me: () =>
@@ -204,6 +256,9 @@ export const api = {
     completeTrip: (tripId: string) => req(`/driver/trips/${tripId}/complete`, { method: 'POST' }),
     cancelTrip: (tripId: string, reasonCode = 'driver_cancelled') =>
       req(`/driver/trips/${tripId}/cancel`, { method: 'POST', body: JSON.stringify({ reasonCode }) }),
+    // Finished trips only — the set a dispute may be raised against.
+    tripHistory: (limit = 30) =>
+      req<{ ok: boolean; data: DriverFinishedTrip[] }>(`/driver/trips/history?limit=${limit}`),
     getActiveTrip: () =>
       req<{
         ok: boolean;
@@ -261,6 +316,13 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(input),
       }),
+  },
+  // Report Issue → a real dispute in the admin Disputes Queue, the same place
+  // rider-raised disputes land.
+  disputes: {
+    list: () => req<DriverDispute[]>('/driver/disputes'),
+    create: (input: CreateDriverDisputeInput) =>
+      req<DriverDispute>('/driver/disputes', { method: 'POST', body: JSON.stringify(input) }),
   },
   // Stripe Connect payout onboarding. `onboard` returns a hosted Stripe URL the
   // app opens in the system browser; status is polled on return.
