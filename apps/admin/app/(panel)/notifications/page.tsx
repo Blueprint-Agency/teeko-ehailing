@@ -11,11 +11,9 @@ import { useState } from 'react';
 const SEGMENTS = [
   { value: 'all_drivers', label: 'All Drivers' },
   { value: 'all_riders', label: 'All Riders' },
-  { value: 'city_kl', label: 'Kuala Lumpur (Riders + Drivers)' },
-  { value: 'city_pj', label: 'Petaling Jaya (Riders + Drivers)' },
 ];
 
-const REACH: Record<string, number> = { all_drivers: 18, all_riders: 15, city_kl: 24, city_pj: 12 };
+const REACH: Record<string, number> = { all_drivers: 18, all_riders: 15 };
 
 export default function NotificationsPage() {
   const notifications = useNotificationStore((s) => s.notifications);

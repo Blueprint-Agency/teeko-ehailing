@@ -184,6 +184,15 @@ export interface CommissionSettings {
   driverOverrides: CommissionDriverOverride[];
 }
 
+/**
+ * The general KL surge — the base multiplier applied wherever no active zone
+ * covers the pickup. Surge zones override this rate.
+ */
+export interface SurgeConfig {
+  multiplier: number;
+  updatedAt: string | null;
+}
+
 export interface SurgeZone {
   id: string;
   name: string;
@@ -409,6 +418,11 @@ export const adminApi = {
     ),
 
   // ── Surge ────────────────────────────────────────────────────────────────────
+  getSurgeConfig: () => get<SurgeConfig>('/surge/config'),
+
+  updateSurgeConfig: (multiplier: number) =>
+    put<{ ok: boolean; config: SurgeConfig }>('/surge/config', { multiplier }),
+
   getSurgeZones: () => get<SurgeZone[]>('/surge/zones'),
 
   updateSurgeZone: (id: string, changes: { multiplier?: number; active?: boolean }) =>
