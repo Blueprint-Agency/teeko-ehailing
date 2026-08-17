@@ -85,4 +85,13 @@ export const disputesService = {
     });
     return rows.map(toDto);
   },
+
+  // ---- rider: list every dispute they've raised (across all trips) ----
+  async listForRider(riderId: string) {
+    const rows = await db.query.disputes.findMany({
+      where: eq(disputes.riderId, riderId),
+      orderBy: [desc(disputes.createdAt)],
+    });
+    return rows.map(toDto);
+  },
 };

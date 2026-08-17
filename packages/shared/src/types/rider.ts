@@ -144,7 +144,19 @@ export type DisputeCategory =
   | 'lost_item'
   | 'other';
 
-export type DisputeStatus = 'open' | 'under_review' | 'resolved' | 'rejected';
+// Full dispute lifecycle — mirrors the backend `dispute_status` pgEnum
+// (apps/backend/src/db/schema/trips.ts). Riders only ever create disputes as
+// `open`; admins drive the rest via the dispute/refund queues.
+export type DisputeStatus =
+  | 'open'
+  | 'under_review'
+  | 'escalated'
+  | 'resolved'
+  | 'rejected'
+  | 'refund_pending'
+  | 'refund_processing'
+  | 'refund_completed'
+  | 'refund_failed';
 
 /** A rider-raised dispute on a finished trip (POST/GET /rider/disputes). */
 export interface RiderDispute {

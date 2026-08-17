@@ -178,6 +178,11 @@ export default function AccountTab() {
             leadingIcon="credit-card"
             title={t('account.paymentMethods')}
             onPress={() => router.push('/(main)/account/payments' as never)}
+          />
+          <ListRow
+            leadingIcon="flag"
+            title={t('dispute.myReportsTitle')}
+            onPress={() => router.push('/(main)/account/disputes' as never)}
             noDivider
           />
         </Section>

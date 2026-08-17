@@ -144,7 +144,18 @@
     "statusOpen": "Terbuka",
     "statusUnderReview": "Dalam semakan",
     "statusResolved": "Selesai",
-    "statusRejected": "Ditolak"
+    "statusRejected": "Ditolak",
+    "statusEscalated": "Dieskalasi",
+    "statusRefundPending": "Bayaran balik menunggu",
+    "statusRefundProcessing": "Bayaran balik diproses",
+    "statusRefundCompleted": "Bayaran balik selesai",
+    "statusRefundFailed": "Bayaran balik gagal",
+    "myReportsTitle": "Laporan saya",
+    "myReportsEmptyTitle": "Tiada laporan lagi",
+    "myReportsEmptyBody": "Isu yang anda laporkan bagi perjalanan anda akan dipaparkan di sini untuk menjejaki statusnya.",
+    "tripRef": "Perjalanan",
+    "viewReceipt": "Lihat resit",
+    "viewReport": "Lihat laporan"
   },
   "account": {
     "title": "Akaun",

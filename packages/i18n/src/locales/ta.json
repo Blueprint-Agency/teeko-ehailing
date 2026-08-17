@@ -144,7 +144,18 @@
     "statusOpen": "திறந்தது",
     "statusUnderReview": "பரிசீலனையில்",
     "statusResolved": "தீர்க்கப்பட்டது",
-    "statusRejected": "நிராகரிக்கப்பட்டது"
+    "statusRejected": "நிராகரிக்கப்பட்டது",
+    "statusEscalated": "மேலிடப்பட்டது",
+    "statusRefundPending": "பணத்திருப்பம் நிலுவையில்",
+    "statusRefundProcessing": "பணத்திருப்பம் செயலாக்கத்தில்",
+    "statusRefundCompleted": "பணத்திருப்பம் முடிந்தது",
+    "statusRefundFailed": "பணத்திருப்பம் தோல்வி",
+    "myReportsTitle": "எனது புகார்கள்",
+    "myReportsEmptyTitle": "இன்னும் புகார்கள் இல்லை",
+    "myReportsEmptyBody": "உங்கள் பயணங்கள் குறித்து நீங்கள் தெரிவிக்கும் சிக்கல்கள் இங்கே தோன்றும், அவற்றின் நிலையைக் கண்காணிக்கலாம்.",
+    "tripRef": "பயணம்",
+    "viewReceipt": "ரசீதைப் பார்",
+    "viewReport": "புகாரைப் பார்"
   },
   "account": {
     "title": "கணக்கு",

@@ -144,7 +144,18 @@
     "statusOpen": "待处理",
     "statusUnderReview": "审核中",
     "statusResolved": "已解决",
-    "statusRejected": "已驳回"
+    "statusRejected": "已驳回",
+    "statusEscalated": "已升级",
+    "statusRefundPending": "退款待处理",
+    "statusRefundProcessing": "退款处理中",
+    "statusRefundCompleted": "退款完成",
+    "statusRefundFailed": "退款失败",
+    "myReportsTitle": "我的申诉",
+    "myReportsEmptyTitle": "暂无申诉",
+    "myReportsEmptyBody": "您对行程提出的问题会显示在此处，方便您跟踪处理状态。",
+    "tripRef": "行程",
+    "viewReceipt": "查看收据",
+    "viewReport": "查看申诉"
   },
   "account": {
     "title": "账户",

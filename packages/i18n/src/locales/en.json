@@ -159,7 +159,18 @@
     "statusOpen": "Open",
     "statusUnderReview": "Under review",
     "statusResolved": "Resolved",
-    "statusRejected": "Rejected"
+    "statusRejected": "Rejected",
+    "statusEscalated": "Escalated",
+    "statusRefundPending": "Refund pending",
+    "statusRefundProcessing": "Refund processing",
+    "statusRefundCompleted": "Refund completed",
+    "statusRefundFailed": "Refund failed",
+    "myReportsTitle": "My reports",
+    "myReportsEmptyTitle": "No reports yet",
+    "myReportsEmptyBody": "Issues you report on your trips show up here so you can track their status.",
+    "tripRef": "Trip",
+    "viewReceipt": "View receipt",
+    "viewReport": "View report"
   },
   "account": {
     "title": "Account",
