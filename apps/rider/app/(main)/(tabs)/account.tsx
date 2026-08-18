@@ -253,6 +253,15 @@ export default function AccountTab() {
           />
         </Section>
 
+        <Section title={t('support.sectionTitle')}>
+          <ListRow
+            leadingIcon="support-agent"
+            title={t('support.helpAndSupport')}
+            onPress={() => router.push('/(main)/account/support' as never)}
+            noDivider
+          />
+        </Section>
+
         {rider ? (
           <View className="mt-8">
             <View className="border-y border-border bg-surface">

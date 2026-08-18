@@ -141,6 +141,13 @@
       "when": 1786983050378,
       "tag": "0019_driver_disputes",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1787053908698,
+      "tag": "0020_solid_quentin_quire",
+      "breakpoints": true
     }
   ]
 }

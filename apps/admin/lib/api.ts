@@ -299,6 +299,22 @@ export type DisputeQueue = 'dispute' | 'refund' | 'completed';
 export type DisputeAction = 'reject' | 'approve_refund';
 export type RefundStatus = 'refund_processing' | 'refund_completed' | 'refund_failed';
 
+// ── Support tickets ───────────────────────────────────────────────────────────
+export type SupportTicketStatus = 'open' | 'in_progress' | 'resolved' | 'escalated';
+
+export interface SupportTicketRow {
+  id: string;
+  subject: string;
+  raisedBy: string;
+  userId: string;
+  status: SupportTicketStatus;
+  priority: string;
+  category: string;
+  date: string;
+  assignedTo: string | null;
+  messages: number;
+}
+
 // ── Revenue reports ───────────────────────────────────────────────────────────
 export interface RevenueDay {
   date: string;
@@ -440,6 +456,12 @@ export const adminApi = {
 
   updateRefundStatus: (id: string, status: RefundStatus, note?: string, ref?: string) =>
     put<{ ok: boolean; dispute: DisputeRow }>(`/disputes/${id}/refund`, { status, note, ref }),
+
+  // ── Support tickets ──────────────────────────────────────────────────────────
+  getSupportTickets: () => get<SupportTicketRow[]>('/support'),
+
+  updateSupportStatus: (id: string, status: SupportTicketStatus) =>
+    put<{ ok: boolean; ticket: SupportTicketRow }>(`/support/${id}`, { status }),
 
   // ── Revenue reports ──────────────────────────────────────────────────────────
   getRevenueDaily: (days = 30) => get<RevenueDay[]>(`/revenue/daily?days=${days}`),

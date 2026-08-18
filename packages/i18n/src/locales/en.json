@@ -174,6 +174,38 @@
     "viewReceipt": "View receipt",
     "viewReport": "View report"
   },
+  "support": {
+    "sectionTitle": "Support",
+    "helpAndSupport": "Help & support",
+    "myTicketsTitle": "My support tickets",
+    "myTicketsEmptyTitle": "No tickets yet",
+    "myTicketsEmptyBody": "Need help? Contact us and track your support tickets here.",
+    "contactSupport": "Contact support",
+    "newTicket": "New ticket",
+    "title": "Contact support",
+    "subtitle": "Tell us what you need help with.",
+    "categoryLabel": {
+      "technical": "App / technical issue",
+      "complaint": "Complaint",
+      "payment": "Payment problem",
+      "billing": "Billing question",
+      "account": "Account help",
+      "documents": "Documents",
+      "safety": "Safety concern",
+      "other": "Something else"
+    },
+    "subjectLabel": "Subject",
+    "subjectPlaceholder": "Brief summary",
+    "descriptionLabel": "How can we help?",
+    "descriptionPlaceholder": "Describe your issue in a few sentences…",
+    "submit": "Submit ticket",
+    "submitSuccess": "Ticket submitted. We'll be in touch soon.",
+    "submitError": "Couldn't submit your ticket. Please try again.",
+    "statusOpen": "Open",
+    "statusInProgress": "In progress",
+    "statusResolved": "Resolved",
+    "statusEscalated": "Escalated"
+  },
   "account": {
     "title": "Account",
     "guest": "Guest",
