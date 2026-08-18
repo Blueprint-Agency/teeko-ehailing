@@ -5,7 +5,7 @@ const mapsKey = process.env.GOOGLE_MAPS_API_KEY ?? '';
 const config: ExpoConfig = {
   name: 'Teeko',
   slug: 'teeko-rider',
-  version: '0.0.10',
+  version: '0.0.11',
   orientation: 'portrait',
   scheme: 'teeko',
   userInterfaceStyle: 'light',
@@ -63,7 +63,7 @@ const config: ExpoConfig = {
   // { policy: 'appVersion' } aren't supported — it must be a literal string.
   // Pinned to the current appVersion to stay continuous with updates published
   // under the old policy. Bump this manually on native/runtime-breaking changes.
-  runtimeVersion: '0.0.10',
+  runtimeVersion: '0.0.11',
   experiments: { typedRoutes: true },
   extra: {
     router: {},
