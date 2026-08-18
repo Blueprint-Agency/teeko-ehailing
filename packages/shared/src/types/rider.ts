@@ -215,6 +215,48 @@ export interface CreateDriverDisputeInput {
   description: string;
 }
 
+// ─── Support tickets ──────────────────────────────────────────────────────────
+
+// General help-desk categories (mirrors the admin Support page + backend
+// `support_ticket_category` enum). Distinct from disputes, which are trip-scoped.
+export type SupportCategory =
+  | 'technical'
+  | 'complaint'
+  | 'payment'
+  | 'billing'
+  | 'account'
+  | 'documents'
+  | 'safety'
+  | 'other';
+
+// Statuses a rider ever sees on their own ticket. The backend enum also carries
+// driver-appeal states (in_review / denied) the rider never encounters.
+export type SupportStatus = 'open' | 'in_progress' | 'resolved' | 'escalated';
+
+export type SupportPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+/** A rider-raised general support ticket (POST/GET /rider/support). */
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  category: SupportCategory;
+  status: SupportStatus;
+  /** Set by an admin during triage — riders don't choose it. */
+  priority: SupportPriority;
+  description: string;
+  /** Optional trip the ticket references. Not a dispute. */
+  tripId?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface CreateSupportTicketInput {
+  subject: string;
+  category: SupportCategory;
+  description: string;
+  tripId?: string;
+}
+
 // ─── Directions / Routing ─────────────────────────────────────────────────────
 
 export type TravelMode = 'driving' | 'walking' | 'bicycling' | 'transit';

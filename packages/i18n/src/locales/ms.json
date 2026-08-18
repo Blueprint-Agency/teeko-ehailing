@@ -159,6 +159,38 @@
     "viewReceipt": "Lihat resit",
     "viewReport": "Lihat laporan"
   },
+  "support": {
+    "sectionTitle": "Sokongan",
+    "helpAndSupport": "Bantuan & sokongan",
+    "myTicketsTitle": "Tiket sokongan saya",
+    "myTicketsEmptyTitle": "Tiada tiket lagi",
+    "myTicketsEmptyBody": "Perlukan bantuan? Hubungi kami dan jejaki tiket sokongan anda di sini.",
+    "contactSupport": "Hubungi sokongan",
+    "newTicket": "Tiket baharu",
+    "title": "Hubungi sokongan",
+    "subtitle": "Beritahu kami perkara yang anda perlukan bantuan.",
+    "categoryLabel": {
+      "technical": "Masalah aplikasi / teknikal",
+      "complaint": "Aduan",
+      "payment": "Masalah pembayaran",
+      "billing": "Pertanyaan bil",
+      "account": "Bantuan akaun",
+      "documents": "Dokumen",
+      "safety": "Kebimbangan keselamatan",
+      "other": "Lain-lain"
+    },
+    "subjectLabel": "Subjek",
+    "subjectPlaceholder": "Ringkasan pendek",
+    "descriptionLabel": "Bagaimana kami boleh membantu?",
+    "descriptionPlaceholder": "Terangkan isu anda dalam beberapa ayat…",
+    "submit": "Hantar tiket",
+    "submitSuccess": "Tiket dihantar. Kami akan menghubungi anda tidak lama lagi.",
+    "submitError": "Tidak dapat menghantar tiket anda. Sila cuba lagi.",
+    "statusOpen": "Terbuka",
+    "statusInProgress": "Dalam proses",
+    "statusResolved": "Selesai",
+    "statusEscalated": "Dieskalasi"
+  },
   "account": {
     "title": "Akaun",
     "guest": "Tetamu",

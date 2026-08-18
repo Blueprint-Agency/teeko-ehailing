@@ -159,6 +159,38 @@
     "viewReceipt": "查看收据",
     "viewReport": "查看申诉"
   },
+  "support": {
+    "sectionTitle": "支持",
+    "helpAndSupport": "帮助与支持",
+    "myTicketsTitle": "我的支持工单",
+    "myTicketsEmptyTitle": "暂无工单",
+    "myTicketsEmptyBody": "需要帮助吗？联系我们，并在此跟踪您的支持工单。",
+    "contactSupport": "联系客服",
+    "newTicket": "新建工单",
+    "title": "联系客服",
+    "subtitle": "告诉我们您需要什么帮助。",
+    "categoryLabel": {
+      "technical": "应用 / 技术问题",
+      "complaint": "投诉",
+      "payment": "支付问题",
+      "billing": "账单咨询",
+      "account": "账户帮助",
+      "documents": "证件",
+      "safety": "安全问题",
+      "other": "其他"
+    },
+    "subjectLabel": "主题",
+    "subjectPlaceholder": "简要说明",
+    "descriptionLabel": "我们能帮您什么？",
+    "descriptionPlaceholder": "用几句话描述您的问题…",
+    "submit": "提交工单",
+    "submitSuccess": "工单已提交，我们会尽快与您联系。",
+    "submitError": "无法提交工单，请重试。",
+    "statusOpen": "待处理",
+    "statusInProgress": "处理中",
+    "statusResolved": "已解决",
+    "statusEscalated": "已升级"
+  },
   "account": {
     "title": "账户",
     "guest": "访客",
