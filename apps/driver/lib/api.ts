@@ -111,6 +111,14 @@ export type EarningsResponse = {
     payoutsEnabled: boolean;
     cooldownHoursLeft: number;
     minCashoutRm: number;
+    /** Settled and cashable today. null when the balance couldn't be read. */
+    availableRm: number | null;
+    /** Earned but still inside Stripe's settlement hold. */
+    clearingRm: number | null;
+    /** Paid out, not yet credited by the bank. */
+    inTransitRm: number;
+    /** ISO date of the soonest expected bank credit, if any payout is in flight. */
+    inTransitArrival: string | null;
   };
 };
 
@@ -169,7 +177,7 @@ export type SosAlert = {
 };
 
 export type ConnectStatus = {
-  status: 'not_started' | 'pending' | 'active' | 'restricted' | string;
+  status: 'not_started' | 'onboarding' | 'pending' | 'active' | 'restricted' | string;
   payoutsEnabled: boolean;
 };
 
@@ -286,7 +294,10 @@ export const api = {
   earnings: {
     get: () => req<EarningsResponse>('/driver/earnings'),
     cashout: () =>
-      req<{ amountRm: number; status: string }>('/driver/earnings/cashout', { method: 'POST' }),
+      req<{ amountRm: number; status: string; method: 'instant' | 'standard' }>(
+        '/driver/earnings/cashout',
+        { method: 'POST' },
+      ),
   },
   profile: {
     get: () => req<{ profile: DriverProfile }>('/driver/profile'),

@@ -63,9 +63,14 @@ export default function EarningsScreen() {
     setCashingOut(true);
     try {
       const res = await api.earnings.cashout();
+      // Instant payouts aren't available in Malaysia, so this is normally a
+      // standard bank transfer — don't promise minutes when it takes days.
       Alert.alert(
         t('driver.earlyCashout'),
-        `RM ${res.amountRm.toFixed(2)} is on its way to your bank account.`,
+        `RM ${res.amountRm.toFixed(2)} is on its way to your bank account.` +
+          (res.method === 'instant'
+            ? ' It should arrive within minutes.'
+            : ' It usually arrives in 1–2 business days.'),
       );
       await load();
     } catch (err) {
@@ -127,6 +132,42 @@ export default function EarningsScreen() {
           <Text style={styles.heroAmount}>RM {weekTotal.toFixed(2)}</Text>
           <Text style={styles.heroSub}>{t('driver.tripsCompleted', { count: data.week.tripCount })}</Text>
 
+          {/* The hero figure is what they've *earned*; this is what Stripe will
+              release today. Card money sits in a settlement hold for days, and
+              without this row the gap reads as missing pay. */}
+          {cashout.payoutsEnabled && cashout.availableRm != null && (
+            <View style={styles.balanceRow}>
+              <View style={styles.balanceCell}>
+                <Text style={styles.balanceLabel}>Available</Text>
+                <Text style={styles.balanceValue}>RM {cashout.availableRm.toFixed(2)}</Text>
+              </View>
+              {cashout.clearingRm != null && cashout.clearingRm > 0 && (
+                <View style={styles.balanceCell}>
+                  <Text style={styles.balanceLabel}>Clearing</Text>
+                  <Text style={[styles.balanceValue, styles.balanceMuted]}>
+                    RM {cashout.clearingRm.toFixed(2)}
+                  </Text>
+                </View>
+              )}
+              {cashout.inTransitRm > 0 && (
+                <View style={styles.balanceCell}>
+                  <Text style={styles.balanceLabel}>To bank</Text>
+                  <Text style={[styles.balanceValue, styles.balanceMuted]}>
+                    RM {cashout.inTransitRm.toFixed(2)}
+                  </Text>
+                  {cashout.inTransitArrival && (
+                    <Text style={styles.balanceHint}>
+                      {new Date(cashout.inTransitArrival).toLocaleDateString('en-MY', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
           {cashout.payoutsEnabled ? (
             <TouchableOpacity
               style={[styles.cashoutBtn, (!cashout.eligible || cashingOut) && styles.cashoutBtnDisabled]}
@@ -148,6 +189,17 @@ export default function EarningsScreen() {
               Next cashout available in {cashout.cooldownHoursLeft}h
             </Text>
           )}
+          {cashout.payoutsEnabled &&
+            cashout.cooldownHoursLeft === 0 &&
+            cashout.availableRm != null &&
+            cashout.availableRm < cashout.minCashoutRm && (
+              <Text style={styles.cashoutNote}>
+                Minimum cashout is RM {cashout.minCashoutRm.toFixed(2)}
+                {cashout.clearingRm != null && cashout.clearingRm > 0
+                  ? ` — RM ${cashout.clearingRm.toFixed(2)} is still clearing.`
+                  : '.'}
+              </Text>
+            )}
         </View>
 
         {/* Today card */}
@@ -249,10 +301,34 @@ const createStyles = (colors: any) => StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
+    marginTop: 16,
   },
   cashoutBtnDisabled: { opacity: 0.4 },
   cashoutText: { color: '#000', fontWeight: '800', fontSize: 15 },
   cashoutNote: { color: colors.textSec, fontSize: 11, marginTop: 8 },
+
+  // The hero card centres its children, so this must opt out of that to span
+  // the full width — otherwise the two cells shrink-wrap and sit off-centre.
+  balanceRow: {
+    flexDirection: 'row',
+    alignSelf: 'stretch',
+    marginTop: 4,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  balanceCell: { flex: 1, alignItems: 'center' },
+  balanceLabel: {
+    color: colors.textSec,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  balanceValue: { color: colors.text, fontSize: 17, fontWeight: '800' },
+  balanceMuted: { color: colors.textSec },
+  balanceHint: { color: colors.textMut, fontSize: 10, marginTop: 1 },
 
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 14 },
   errorText: { color: colors.textSec, fontSize: 14, textAlign: 'center' },

@@ -93,7 +93,9 @@ export default function PayoutsScreen() {
         body: 'Your bank account is verified. Trip earnings are transferred to you automatically, and instant cashout is available from the Earnings tab.',
         cta: 'Update bank details',
       }
-    : state === 'pending'
+    : // 'onboarding' = we created the Connect account and handed them the
+      // hosted flow; 'pending' = Stripe is still verifying what they submitted.
+      state === 'pending' || state === 'onboarding'
       ? {
           Icon: Clock,
           tone: colors.warning,

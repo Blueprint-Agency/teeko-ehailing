@@ -222,6 +222,9 @@ export const payouts = pgTable(
     amountCents: integer().notNull(),
     method: payoutMethod().notNull().default('standard'),
     status: payoutStatus().notNull().default('pending'),
+    // Stripe's estimate of when the money lands in the driver's bank. Null for
+    // rails that don't tell us (and for rows written before this column).
+    arrivalDate: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

@@ -28,6 +28,20 @@ export async function getConnectAccount(driverId: string): Promise<ConnectAccoun
   });
 }
 
+/**
+ * Contact details Stripe pre-fills the hosted onboarding form with. Both
+ * columns are nullable — a driver who signed up by phone has neither, and
+ * Stripe simply collects them in the flow instead.
+ */
+export async function getDriverContact(
+  driverId: string,
+): Promise<{ email: string | null; fullName: string | null } | undefined> {
+  return db.query.users.findFirst({
+    where: eq(users.id, driverId),
+    columns: { email: true, fullName: true },
+  });
+}
+
 export async function getConnectByStripeId(
   stripeAccountId: string,
 ): Promise<ConnectAccountRow | undefined> {
@@ -62,6 +76,7 @@ export async function insertPayout(data: {
   stripePayoutId: string | null;
   amountCents: number;
   method: PayoutRow['method'];
+  arrivalDate?: Date | null;
 }): Promise<PayoutRow> {
   const [row] = await db
     .insert(payouts)
