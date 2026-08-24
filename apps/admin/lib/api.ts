@@ -380,6 +380,48 @@ export const PROFILE_CHANGE_FIELD_LABELS: Record<ProfileChangeField, string> = {
   phone: 'Phone number',
 };
 
+// ── PDPA ──────────────────────────────────────────────────────────────────────
+export type DsrKind = 'access' | 'erasure' | 'correction';
+export type DsrStatus = 'received' | 'processing' | 'fulfilled' | 'denied';
+export type ConsentType = 'tnc' | 'driver_agreement' | 'pdpa' | 'marketing';
+
+export interface DsrRow {
+  id: string;
+  userId: string;
+  name: string;
+  type: 'rider' | 'driver';
+  kind: DsrKind;
+  status: DsrStatus;
+  exportPath: string | null;
+  createdAt: string;
+  dueAt: string;
+  fulfilledAt: string | null;
+}
+
+export interface ConsentRow {
+  id: number;
+  userId: string;
+  name: string;
+  consentType: ConsentType;
+  granted: boolean;
+  at: string;
+}
+
+export interface ErasureReport {
+  userId: string;
+  anonymised: boolean;
+  purged: Record<string, number>;
+  retained: string[];
+  retainedUntil: string | null;
+  note: string;
+}
+
+type FulfilResult =
+  | { ok: true; kind: 'access'; export: { path: string; data: unknown } }
+  | { ok: true; kind: 'erasure'; report: ErasureReport; dsr: DsrRow }
+  | { ok: true; kind: 'correction'; dsr: DsrRow };
+
+
 export const adminApi = {
   getRiders: () => get<Rider[]>('/riders'),
 
@@ -519,4 +561,26 @@ export const adminApi = {
 
   /** Record a client-side operation (payout/report CSV export) in the audit trail. */
   logAudit: (event: NewAuditEvent) => post<{ ok: boolean }>('/audit', event),
+
+  // ── PDPA ─────────────────────────────────────────────────────────────────────
+  getDsrs: () => get<DsrRow[]>('/pdpa/dsr'),
+
+  createDsr: (userId: string, kind: DsrKind) =>
+    post<DsrRow>('/pdpa/dsr', { userId, kind }),
+
+  setDsrStatus: (id: string, status: 'received' | 'processing' | 'denied') =>
+    post<{ ok: boolean; dsr: DsrRow }>(`/pdpa/dsr/${id}/status`, { status }),
+
+  fulfilDsr: (id: string) => post<FulfilResult>(`/pdpa/dsr/${id}/fulfil`, {}),
+
+  exportUser: (userId: string) => get<unknown>(`/pdpa/users/${userId}/export`),
+
+  eraseUser: (userId: string) =>
+    post<{ ok: boolean; report: ErasureReport }>(`/pdpa/users/${userId}/erasure`, {}),
+
+  getConsents: (userId?: string) =>
+    get<ConsentRow[]>(`/pdpa/consent${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`),
+
+  withdrawConsent: (userId: string, consentType: ConsentType) =>
+    post<{ ok: boolean }>('/pdpa/consent/withdraw', { userId, consentType }),
 };

@@ -1,0 +1,1 @@
+ALTER TABLE "consent_log" ADD COLUMN "granted" boolean DEFAULT true NOT NULL;
