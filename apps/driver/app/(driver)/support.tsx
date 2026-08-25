@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
   StatusBar, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -8,7 +8,7 @@ import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { useRouter } from 'expo-router';
-import { ChevronDown, Check } from 'lucide-react-native';
+import { ChevronDown, Check, Search } from 'lucide-react-native';
 import {
   api,
   type DriverDispute,
@@ -47,6 +47,10 @@ const CATEGORY_I18N: Record<DriverDisputeCategory, string> = Object.fromEntries(
   TOPICS.map((t) => [t.category, t.i18nKey]),
 ) as Record<DriverDisputeCategory, string>;
 
+// The picker stays short on purpose: the latest 10 trips cover almost every
+// report. Anything older is reachable through the search box.
+const TRIP_PICKER_VISIBLE = 10;
+
 /** "Kuala Lumpur Sentral → KLIA2" — the one-line label for a trip in the picker. */
 function tripLabel(trip: DriverFinishedTrip): string {
   const from = trip.pickupAddress?.split(',')[0]?.trim();
@@ -68,6 +72,7 @@ export default function SupportScreen() {
   const [category, setCategory] = useState<DriverDisputeCategory | null>(null);
   const [trip, setTrip] = useState<DriverFinishedTrip | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [tripQuery, setTripQuery] = useState('');
   const [trips, setTrips] = useState<DriverFinishedTrip[]>([]);
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
@@ -95,12 +100,27 @@ export default function SupportScreen() {
   useEffect(() => {
     loadReports();
     // The picker only offers finished trips, so a failed load just leaves it
-    // empty — the report can still be filed without a trip.
+    // empty — the report can still be filed without a trip. Pull the backend
+    // maximum so search can reach past the 10 rows the list shows.
     api.driver
-      .tripHistory()
+      .tripHistory(50)
       .then((res) => setTrips(res.data ?? []))
       .catch(() => setTrips([]));
   }, [loadReports]);
+
+  // Search runs over the whole loaded history — both addresses and the trip
+  // ref — but the list itself never shows more than TRIP_PICKER_VISIBLE rows.
+  const matchingTrips = useMemo(() => {
+    const q = tripQuery.trim().toLowerCase();
+    if (!q) return trips;
+    return trips.filter((item) =>
+      `${item.pickupAddress ?? ''} ${item.dropoffAddress ?? ''} ${item.id}`
+        .toLowerCase()
+        .includes(q),
+    );
+  }, [trips, tripQuery]);
+  const visibleTrips = matchingTrips.slice(0, TRIP_PICKER_VISIBLE);
+  const hiddenTripCount = matchingTrips.length - visibleTrips.length;
 
   const showAmount = category != null && MONEY_CATEGORIES.includes(category);
   const canSubmit = category != null && description.trim().length > 0 && !submitting;
@@ -125,6 +145,7 @@ export default function SupportScreen() {
       setCategory(null);
       setTrip(null);
       setPickerOpen(false);
+      setTripQuery('');
       setAmount('');
       setDescription('');
     } catch (err) {
@@ -224,24 +245,39 @@ export default function SupportScreen() {
 
             {pickerOpen && (
               <View style={styles.pickerList}>
+                <View style={styles.pickerSearch}>
+                  <Search size={16} color={colors.textMut} strokeWidth={2} />
+                  <TextInput
+                    style={styles.pickerSearchInput}
+                    placeholder={t('driver.tripPickerSearch')}
+                    placeholderTextColor={colors.textMut}
+                    value={tripQuery}
+                    onChangeText={setTripQuery}
+                    autoCorrect={false}
+                    returnKeyType="search"
+                  />
+                </View>
+
                 <TouchableOpacity
                   style={styles.pickerRow}
                   onPress={() => {
                     setTrip(null);
                     setPickerOpen(false);
+                    setTripQuery('');
                   }}
                 >
                   <Text style={styles.pickerRowText}>{t('driver.tripPickerNone')}</Text>
                   {trip === null && <Check size={16} color={colors.accent} strokeWidth={2.5} />}
                 </TouchableOpacity>
 
-                {trips.map((item) => (
+                {visibleTrips.map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     style={styles.pickerRow}
                     onPress={() => {
                       setTrip(item);
                       setPickerOpen(false);
+                      setTripQuery('');
                     }}
                   >
                     <View style={styles.pickerRowLabel}>
@@ -254,6 +290,20 @@ export default function SupportScreen() {
                     {trip?.id === item.id && <Check size={16} color={colors.accent} strokeWidth={2.5} />}
                   </TouchableOpacity>
                 ))}
+
+                {visibleTrips.length === 0 && (
+                  <View style={styles.pickerRow}>
+                    <Text style={styles.pickerSub}>{t('driver.tripPickerNoMatch')}</Text>
+                  </View>
+                )}
+
+                {hiddenTripCount > 0 && (
+                  <View style={styles.pickerRow}>
+                    <Text style={styles.pickerSub}>
+                      {t('driver.tripPickerMore').replace('{count}', String(hiddenTripCount))}
+                    </Text>
+                  </View>
+                )}
               </View>
             )}
 
@@ -403,6 +453,12 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1, borderColor: colors.border,
     overflow: 'hidden',
   },
+  pickerSearch: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+  },
+  pickerSearchInput: { flex: 1, color: colors.text, fontSize: 14, padding: 0 },
   pickerRow: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 14, paddingVertical: 12,
