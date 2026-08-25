@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutFeedback, View } from 'react-native';
 
-import { useUIStore } from '@teeko/api';
+import { authApi, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
+import { cooldownSentence } from '@teeko/shared';
 import { Button, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useSignIn } from '@clerk/clerk-expo';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -41,6 +42,16 @@ export default function ForgotPasswordScreen() {
     setEmailError(undefined);
     setSubmitting(true);
     try {
+      // A password may only be reset once a week. Clerk doesn't know that rule,
+      // so ask our own API before asking Clerk to send anything. An unknown
+      // address always answers "allowed", so this stays a non-oracle.
+      const eligibility = await authApi
+        .checkPasswordResetEligibility(email.trim())
+        .catch(() => null);
+      if (eligibility && !eligibility.allowed && eligibility.nextAllowedAt) {
+        setEmailError(cooldownSentence('reset your password', eligibility.nextAllowedAt));
+        return;
+      }
       await signIn.create({ strategy: 'reset_password_email_code', identifier: email.trim() });
       setStep('reset');
     } catch (err) {
@@ -73,6 +84,11 @@ export default function ForgotPasswordScreen() {
         code: code.trim(),
         password: newPassword,
       });
+      // Clerk has accepted the new password by the time either branch below
+      // runs, so the 7-day clock starts here. Best-effort: the Clerk
+      // `user.updated` webhook stamps the same instant server-side if this
+      // call never lands.
+      void authApi.recordPasswordReset(email.trim()).catch(() => {});
       if (attempt.status === 'complete') {
         await setActive({ session: attempt.createdSessionId });
         pushToast({ kind: 'info', message: t('auth.forgotSuccessToast') });

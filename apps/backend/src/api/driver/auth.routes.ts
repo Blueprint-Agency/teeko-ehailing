@@ -12,6 +12,12 @@ const VerifyBody = z.object({
   code: z.string().regex(/^\d{6}$/, 'must be 6 digits'),
 });
 
+// `password_change` brings the one-change-per-week cooldown into play; plain
+// email verification sends no purpose and is never gated.
+const SendOtpBody = z
+  .object({ purpose: z.enum(['email_verification', 'password_change']).optional() })
+  .optional();
+
 const ChangePasswordBody = VerifyBody.extend({
   newPassword: z.string().min(8, 'must be at least 8 characters').max(200),
 });
@@ -32,11 +38,20 @@ export async function routes(app: FastifyInstance) {
     if (!req.user) return reply.code(404).send({ error: 'profile_not_provisioned' });
 
     const me = await getOrProvisionDriverMe(req.clerkAuth);
+    const body = SendOtpBody.parse(req.body ?? {});
     const result = await sendVerificationOtp({
       userId: req.user.id,
       email: me.user.email,
       fullName: me.user.fullName,
+      purpose: body?.purpose,
     });
+    if (result.status === 'password_cooldown') {
+      return reply.code(429).send({
+        error: 'password_change_cooldown',
+        nextAllowedAt: result.nextAllowedAt,
+        retryInSeconds: result.retryInSeconds,
+      });
+    }
     if (result.status === 'rate_limited') {
       return reply
         .code(429)
@@ -100,6 +115,12 @@ export async function routes(app: FastifyInstance) {
     switch (result.status) {
       case 'ok':
         return { ok: true };
+      case 'cooldown':
+        return reply.code(429).send({
+          error: 'password_change_cooldown',
+          nextAllowedAt: result.nextAllowedAt,
+          retryInSeconds: result.retryInSeconds,
+        });
       case 'password_rejected':
         return reply
           .code(422)

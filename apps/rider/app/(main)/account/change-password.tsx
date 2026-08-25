@@ -3,6 +3,7 @@ import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutF
 
 import { useUser } from '@clerk/clerk-expo';
 import { ApiError, authApi, useAuthStore, useUIStore } from '@teeko/api';
+import { cooldownSentence } from '@teeko/shared';
 import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
@@ -29,6 +30,9 @@ export default function ChangePasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [codeError, setCodeError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
+  // Set when the account has already changed its password in the last 7 days.
+  // Locks the screen rather than letting the rider fill a form that cannot post.
+  const [cooldown, setCooldown] = useState<string | undefined>();
 
   const sendCode = async () => {
     if (!email) {
@@ -37,7 +41,9 @@ export default function ChangePasswordScreen() {
     }
     setBusy(true);
     try {
-      await authApi.sendOtp();
+      // Declaring the purpose lets the server refuse *before* emailing a code
+      // the rider could never spend — a password changes once a week.
+      await authApi.sendOtp('password_change');
       setStep('verify');
       pushToast({ kind: 'info', message: `Code sent to ${email}` });
     } catch (err) {
@@ -46,9 +52,16 @@ export default function ChangePasswordScreen() {
           const body = JSON.parse(err.body) as {
             error: string;
             retryInSeconds?: number;
+            nextAllowedAt?: string;
             providerMessage?: string;
           };
-          if (body.error === 'rate_limited') {
+          if (body.error === 'password_change_cooldown') {
+            const message = body.nextAllowedAt
+              ? cooldownSentence('change your password', body.nextAllowedAt)
+              : 'You can only change your password once a week.';
+            setCooldown(message);
+            pushToast({ kind: 'info', message });
+          } else if (body.error === 'rate_limited') {
             pushToast({ kind: 'info', message: `Try again in ${body.retryInSeconds ?? 60}s` });
           } else if (body.error === 'email_delivery_failed') {
             pushToast({
@@ -95,13 +108,26 @@ export default function ChangePasswordScreen() {
       router.back();
     } catch (err) {
       if (err instanceof ApiError) {
-        let body: { error?: string; code?: string; message?: string } = {};
+        let body: {
+          error?: string;
+          code?: string;
+          message?: string;
+          nextAllowedAt?: string;
+        } = {};
         try {
           body = JSON.parse(err.body);
         } catch {
           // Non-JSON body — fall through to the generic toast.
         }
-        if (body.error === 'incorrect' || body.error === 'no_active_code') {
+        if (body.error === 'password_change_cooldown') {
+          // Re-checked server-side: a code minted just before another change
+          // landed is still refused here.
+          const message = body.nextAllowedAt
+            ? cooldownSentence('change your password', body.nextAllowedAt)
+            : 'You can only change your password once a week.';
+          setCooldown(message);
+          pushToast({ kind: 'info', message });
+        } else if (body.error === 'incorrect' || body.error === 'no_active_code') {
           setCodeError('Invalid or expired code');
         } else if (body.error === 'expired') {
           setCodeError('Code expired — tap resend');
@@ -153,10 +179,21 @@ export default function ChangePasswordScreen() {
               </View>
             </View>
 
+            {cooldown ? (
+              <View className="rounded-lg border border-border bg-muted px-4 py-3">
+                <Text weight="bold" className="mb-1 text-sm">
+                  Password recently changed
+                </Text>
+                <Text tone="secondary" className="text-sm">
+                  {cooldown}
+                </Text>
+              </View>
+            ) : null}
+
             {step === 'send' ? (
               <Text tone="secondary" className="text-sm">
                 We'll send a verification code to your email. Enter it along with your new
-                password to confirm the change.
+                password to confirm the change. A password can be changed once a week.
               </Text>
             ) : (
               <>
@@ -217,9 +254,19 @@ export default function ChangePasswordScreen() {
 
       <View className="pb-safe pt-2">
         {step === 'send' ? (
-          <Button label="Send verification code" onPress={sendCode} loading={busy} disabled={busy} />
+          <Button
+            label="Send verification code"
+            onPress={sendCode}
+            loading={busy}
+            disabled={busy || !!cooldown}
+          />
         ) : (
-          <Button label="Update password" onPress={submit} loading={busy} disabled={busy} />
+          <Button
+            label="Update password"
+            onPress={submit}
+            loading={busy}
+            disabled={busy || !!cooldown}
+          />
         )}
       </View>
       </KeyboardAvoidingView>

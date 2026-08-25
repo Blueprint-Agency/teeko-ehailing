@@ -50,10 +50,48 @@ export async function updateMe(patch: {
   });
 }
 
-export async function sendOtp(): Promise<void> {
+/**
+ * `purpose: 'password_change'` makes the server apply the one-change-per-week
+ * rule *before* emailing a code, so the rider never types a code that was never
+ * going to be spendable. It answers 429 `password_change_cooldown` with a
+ * `nextAllowedAt`. Plain email verification passes no purpose and is never gated.
+ */
+export async function sendOtp(
+  purpose?: 'email_verification' | 'password_change',
+): Promise<void> {
   await api<{ ok: true }>('/api/v1/rider/auth/send-otp', {
     method: 'POST',
-    body: JSON.stringify({}),
+    body: JSON.stringify(purpose ? { purpose } : {}),
+  });
+}
+
+export type PasswordResetEligibility = {
+  allowed: boolean;
+  /** ISO instant the next reset unlocks; null when a reset is allowed now. */
+  nextAllowedAt: string | null;
+  retryInSeconds: number;
+};
+
+/**
+ * Signed-out "forgot password" runs against Clerk from the device, so the
+ * one-reset-per-week rule has to be asked for before Clerk emails a code.
+ * An unknown address always answers `allowed`, so this can never be used to
+ * probe whether someone holds a Teeko account.
+ */
+export async function checkPasswordResetEligibility(
+  email: string,
+): Promise<PasswordResetEligibility> {
+  return api<PasswordResetEligibility>('/api/public/password-reset/eligibility', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+/** Call once Clerk has accepted the new password — starts the 7-day clock. */
+export async function recordPasswordReset(email: string): Promise<void> {
+  await api<{ ok: true }>('/api/public/password-reset/record', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
   });
 }
 

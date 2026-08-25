@@ -355,6 +355,31 @@ export interface NewAuditEvent {
   payload?: Record<string, unknown>;
 }
 
+export type ProfileChangeField = 'full_name' | 'phone';
+export type ProfileChangeStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface ProfileChangeRequest {
+  id: string;
+  driverId: string;
+  driverName: string | null;
+  driverEmail: string | null;
+  field: ProfileChangeField;
+  currentValue: string | null;
+  requestedValue: string;
+  status: ProfileChangeStatus;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  reviewedByName: string | null;
+  /** Set only when the value actually reached the account — the cooldown clock. */
+  appliedAt: string | null;
+  createdAt: string;
+}
+
+export const PROFILE_CHANGE_FIELD_LABELS: Record<ProfileChangeField, string> = {
+  full_name: 'Full name',
+  phone: 'Phone number',
+};
+
 export const adminApi = {
   getRiders: () => get<Rider[]>('/riders'),
 
@@ -372,6 +397,29 @@ export const adminApi = {
 
   updateDriverStatus: (id: string, status: DriverStatus, reason?: string) =>
     post<{ ok: boolean; status: DriverStatus }>(`/drivers/${id}/status`, { status, reason }),
+
+  // ── Driver profile change review ────────────────────────────────────────
+  // A driver's name and phone are identity evidence behind their PSV-D and the
+  // APAD/JPJ operator record, so a self-service edit lands here as a request
+  // and only reaches the account when an admin approves it.
+  getProfileChanges: (opts: { driverId?: string; status?: ProfileChangeStatus | 'all' } = {}) => {
+    const qs = new URLSearchParams();
+    if (opts.driverId) qs.set('driverId', opts.driverId);
+    if (opts.status) qs.set('status', opts.status);
+    const suffix = qs.toString() ? `?${qs}` : '';
+    return get<{ requests: ProfileChangeRequest[]; pendingCount: number }>(
+      `/driver-profile-changes${suffix}`,
+    );
+  },
+
+  getProfileChangeCount: () => get<{ pending: number }>('/driver-profile-changes/count'),
+
+  /** Approving writes the value onto the account and starts its 30-day cooldown. */
+  reviewProfileChange: (requestId: string, decision: 'approve' | 'reject', note?: string) =>
+    post<{ ok: boolean; request: ProfileChangeRequest }>(
+      `/driver-profile-changes/${requestId}/review`,
+      { decision, note },
+    ),
 
   getEvpRecords: () => get<EvpRecord[]>('/drivers/evp'),
 

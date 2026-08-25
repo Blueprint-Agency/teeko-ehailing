@@ -21,6 +21,12 @@ const VerifyBody = z.object({
   code: z.string().regex(/^\d{6}$/, 'must be 6 digits'),
 });
 
+// Same purpose flag as the apps: a `password_change` code is refused while the
+// account is inside its one-change-per-week cooldown.
+const SendOtpBody = z
+  .object({ purpose: z.enum(['email_verification', 'password_change']).optional() })
+  .optional();
+
 export async function routes(app: FastifyInstance) {
   // GET /api/v1/driver-web/auth/me
   // JIT-provisions users + user_roles(driver) + external_identities +
@@ -53,11 +59,20 @@ export async function routes(app: FastifyInstance) {
     if (!req.clerkAuth) return reply.code(401).send({ error: 'unauthorized' });
 
     const me = await getOrProvisionDriverMe(req.clerkAuth);
+    const body = SendOtpBody.parse(req.body ?? {});
     const result = await sendVerificationOtp({
       userId: me.user.id,
       email: me.user.email,
       fullName: me.user.fullName,
+      purpose: body?.purpose,
     });
+    if (result.status === 'password_cooldown') {
+      return reply.code(429).send({
+        error: 'password_change_cooldown',
+        nextAllowedAt: result.nextAllowedAt,
+        retryInSeconds: result.retryInSeconds,
+      });
+    }
     if (result.status === 'rate_limited') {
       return reply.code(429).send({ error: 'rate_limited', retryInSeconds: result.retryInSeconds });
     }

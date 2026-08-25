@@ -6,6 +6,7 @@ import type { ClerkClient } from '@clerk/backend';
 import { sendEmail, EmailDeliveryError } from '../../external/gmail-smtp';
 
 import { verificationEmail } from './emails';
+import { getPasswordCooldown, recordPasswordChanged } from './password-policy';
 import {
   bumpAttempts,
   findActiveOtp,
@@ -30,6 +31,7 @@ function hashCode(code: string): string {
 export type SendOtpResult =
   | { status: 'sent' }
   | { status: 'rate_limited'; retryInSeconds: number }
+  | { status: 'password_cooldown'; nextAllowedAt: string; retryInSeconds: number }
   | { status: 'no_email' }
   | { status: 'delivery_failed'; providerMessage: string; providerStatusCode: number };
 
@@ -37,8 +39,27 @@ export async function sendVerificationOtp(input: {
   userId: string;
   email: string | null;
   fullName: string | null;
+  /**
+   * What the code is for. `password_change` is gated by the one-per-week
+   * cooldown; plain email verification never is, and the two share one code so
+   * the purpose is a policy flag rather than a separate code type.
+   */
+  purpose?: 'email_verification' | 'password_change';
 }): Promise<SendOtpResult> {
   if (!input.email) return { status: 'no_email' };
+
+  // Refuse before sending, so the user reads "not until Friday" instead of
+  // typing a six-digit code that was never going to be spendable.
+  if (input.purpose === 'password_change') {
+    const cooldown = await getPasswordCooldown(input.userId);
+    if (cooldown.blocked) {
+      return {
+        status: 'password_cooldown',
+        nextAllowedAt: cooldown.nextAllowedAt!,
+        retryInSeconds: cooldown.retryInSeconds,
+      };
+    }
+  }
 
   const latest = await findLatestOtp(input.userId);
   if (latest) {
@@ -152,6 +173,7 @@ export async function verifyOtp(input: {
 export type ChangePasswordResult =
   | { status: 'ok' }
   | Exclude<VerifyOtpResult, { status: 'verified' }>
+  | { status: 'cooldown'; nextAllowedAt: string; retryInSeconds: number }
   | { status: 'password_rejected'; code: string; message: string };
 
 /** Clerk backend errors carry `errors: [{ code, message, longMessage }]`. */
@@ -181,6 +203,18 @@ export async function changePasswordWithOtp(input: {
 }): Promise<ChangePasswordResult> {
   const clerkClient = input.clerkClient ?? clerk;
   const rejected: Array<{ code: string; message: string }> = [];
+
+  // One change per week. Checked again here even though /send-otp already
+  // refused to issue a code — a code minted just before the previous change
+  // landed would otherwise still be spendable.
+  const cooldown = await getPasswordCooldown(input.userId);
+  if (cooldown.blocked) {
+    return {
+      status: 'cooldown',
+      nextAllowedAt: cooldown.nextAllowedAt!,
+      retryInSeconds: cooldown.retryInSeconds,
+    };
+  }
 
   let result: VerifyOtpResult;
   try {
@@ -217,6 +251,11 @@ export async function changePasswordWithOtp(input: {
     return { status: 'password_rejected', code: detail.code, message: detail.message };
   }
 
-  if (result.status === 'verified') return { status: 'ok' };
+  if (result.status === 'verified') {
+    // Starts the 7-day clock. Deliberately after Clerk accepted the password —
+    // a rejected weak password must not cost the driver a week.
+    await recordPasswordChanged(input.userId);
+    return { status: 'ok' };
+  }
   return result;
 }

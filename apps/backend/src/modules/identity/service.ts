@@ -4,6 +4,7 @@
 import { logger } from '../../config/logger';
 import { isUniqueViolation } from '../../db/errors';
 import { clerk, driverClerk, type ClerkClaims } from '../../external/clerk';
+import { recordPasswordChanged } from '../auth_otp/password-policy';
 import { sendVerificationOtp } from '../auth_otp/service';
 
 import {
@@ -302,18 +303,9 @@ export async function patchRiderMe(userId: string, patch: RiderMePatch): Promise
   await updateRiderFields(userId, withNormalizedPhone(patch));
 }
 
-export type DriverMePatch = {
-  fullName?: string;
-  phone?: string;
-};
-
-/**
- * Drivers edit the same users row as riders — only the editable field set
- * differs (no locale here; the driver app keeps that device-side).
- */
-export async function patchDriverMe(userId: string, patch: DriverMePatch): Promise<void> {
-  await updateRiderFields(userId, withNormalizedPhone(patch));
-}
+// There is deliberately no `patchDriverMe`. A driver's name and phone are
+// identity evidence for APAD/JPJ, so they only change through the review queue
+// in modules/drivers/profile-changes.ts — an admin approval is what writes them.
 
 /**
  * Sync handler for Clerk `user.updated` and `user.deleted` webhooks.
@@ -323,6 +315,8 @@ export async function applyClerkWebhook(event: {
   clerkUserId: string;
   email?: string | null;
   fullName?: string | null;
+  /** Clerk's `password_last_updated_at`, when the event carried one. */
+  passwordChangedAt?: Date | null;
 }): Promise<void> {
   const row = await findUserByExternalId('clerk', event.clerkUserId);
   if (!row) return; // never provisioned on our side; ignore
@@ -330,6 +324,12 @@ export async function applyClerkWebhook(event: {
   if (event.type === 'user.deleted') {
     await softDeleteUser(row.id);
     return;
+  }
+  // Back-stop for the signed-out reset, which changes the password entirely
+  // inside Clerk. `recordPasswordChanged` never moves the clock backwards, so
+  // replaying an old `user.updated` cannot shorten an active cooldown.
+  if (event.passwordChangedAt) {
+    await recordPasswordChanged(row.id, event.passwordChangedAt);
   }
   await updateRiderFields(row.id, {
     email: event.email ?? null,

@@ -52,6 +52,44 @@ async function req<T = unknown>(path: string, options: RequestInit = {}): Promis
   return data as T;
 }
 
+// ── Signed-out password reset ───────────────────────────────────────────────
+// "Forgot password" runs against Clerk from the device, so the one-reset-per-
+// week rule has to be asked for explicitly before Clerk emails a code, and
+// reported back once Clerk accepts the new password. Both calls are
+// unauthenticated and sit under /api/public, not /api/v1.
+const PUBLIC_URL = (process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000') + '/api/public';
+
+export type PasswordResetEligibility = {
+  allowed: boolean;
+  /** ISO instant the next reset unlocks; null when a reset is allowed now. */
+  nextAllowedAt: string | null;
+  retryInSeconds: number;
+};
+
+async function publicPost<T>(path: string, body: unknown): Promise<T> {
+  const res = await fetch(`${PUBLIC_URL}${path}`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new ApiError(String(data?.error ?? `HTTP ${res.status}`), res.status, data ?? {});
+  }
+  return data as T;
+}
+
+export const passwordReset = {
+  /**
+   * An unknown address always answers `allowed`, so this can never be used to
+   * probe whether someone holds a Teeko account.
+   */
+  eligibility: (email: string) =>
+    publicPost<PasswordResetEligibility>('/password-reset/eligibility', { email }),
+  /** Call once Clerk has accepted the new password — starts the 7-day clock. */
+  record: (email: string) => publicPost<{ ok: true }>('/password-reset/record', { email }),
+};
+
 export type DriverMe = {
   user: {
     id: string;
@@ -139,6 +177,42 @@ export type DriverProfile = {
   completionRate: number | null;
   joinedAt: string;
 };
+
+// ── Profile change review ───────────────────────────────────────────────────
+// Name and phone are identity evidence for APAD/JPJ, so editing them raises a
+// request an admin has to approve. Each field may change once every 30 days,
+// counted from the last approved change — a rejection costs nothing.
+export type ProfileChangeField = 'full_name' | 'phone';
+
+export type ProfileChangeRequest = {
+  id: string;
+  field: ProfileChangeField;
+  currentValue: string | null;
+  requestedValue: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  appliedAt: string | null;
+  createdAt: string;
+};
+
+export type ProfileFieldState = {
+  field: ProfileChangeField;
+  /** Set while a request is waiting on an admin. */
+  pending: ProfileChangeRequest | null;
+  /** Set while the field is inside its 30-day cooldown; null means editable. */
+  nextAllowedAt: string | null;
+  lastDecision: ProfileChangeRequest | null;
+};
+
+/** Per-field outcome of a PATCH — a two-field edit can half-succeed. */
+export type ProfileChangeResult = { field: ProfileChangeField } & (
+  | { status: 'submitted'; request: ProfileChangeRequest }
+  | { status: 'unchanged' }
+  | { status: 'already_pending'; request: ProfileChangeRequest }
+  | { status: 'cooldown'; nextAllowedAt: string }
+  | { status: 'phone_taken' }
+);
 
 export type VehicleDocKind = 'car_grant' | 'road_tax' | 'insurance' | 'puspakom';
 
@@ -237,7 +311,15 @@ export const api = {
   auth: {
     me: () =>
       req<DriverMe>('/driver/auth/me'),
-    sendOtp: () => req<{ ok: true }>('/driver/auth/send-otp', { method: 'POST', body: JSON.stringify({}) }),
+    // `purpose: 'password_change'` makes the server apply the one-change-per-
+    // week rule *before* emailing a code, so the driver never types a code that
+    // was never going to be spendable. 429 `password_change_cooldown` carries
+    // `nextAllowedAt`.
+    sendOtp: (purpose?: 'email_verification' | 'password_change') =>
+      req<{ ok: true }>('/driver/auth/send-otp', {
+        method: 'POST',
+        body: JSON.stringify(purpose ? { purpose } : {}),
+      }),
     verifyOtp: (code: string) => req<{ ok: true }>('/driver/auth/verify-otp', { method: 'POST', body: JSON.stringify({ code }) }),
     // Verifies the emailed OTP and writes the new password in one call — the
     // server uses Clerk's admin API, so the current password isn't needed.
@@ -300,13 +382,26 @@ export const api = {
       ),
   },
   profile: {
-    get: () => req<{ profile: DriverProfile }>('/driver/profile'),
+    get: () =>
+      req<{ profile: DriverProfile; fields: ProfileFieldState[] }>('/driver/profile'),
     // Name and phone only — licence, vehicle and approval data are verified
-    // records and change through the web portal, not here.
+    // records and change through the web portal, not here. Even these two are
+    // *requests*: nothing changes until an admin approves, so read `results`
+    // rather than assuming the returned profile reflects the edit.
     update: (patch: { fullName?: string; phone?: string }) =>
-      req<{ profile: DriverProfile }>('/driver/profile', {
+      req<{
+        profile: DriverProfile;
+        fields: ProfileFieldState[];
+        results: ProfileChangeResult[];
+      }>('/driver/profile', {
         method: 'PATCH',
         body: JSON.stringify(patch),
+      }),
+    changes: () => req<{ requests: ProfileChangeRequest[] }>('/driver/profile/changes'),
+    /** Withdraw a request still waiting on review. */
+    cancelChange: (id: string) =>
+      req<{ ok: true; fields: ProfileFieldState[] }>(`/driver/profile/changes/${id}`, {
+        method: 'DELETE',
       }),
   },
   // A driver has exactly one vehicle — there is no list and nothing to switch.

@@ -10,6 +10,7 @@ import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
+import { cooldownSentence } from '@teeko/shared';
 import { ApiError, api } from '../../../lib/api';
 
 const PASSWORD_MIN = 8;
@@ -37,6 +38,9 @@ export default function ChangePasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [codeError, setCodeError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
+  // Set when the account already changed its password in the last 7 days.
+  // Locks the screen rather than letting the driver fill a form that can't post.
+  const [cooldown, setCooldown] = useState<string | undefined>();
 
   const styles = createStyles(colors);
 
@@ -47,12 +51,20 @@ export default function ChangePasswordScreen() {
     }
     setBusy(true);
     try {
-      await api.auth.sendOtp();
+      // Declaring the purpose lets the server refuse *before* emailing a code
+      // the driver could never spend — a password changes once a week.
+      await api.auth.sendOtp('password_change');
       setStep('verify');
       Alert.alert(t('driver.changePassword'), t('driver.pwCodeSent', { email }));
     } catch (err) {
       const body = err instanceof ApiError ? err.data : {};
-      if (body.error === 'rate_limited') {
+      if (body.error === 'password_change_cooldown') {
+        const message = body.nextAllowedAt
+          ? cooldownSentence('change your password', String(body.nextAllowedAt))
+          : 'You can only change your password once a week.';
+        setCooldown(message);
+        Alert.alert('Password recently changed', message);
+      } else if (body.error === 'rate_limited') {
         Alert.alert('Too many attempts', `Try again in ${body.retryInSeconds ?? 60}s.`);
       } else if (body.error === 'email_delivery_failed') {
         Alert.alert('Error', String(body.providerMessage ?? 'Email failed to send.'));
@@ -87,7 +99,15 @@ export default function ChangePasswordScreen() {
       router.back();
     } catch (err) {
       const body = err instanceof ApiError ? err.data : {};
-      if (body.error === 'incorrect' || body.error === 'no_active_code') {
+      if (body.error === 'password_change_cooldown') {
+        // Re-checked server-side: a code minted just before another change
+        // landed is still refused here.
+        const message = body.nextAllowedAt
+          ? cooldownSentence('change your password', String(body.nextAllowedAt))
+          : 'You can only change your password once a week.';
+        setCooldown(message);
+        Alert.alert('Password recently changed', message);
+      } else if (body.error === 'incorrect' || body.error === 'no_active_code') {
         setCodeError('Invalid or expired code.');
       } else if (body.error === 'expired') {
         setCodeError('Code expired — tap resend.');
@@ -122,14 +142,22 @@ export default function ChangePasswordScreen() {
             </View>
           </View>
 
+          {cooldown ? (
+            <View style={styles.noticeBox}>
+              <Text style={styles.noticeTitle}>Password recently changed</Text>
+              <Text style={styles.noticeBody}>{cooldown}</Text>
+            </View>
+          ) : null}
+
           {step === 'send' ? (
             <>
               <Text style={styles.hint}>{t('driver.pwIntro')}</Text>
+              <Text style={styles.hint}>A password can be changed once a week.</Text>
               <TouchableOpacity
-                style={[styles.continueBtn, busy && { opacity: 0.6 }]}
+                style={[styles.continueBtn, (busy || !!cooldown) && { opacity: 0.6 }]}
                 onPress={sendCode}
                 activeOpacity={0.85}
-                disabled={busy}
+                disabled={busy || !!cooldown}
               >
                 {busy ? <ActivityIndicator color="#000" /> : <Text style={styles.continueBtnText}>{t('driver.pwSendCta')}</Text>}
               </TouchableOpacity>
@@ -205,15 +233,19 @@ export default function ChangePasswordScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.continueBtn, busy && { opacity: 0.6 }]}
+                style={[styles.continueBtn, (busy || !!cooldown) && { opacity: 0.6 }]}
                 onPress={submit}
                 activeOpacity={0.85}
-                disabled={busy}
+                disabled={busy || !!cooldown}
               >
                 {busy ? <ActivityIndicator color="#000" /> : <Text style={styles.continueBtnText}>{t('driver.pwUpdateCta')}</Text>}
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.resendLink} onPress={sendCode} disabled={busy}>
+              <TouchableOpacity
+                style={styles.resendLink}
+                onPress={sendCode}
+                disabled={busy || !!cooldown}
+              >
                 <Text style={styles.resendText}>{t('auth.resend')}</Text>
               </TouchableOpacity>
             </>
@@ -230,6 +262,13 @@ const createStyles = (colors: any) => StyleSheet.create({
   container: { padding: 24, paddingBottom: 40 },
 
   hint: { color: colors.textSec, fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  noticeBox: {
+    padding: 16, marginBottom: 20,
+    backgroundColor: colors.surface,
+    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
+  },
+  noticeTitle: { color: colors.text, fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  noticeBody: { color: colors.textSec, fontSize: 14, lineHeight: 20 },
 
   inputBlock: { marginBottom: 16 },
   inputLabel: { color: colors.textSec, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, marginBottom: 8 },

@@ -28,6 +28,10 @@ export const users = pgTable('users', {
   phone: text().unique(),
   email: text(),
   passwordHash: text(),
+  // Last time the account password was changed — by the in-app OTP flow, the
+  // signed-out Clerk reset, or a Clerk `user.updated` webhook. Drives the
+  // one-change-per-week cooldown; NULL means "never changed, always allowed".
+  passwordChangedAt: timestamp({ withTimezone: true }),
   emailVerified: boolean().notNull().default(false),
   fullName: text(),
   locale: localeEnum().notNull().default('en'),
