@@ -157,7 +157,8 @@
     "myReportsEmptyBody": "Isu yang anda laporkan bagi perjalanan anda akan dipaparkan di sini untuk menjejaki statusnya.",
     "tripRef": "Perjalanan",
     "viewReceipt": "Lihat resit",
-    "viewReport": "Lihat laporan"
+    "viewReport": "Lihat laporan",
+    "windowClosed": "Laporan hanya boleh dikemukakan dalam masa 48 jam selepas perjalanan tamat."
   },
   "support": {
     "sectionTitle": "Sokongan",
@@ -402,5 +403,10 @@
     "resetState": "Set semula keadaan demo",
     "resetBody": "Mengosongkan toast, bendera demo, dan perjalanan aktif. Memuat semula sejarah perjalanan dari seed.",
     "resetToast": "Demo ditetapkan semula."
+  },
+  "notifications": {
+    "markAllRead": "Tandakan semua dibaca",
+    "emptyTitle": "Tiada pemberitahuan baru",
+    "emptyBody": "Tiada pemberitahuan baharu. Kami akan memaklumkan anda tentang perjalanan, promosi, dan kemas kini akaun di sini."
   }
 }

@@ -20,6 +20,7 @@ export default function MainLayout() {
       <Stack.Screen name="account/support" />
       <Stack.Screen name="account/add-card" options={{ presentation: 'modal' }} />
       <Stack.Screen name="account/demo" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="notifications" />
     </Stack>
   );
 }

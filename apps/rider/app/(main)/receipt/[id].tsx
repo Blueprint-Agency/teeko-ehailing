@@ -75,6 +75,17 @@ export default function ReceiptScreen() {
 
   const cancelled = receipt?.status === 'cancelled';
   const existingDispute: RiderDispute | undefined = disputes?.[0];
+
+  /** Whether the 48-hour window for filing a report has passed. */
+  const isPast48Hours = (() => {
+    if (!receipt) return false;
+    const endIso = receipt.completedAt ?? receipt.cancelledAt;
+    if (!endIso) return false;
+    const endMs = new Date(endIso).getTime();
+    if (isNaN(endMs)) return false;
+    return Date.now() - endMs > 48 * 60 * 60 * 1000;
+  })();
+
   const canDispute = receipt != null && DISPUTABLE.includes(receipt.status);
 
   const handleSubmitDispute = async (input: DisputeSubmitInput) => {
@@ -248,12 +259,13 @@ export default function ReceiptScreen() {
               ) : (
                 <View className="px-gutter py-3">
                   <Text tone="secondary" className="mb-3 text-sm">
-                    {t('dispute.prompt')}
+                    {isPast48Hours ? t('dispute.windowClosed') : t('dispute.prompt')}
                   </Text>
                   <Button
                     label={t('dispute.reportIssue')}
                     variant="ghost"
                     leadingIcon="error-outline"
+                    disabled={isPast48Hours}
                     onPress={() => disputeSheetRef.current?.present()}
                   />
                 </View>

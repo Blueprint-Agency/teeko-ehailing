@@ -157,7 +157,8 @@
     "myReportsEmptyBody": "您对行程提出的问题会显示在此处，方便您跟踪处理状态。",
     "tripRef": "行程",
     "viewReceipt": "查看收据",
-    "viewReport": "查看申诉"
+    "viewReport": "查看申诉",
+    "windowClosed": "报告只能在行程结束后48小时内提交。"
   },
   "support": {
     "sectionTitle": "支持",
@@ -402,5 +403,10 @@
     "resetState": "重置演示状态",
     "resetBody": "清除提示、演示标志和当前行程。从种子重新加载行程历史。",
     "resetToast": "演示已重置。"
+  },
+  "notifications": {
+    "markAllRead": "全部标为已读",
+    "emptyTitle": "暂无通知",
+    "emptyBody": "没有新通知。我们将在此告知您的行程、优惠及帐户更新。"
   }
 }

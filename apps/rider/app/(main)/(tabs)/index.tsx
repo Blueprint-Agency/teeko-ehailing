@@ -105,6 +105,18 @@ export default function HomeTab() {
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
+        <View className="flex-row justify-end px-gutter pb-1 pt-2">
+          <Pressable
+            onPress={() => router.push('/(main)/notifications')}
+            haptic="light"
+            accessibilityRole="button"
+            accessibilityLabel={t('driver.notificationsTitle')}
+            className="h-10 w-10 items-center justify-center rounded-full active:bg-muted"
+          >
+            <Icon name="notifications-none" size={24} color="#111827" />
+          </Pressable>
+        </View>
+
         <Text weight="bold" className="px-gutter pb-5 pt-4 text-3xl leading-tight">
           {t('home.tagline')}
         </Text>

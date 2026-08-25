@@ -172,7 +172,8 @@
     "myReportsEmptyBody": "Issues you report on your trips show up here so you can track their status.",
     "tripRef": "Trip",
     "viewReceipt": "View receipt",
-    "viewReport": "View report"
+    "viewReport": "View report",
+    "windowClosed": "Reports can only be submitted within 48 hours of the trip ending."
   },
   "support": {
     "sectionTitle": "Support",
@@ -418,5 +419,10 @@
     "resetState": "Reset demo state",
     "resetBody": "Clears toasts, demo flags, and the active trip. Reloads ride history from seed.",
     "resetToast": "Demo reset."
+  },
+  "notifications": {
+    "markAllRead": "Mark all read",
+    "emptyTitle": "You're all caught up",
+    "emptyBody": "No new notifications. We'll let you know about your trips, promos, and account updates here."
   }
 }
