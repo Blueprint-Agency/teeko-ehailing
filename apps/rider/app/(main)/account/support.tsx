@@ -42,8 +42,15 @@ export default function SupportScreen() {
   );
 
   const isEmpty = tickets.length === 0;
+  const pendingCount = tickets.filter((tk) => tk.status !== 'resolved').length;
+  const atLimit = pendingCount >= 5;
 
   const handleSubmit = async (input: SupportSubmitInput) => {
+    if (atLimit) {
+      sheetRef.current?.dismiss();
+      pushToast({ kind: 'error', message: t('support.limitReached') });
+      return;
+    }
     const result = await submit(input);
     sheetRef.current?.dismiss();
     pushToast(
@@ -70,15 +77,25 @@ export default function SupportScreen() {
           {t('support.myTicketsTitle')}
         </Text>
         <Pressable
-          onPress={() => sheetRef.current?.present()}
+          onPress={() => !atLimit && sheetRef.current?.present()}
           haptic="light"
           accessibilityRole="button"
           accessibilityLabel={t('support.newTicket')}
-          className="h-10 w-10 items-center justify-center rounded-full active:bg-muted"
+          disabled={atLimit}
+          className={`h-10 w-10 items-center justify-center rounded-full active:bg-muted ${atLimit ? 'opacity-30' : ''}`}
         >
           <Icon name="add" size={26} color="#E11D2E" />
         </Pressable>
       </View>
+
+      {/* Limit banner */}
+      {atLimit && (
+        <View className="mx-gutter mb-2 rounded-lg bg-amber-50 px-4 py-3">
+          <Text className="text-sm text-amber-800">
+            {t('support.limitReached')}
+          </Text>
+        </View>
+      )}
 
       {loading && isEmpty ? (
         <View className="flex-1 items-center justify-center">

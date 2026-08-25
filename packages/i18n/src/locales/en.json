@@ -201,6 +201,7 @@
     "submit": "Submit ticket",
     "submitSuccess": "Ticket submitted. We'll be in touch soon.",
     "submitError": "Couldn't submit your ticket. Please try again.",
+    "limitReached": "You can have at most 5 open tickets at a time. Please wait for one to be resolved before raising a new one.",
     "statusOpen": "Open",
     "statusInProgress": "In progress",
     "statusResolved": "Resolved",
