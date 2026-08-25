@@ -28,6 +28,10 @@ export default function AccountTab() {
   const clearProfile = useAuthStore((s) => s.clear);
   const uploadAvatar = useAuthStore((s) => s.uploadAvatar);
   const removeAvatar = useAuthStore((s) => s.removeAvatar);
+
+  // `toRider()` maps a null `fullName` to '', so a signed-in rider can legitimately
+  // have no name — trim rather than trusting the value to be non-empty.
+  const displayName = rider?.name?.trim() ?? '';
   const [avatarBusy, setAvatarBusy] = useState(false);
   const { signOut } = useClerk();
   const saved = usePlacesStore((s) => s.saved);
@@ -207,9 +211,24 @@ export default function AccountTab() {
               </View>
             ) : null}
           </View>
-          <Text weight="bold" className="mt-3 text-2xl">
-            {rider?.name ?? t('account.guest')}
-          </Text>
+          {/* `text-center` matters once the name wraps: `items-center` only centres
+              the box, and a wrapped box fills the column with left-aligned lines. */}
+          {rider && !displayName ? (
+            <Pressable
+              onPress={() => router.push('/(main)/account/personal')}
+              haptic="light"
+              accessibilityRole="button"
+              className="mt-3 rounded-full px-3 py-1 active:bg-muted"
+            >
+              <Text weight="bold" className="text-center text-2xl text-ink-secondary">
+                {t('account.addName')}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text weight="bold" className="mt-3 text-center text-2xl">
+              {displayName || t('account.guest')}
+            </Text>
+          )}
           {typeof rider?.rating === 'number' ? (
             <View className="mt-1 flex-row items-center">
               <Icon name="star" size={16} color="#E11D2E" />

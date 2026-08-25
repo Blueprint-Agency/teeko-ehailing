@@ -227,6 +227,7 @@
   "account": {
     "title": "Account",
     "guest": "Guest",
+    "addName": "Add your name",
     "rating": "Rating",
     "profilePhoto": "Profile photo",
     "takePhoto": "Take photo",

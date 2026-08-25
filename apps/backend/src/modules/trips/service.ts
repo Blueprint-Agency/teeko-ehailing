@@ -409,6 +409,9 @@ export const tripsService = {
       destination: { ...dropoff, address: trip.dropoffAddress ?? '' },
       fareCents: quote?.totalCents ?? 0,
       riderName: rider?.fullName ?? 'Rider',
+      // Raw stored path (or null) — the driver app resolves it against the API
+      // origin and falls back to the rider's initial when there is no photo.
+      riderPhotoUrl: rider?.avatarUrl ?? null,
       countdownSeconds: 0,
     };
   },

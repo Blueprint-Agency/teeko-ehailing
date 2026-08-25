@@ -380,6 +380,8 @@ export const api = {
           destination: { lat: number; lng: number; address: string };
           fareCents: number;
           riderName: string;
+          /** Raw server value — pass through `resolveMediaUrl` before rendering. */
+          riderPhotoUrl: string | null;
           countdownSeconds: number;
         } | null;
       }>('/driver/trips/active'),

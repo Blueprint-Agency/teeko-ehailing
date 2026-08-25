@@ -211,6 +211,7 @@
   "account": {
     "title": "Akaun",
     "guest": "Tetamu",
+    "addName": "Tambah nama anda",
     "rating": "Penilaian",
     "profilePhoto": "Gambar profil",
     "takePhoto": "Ambil gambar",

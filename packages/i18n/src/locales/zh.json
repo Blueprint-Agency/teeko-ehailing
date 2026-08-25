@@ -211,6 +211,7 @@
   "account": {
     "title": "账户",
     "guest": "访客",
+    "addName": "添加您的姓名",
     "rating": "评分",
     "profilePhoto": "头像",
     "takePhoto": "拍照",
