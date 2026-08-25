@@ -113,7 +113,23 @@
     "past": "Past",
     "completed": "Completed",
     "inProgress": "In progress",
-    "cancelled": "Cancelled"
+    "cancelled": "Cancelled",
+    "filters": {
+      "all": "All",
+      "allTime": "All time",
+      "last7Days": "Last 7 days",
+      "last30Days": "Last 30 days",
+      "last3Months": "Last 3 months",
+      "noMatchTitle": "No rides match these filters.",
+      "noMatchBody": "Try a different status or time range.",
+      "clear": "Clear filters"
+    },
+    "history": {
+      "title": "Ride history",
+      "count": "{{count}} rides",
+      "loadMore": "Load more",
+      "end": "You've reached the end."
+    }
   },
   "receipt": {
     "title": "Receipt",

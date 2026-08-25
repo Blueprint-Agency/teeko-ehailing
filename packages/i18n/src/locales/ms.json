@@ -98,7 +98,23 @@
     "past": "Lepas",
     "completed": "Selesai",
     "inProgress": "Sedang berlangsung",
-    "cancelled": "Dibatalkan"
+    "cancelled": "Dibatalkan",
+    "filters": {
+      "all": "Semua",
+      "allTime": "Sepanjang masa",
+      "last7Days": "7 hari lepas",
+      "last30Days": "30 hari lepas",
+      "last3Months": "3 bulan lepas",
+      "noMatchTitle": "Tiada perjalanan sepadan dengan penapis ini.",
+      "noMatchBody": "Cuba status atau julat masa yang lain.",
+      "clear": "Kosongkan penapis"
+    },
+    "history": {
+      "title": "Sejarah perjalanan",
+      "count": "{{count}} perjalanan",
+      "loadMore": "Muat lagi",
+      "end": "Anda telah sampai ke penghujung."
+    }
   },
   "receipt": {
     "title": "Resit",

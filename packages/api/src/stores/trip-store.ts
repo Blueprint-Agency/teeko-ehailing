@@ -5,6 +5,7 @@ import type {
   Place,
   RideCategory,
   Trip,
+  TripHistoryQuery,
   TripStatus,
 } from '@teeko/shared';
 import { create } from 'zustand';
@@ -34,6 +35,12 @@ export type TripState = {
   driverEtaMin: number | null;
   history: Trip[];
   historyLoading: boolean;
+  /** True only while appending the next page — keeps the spinner off the list. */
+  historyLoadingMore: boolean;
+  /** Rows matching the current filters server-side, across all pages. */
+  historyTotal: number;
+  historyHasMore: boolean;
+  historyFilters: TripHistoryQuery;
   error: string | null;
   setPickup: (p: Place) => void;
   setDestination: (p: Place) => void;
@@ -46,6 +53,8 @@ export type TripState = {
   completeRide: () => void;
   rateTrip: (rating: number, comment?: string) => void;
   loadHistory: () => Promise<void>;
+  loadMoreHistory: () => Promise<void>;
+  setHistoryFilters: (next: Partial<TripHistoryQuery>) => void;
   reset: () => void;
   clearFailedBooking: () => void;
   applyTripUpdate: (status: TripStatus, driver?: Driver) => void;
@@ -55,6 +64,15 @@ export type TripState = {
 };
 
 let activeSocket: TripSocket | null = null;
+
+/** Rows per history request — matches the backend's default page size. */
+const HISTORY_PAGE_SIZE = 20;
+
+/**
+ * Bumped on every history reload so a slow response for stale filters can be
+ * discarded instead of overwriting a newer list.
+ */
+let historyRequestToken = 0;
 
 /** Held quotes priced a specific route; moving either endpoint invalidates them. */
 const CLEARED_QUOTES = { fareOptions: [] as Fare[], selectedFare: null, quotesExpireAt: null };
@@ -81,6 +99,10 @@ export const useTripStore = create<TripState>((set, get) => ({
   driverEtaMin: null,
   history: [],
   historyLoading: false,
+  historyLoadingMore: false,
+  historyTotal: 0,
+  historyHasMore: false,
+  historyFilters: {},
   error: null,
 
   setPickup(p) {
@@ -239,13 +261,57 @@ export const useTripStore = create<TripState>((set, get) => ({
     }));
   },
 
+  setHistoryFilters(next) {
+    // Filters are server-side, so changing them restarts paging from offset 0.
+    set({ historyFilters: { ...get().historyFilters, ...next } });
+    void get().loadHistory();
+  },
+
   async loadHistory() {
+    const token = ++historyRequestToken;
     set({ historyLoading: true });
     try {
-      const history = await tripsApi.history();
-      set({ history, historyLoading: false });
+      const { status, days } = get().historyFilters;
+      const page = await tripsApi.history({ status, days, limit: HISTORY_PAGE_SIZE, offset: 0 });
+      // A newer request (e.g. the rider tapped another filter) already owns the
+      // list — dropping this response keeps the UI matching the chips.
+      if (token !== historyRequestToken) return;
+      set({
+        history: page.items,
+        historyTotal: page.total,
+        historyHasMore: page.hasMore,
+        historyLoading: false,
+      });
     } catch (e) {
+      if (token !== historyRequestToken) return;
       set({ historyLoading: false, error: (e as Error).message });
+    }
+  },
+
+  async loadMoreHistory() {
+    const { historyHasMore, historyLoading, historyLoadingMore, history, historyFilters } = get();
+    if (!historyHasMore || historyLoading || historyLoadingMore) return;
+    const token = historyRequestToken;
+    set({ historyLoadingMore: true });
+    try {
+      const page = await tripsApi.history({
+        status: historyFilters.status,
+        days: historyFilters.days,
+        limit: HISTORY_PAGE_SIZE,
+        offset: history.length,
+      });
+      if (token !== historyRequestToken) return;
+      // Guard against duplicates: a trip booked mid-scroll shifts every offset.
+      const seen = new Set(get().history.map((t) => t.id));
+      set((s) => ({
+        history: [...s.history, ...page.items.filter((t) => !seen.has(t.id))],
+        historyTotal: page.total,
+        historyHasMore: page.hasMore,
+        historyLoadingMore: false,
+      }));
+    } catch (e) {
+      if (token !== historyRequestToken) return;
+      set({ historyLoadingMore: false, error: (e as Error).message });
     }
   },
 

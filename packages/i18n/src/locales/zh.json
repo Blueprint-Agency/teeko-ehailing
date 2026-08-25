@@ -98,7 +98,23 @@
     "past": "历史",
     "completed": "已完成",
     "inProgress": "进行中",
-    "cancelled": "已取消"
+    "cancelled": "已取消",
+    "filters": {
+      "all": "全部",
+      "allTime": "全部时间",
+      "last7Days": "最近 7 天",
+      "last30Days": "最近 30 天",
+      "last3Months": "最近 3 个月",
+      "noMatchTitle": "没有符合筛选条件的行程。",
+      "noMatchBody": "请尝试其他状态或时间范围。",
+      "clear": "清除筛选"
+    },
+    "history": {
+      "title": "行程记录",
+      "count": "{{count}} 个行程",
+      "loadMore": "加载更多",
+      "end": "已经到底了。"
+    }
   },
   "receipt": {
     "title": "收据",

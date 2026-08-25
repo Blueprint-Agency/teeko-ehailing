@@ -86,6 +86,27 @@ export interface PaymentMethod {
 
 export type LatLng = { lat: number; lng: number };
 
+/** Offset-paged list envelope returned by paged rider endpoints. */
+export interface Page<T> {
+  items: T[];
+  /** Total rows matching the filter, not the rider's lifetime total. */
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+/** Rider-facing status buckets for trip history (maps to several DB statuses). */
+export type TripHistoryStatusFilter = 'upcoming' | 'completed' | 'cancelled';
+
+export interface TripHistoryQuery {
+  status?: TripHistoryStatusFilter;
+  /** Only trips created within the last N days. */
+  days?: number;
+  limit?: number;
+  offset?: number;
+}
+
 export interface Trip {
   id: string;
   status: TripStatus;

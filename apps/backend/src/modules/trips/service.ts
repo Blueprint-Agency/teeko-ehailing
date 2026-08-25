@@ -1,4 +1,4 @@
-import { and, eq, inArray, not } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, not } from 'drizzle-orm';
 import { db } from '../../db';
 import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, vehicles, users } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
@@ -10,6 +10,19 @@ import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 
 type Coords = { lat: number; lng: number };
+
+/**
+ * Rider-facing history filters. The client thinks in three buckets; the DB has
+ * seven statuses, so the mapping lives here (mirrors CLIENT_STATUS below —
+ * `no_show` reads as cancelled to the rider).
+ */
+export const RIDER_STATUS_FILTERS = {
+  upcoming: ['requested', 'matched', 'driver_arrived', 'in_trip'],
+  completed: ['completed'],
+  cancelled: ['cancelled', 'no_show'],
+} as const satisfies Record<string, ReadonlyArray<(typeof trips.status.enumValues)[number]>>;
+
+export type RiderTripStatusFilter = keyof typeof RIDER_STATUS_FILTERS;
 
 /**
  * The photo the rider sees on the driver card. Falls back to the deterministic
@@ -488,15 +501,43 @@ export const tripsService = {
   },
 
   // ---- rider: trip history ----
-  // Returns the rider's 50 most recent trips mapped to the shared `Trip` shape
-  // consumed by @teeko/api (client/trips.ts `history()` → trip-store `history`).
-  async getRiderTrips(riderId: string) {
+  // Returns a page of the rider's trips (newest first) mapped to the shared
+  // `Trip` shape consumed by @teeko/api (client/trips.ts `history()` →
+  // trip-store `history`). Filtering happens in SQL so paging stays correct:
+  // filtering a already-paged slice client-side would leave holes in the list.
+  async getRiderTrips(
+    riderId: string,
+    opts: { status?: RiderTripStatusFilter; since?: Date; limit?: number; offset?: number } = {},
+  ) {
+    const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
+    const offset = Math.max(opts.offset ?? 0, 0);
+
+    const statusIn = opts.status ? RIDER_STATUS_FILTERS[opts.status] : null;
+    const where = and(
+      eq(trips.riderId, riderId),
+      ...(statusIn ? [inArray(trips.status, [...statusIn])] : []),
+      ...(opts.since ? [gte(trips.createdAt, opts.since)] : []),
+    );
+
+    // Total drives `hasMore` and the "N rides" count the filter UI shows; it is
+    // the count for the *filtered* set, not the rider's lifetime trip count.
+    const countRows = await db.select({ value: count() }).from(trips).where(where);
+    const total = countRows[0]?.value ?? 0;
+
     const rows = await db.query.trips.findMany({
-      where: eq(trips.riderId, riderId),
+      where,
       orderBy: (t, { desc }) => [desc(t.createdAt)],
-      limit: 50,
+      limit,
+      offset,
     });
-    if (rows.length === 0) return [];
+    const page = <T>(items: T[]) => ({
+      items,
+      total,
+      limit,
+      offset,
+      hasMore: offset + items.length < total,
+    });
+    if (rows.length === 0) return page([]);
 
     // Batch-load fare quotes so we can show the quoted total when a trip has no
     // final fare yet (e.g. cancelled before completion).
@@ -516,7 +557,7 @@ export const tripsService = {
       no_show: 'cancelled',
     };
 
-    return rows.map((trip) => {
+    return page(rows.map((trip) => {
       const pickup = parsePoint(trip.pickup);
       const dropoff = parsePoint(trip.dropoff);
       const quote = trip.fareQuoteId ? quoteById.get(trip.fareQuoteId) : null;
@@ -538,7 +579,7 @@ export const tripsService = {
         rating: trip.riderRating ?? undefined,
         comment: trip.riderComment ?? undefined,
       };
-    });
+    }));
   },
 
   // ---- rider: trip detail / receipt ----
