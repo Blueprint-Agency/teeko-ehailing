@@ -19,6 +19,8 @@ export type DriverProfileDto = {
   fullName: string | null;
   phone: string | null;
   email: string | null;
+  /** Relative `/uploads/...` path or absolute URL; null when never uploaded. */
+  avatarUrl: string | null;
   /** Account status: active / suspended / deactivated. */
   status: string;
   /** Onboarding outcome: pending / approved / suspended / deactivated. */
@@ -54,6 +56,7 @@ export const driversService = {
       fullName: user.fullName,
       phone: user.phone,
       email: user.email,
+      avatarUrl: user.avatarUrl,
       status: user.status,
       // The profile row is created at approval; treat its absence as pending
       // rather than an error, so a half-onboarded driver can still see itself.

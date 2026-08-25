@@ -9,6 +9,8 @@ export type AuthState = {
 
   fetchProfile: () => Promise<void>;
   updateProfile: (patch: { fullName?: string; phone?: string; locale?: Locale }) => Promise<void>;
+  uploadAvatar: (file: { uri: string; name?: string; mimeType?: string }) => Promise<void>;
+  removeAvatar: () => Promise<void>;
   setLanguage: (locale: Locale) => Promise<void>;
   clear: () => void;
 };
@@ -35,6 +37,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         },
       });
     }
+  },
+
+  async uploadAvatar(file) {
+    const avatarUrl = await authApi.uploadAvatar(file);
+    const current = get().rider;
+    if (current) set({ rider: { ...current, avatarUrl } });
+  },
+
+  async removeAvatar() {
+    await authApi.removeAvatar();
+    const current = get().rider;
+    if (current) set({ rider: { ...current, avatarUrl: undefined } });
   },
 
   async setLanguage(languagePref) {

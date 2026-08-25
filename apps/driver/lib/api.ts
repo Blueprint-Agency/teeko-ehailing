@@ -28,11 +28,27 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Resolve a server-supplied media path (avatars, documents) to something
+ * <Image> can load. Storage returns a relative `/uploads/...` path for the
+ * local adapter and an absolute URL once GCS/R2 is wired, so only the relative
+ * form needs the API origin glued on.
+ */
+export function resolveMediaUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  if (/^https?:\/\//i.test(path)) return path;
+  const origin = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000';
+  return `${origin}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 async function req<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await _tokenGetter();
+  // FormData carries its own multipart boundary in the Content-Type header —
+  // forcing application/json here makes the server reject the upload.
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(options.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((options.headers as Record<string, string>) ?? {}),
   };
@@ -96,6 +112,8 @@ export type DriverMe = {
     email: string | null;
     emailVerified: boolean;
     fullName: string | null;
+    /** Raw server value — pass through `resolveMediaUrl` before rendering. */
+    avatarUrl: string | null;
     status: string;
     pdpaConsentAt: string | null;
   };
@@ -165,6 +183,8 @@ export type DriverProfile = {
   fullName: string | null;
   phone: string | null;
   email: string | null;
+  /** Raw server value — pass through `resolveMediaUrl` before rendering. */
+  avatarUrl: string | null;
   status: string;
   approvalStatus: string;
   availability: string;
@@ -397,6 +417,29 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify(patch),
       }),
+    /**
+     * Profile picture. Display-only, so unlike name and phone it applies
+     * immediately instead of raising a change request. `uri` is whatever the
+     * image picker returned; RN's FormData streams that file directly.
+     * Returns the absolute URL of the stored image.
+     */
+    uploadAvatar: async (file: { uri: string; name?: string; mimeType?: string }) => {
+      const form = new FormData();
+      form.append('file', {
+        uri: file.uri,
+        name: file.name ?? 'avatar.jpg',
+        type: file.mimeType ?? 'image/jpeg',
+      } as unknown as Blob);
+      const res = await req<{ avatarUrl: string }>('/driver/profile/avatar', {
+        method: 'POST',
+        body: form,
+      });
+      // Non-null: the server only answers 200 with a stored path.
+      return resolveMediaUrl(res.avatarUrl)!;
+    },
+    /** Remove the picture and fall back to the initials avatar. */
+    removeAvatar: () =>
+      req<{ avatarUrl: null }>('/driver/profile/avatar', { method: 'DELETE' }),
     changes: () => req<{ requests: ProfileChangeRequest[] }>('/driver/profile/changes'),
     /** Withdraw a request still waiting on review. */
     cancelChange: (id: string) =>

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 
 import { driversService } from '../../modules/drivers/service';
+import { clearAvatar, readAvatarFile, setAvatar } from '../../modules/identity/avatar';
 import {
   cancelProfileChange,
   getFieldStates,
@@ -74,6 +75,23 @@ export async function routes(app: FastifyInstance) {
       getFieldStates(req.user.id),
     ]);
     return { profile, fields, results };
+  });
+
+  // POST /api/v1/driver/profile/avatar — multipart/form-data, field "file".
+  // Unlike name and phone this does NOT go through the review queue: the
+  // picture is display-only. The verification selfie the admin actually checks
+  // is a separate document, uploaded in the web portal and reviewed there.
+  app.post('/profile/avatar', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    const file = await readAvatarFile(req);
+    const avatarUrl = await setAvatar(req.user.id, file);
+    return { avatarUrl };
+  });
+
+  app.delete('/profile/avatar', async (req, reply) => {
+    if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
+    await clearAvatar(req.user.id);
+    return { avatarUrl: null };
   });
 
   // GET /api/v1/driver/profile/changes — full history, newest first. The

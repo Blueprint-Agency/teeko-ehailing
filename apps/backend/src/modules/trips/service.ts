@@ -11,6 +11,15 @@ import { logger } from '../../config/logger';
 
 type Coords = { lat: number; lng: number };
 
+/**
+ * The photo the rider sees on the driver card. Falls back to the deterministic
+ * pravatar placeholder for drivers who never uploaded one, so the card is never
+ * left with a blank circle.
+ */
+function driverPhotoUrl(avatarUrl: string | null | undefined, driverId: string): string {
+  return avatarUrl ?? `https://i.pravatar.cc/150?u=${driverId}`;
+}
+
 // PostGIS geography may be returned as { x: lng, y: lat } (pg object) or WKT string.
 function parsePoint(raw: unknown): Coords {
   if (raw !== null && typeof raw === 'object') {
@@ -204,7 +213,7 @@ export const tripsService = {
       driver: {
         id: driverId,
         name: driverUser?.fullName ?? 'Driver',
-        photoUrl: `https://i.pravatar.cc/150?u=${driverId}`,
+        photoUrl: driverPhotoUrl(driverUser?.avatarUrl, driverId),
         rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
         vehicle: vehicle
           ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
@@ -439,7 +448,7 @@ export const tripsService = {
         ? {
             id: trip.driverId,
             name: driverUser.fullName ?? 'Driver',
-            photoUrl: `https://i.pravatar.cc/150?u=${trip.driverId}`,
+            photoUrl: driverPhotoUrl(driverUser.avatarUrl, trip.driverId),
             rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
             vehicle: vehicle
               ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
@@ -612,7 +621,7 @@ export const tripsService = {
         ? {
             id: trip.driverId,
             name: driverUser.fullName ?? 'Driver',
-            photoUrl: `https://i.pravatar.cc/150?u=${trip.driverId}`,
+            photoUrl: driverPhotoUrl(driverUser.avatarUrl, trip.driverId),
             rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
             vehicle: vehicle
               ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }

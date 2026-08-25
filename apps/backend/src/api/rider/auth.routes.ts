@@ -7,6 +7,7 @@ import {
   sendVerificationOtp,
   verifyOtp,
 } from '../../modules/auth_otp/service';
+import { clearAvatar, readAvatarFile, setAvatar } from '../../modules/identity/avatar';
 import {
   getOrProvisionRiderMe,
   patchRiderMe,
@@ -64,6 +65,22 @@ export async function routes(app: FastifyInstance) {
       throw err;
     }
     return { ok: true };
+  });
+
+  // POST /auth/me/avatar — multipart/form-data, field name "file".
+  // Self-service: a rider's picture is display-only and carries no compliance
+  // weight, so it applies immediately rather than queueing for review.
+  app.post('/auth/me/avatar', async (req, reply) => {
+    if (!req.user) return reply.code(404).send({ error: 'profile_not_provisioned' });
+    const file = await readAvatarFile(req);
+    const avatarUrl = await setAvatar(req.user.id, file);
+    return { avatarUrl };
+  });
+
+  app.delete('/auth/me/avatar', async (req, reply) => {
+    if (!req.user) return reply.code(404).send({ error: 'profile_not_provisioned' });
+    await clearAvatar(req.user.id);
+    return { avatarUrl: null };
   });
 
   app.post('/auth/send-otp', async (req, reply) => {

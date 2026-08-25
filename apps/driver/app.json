@@ -33,6 +33,13 @@
         {
           "locationWhenInUsePermission": "Teeko Driver needs your location to show nearby ride requests."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Teeko Driver uses your photos so you can set a profile picture.",
+          "cameraPermission": "Teeko Driver uses your camera so you can take a profile picture."
+        }
       ]
     ],
     "experiments": {

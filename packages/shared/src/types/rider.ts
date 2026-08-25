@@ -24,6 +24,8 @@ export interface Rider {
   name: string;
   phone: string;
   email?: string;
+  /** Absolute URL to the profile picture; undefined when none is set. */
+  avatarUrl?: string;
   rating: number;
   languagePref: Locale;
   verified?: boolean;

@@ -24,6 +24,8 @@ export type RiderMeResponse = {
     email: string | null;
     emailVerified: boolean;
     fullName: string | null;
+    /** Relative `/uploads/...` path or absolute URL; null when never uploaded. */
+    avatarUrl: string | null;
     phone: string | null;
     locale: 'en' | 'ms' | 'zh' | 'ta';
     status: 'active' | 'suspended' | 'deactivated';
@@ -131,6 +133,7 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
       email: bundle.email,
       emailVerified: bundle.emailVerified,
       fullName: bundle.fullName,
+      avatarUrl: bundle.avatarUrl,
       phone: bundle.phone,
       locale: bundle.locale,
       status: bundle.status,
@@ -148,6 +151,8 @@ export type DriverMeResponse = {
     email: string | null;
     emailVerified: boolean;
     fullName: string | null;
+    /** Relative `/uploads/...` path or absolute URL; null when never uploaded. */
+    avatarUrl: string | null;
     phone: string | null;
     status: 'active' | 'suspended' | 'deactivated';
     pdpaConsentAt: string | null;
@@ -221,6 +226,7 @@ export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<Drive
   const [userRow] = await db
     .select({
       emailVerified: users.emailVerified,
+      avatarUrl: users.avatarUrl,
       phone: users.phone,
       pdpaConsentAt: users.pdpaConsentAt,
     })
@@ -250,6 +256,7 @@ export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<Drive
       email: row.email,
       emailVerified: userRow?.emailVerified ?? false,
       fullName: row.fullName,
+      avatarUrl: userRow?.avatarUrl ?? null,
       phone: userRow?.phone ?? null,
       status: row.status,
       pdpaConsentAt: userRow?.pdpaConsentAt?.toISOString() ?? null,

@@ -54,7 +54,14 @@
       ],
       "expo-notifications",
       "expo-localization",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Teeko uses your photos so you can set a profile picture.",
+          "cameraPermission": "Teeko uses your camera so you can take a profile picture."
+        }
+      ]
     ],
     "runtimeVersion": "0.0.10",
     "updates": {

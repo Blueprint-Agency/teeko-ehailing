@@ -34,6 +34,10 @@ export const users = pgTable('users', {
   passwordChangedAt: timestamp({ withTimezone: true }),
   emailVerified: boolean().notNull().default(false),
   fullName: text(),
+  // Profile picture. Holds whatever `lib/storage` returned on upload — a
+  // `/uploads/...` path locally, an absolute URL once GCS/R2 is wired — so
+  // clients must resolve a relative value against the API origin.
+  avatarUrl: text(),
   locale: localeEnum().notNull().default('en'),
   status: userStatus().notNull().default('active'),
   // PDPA 2010 consent record. Captured by our own checkbox at driver sign-up —

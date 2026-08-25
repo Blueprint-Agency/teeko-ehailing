@@ -109,7 +109,10 @@ export function mountSocketIO(httpServer: HttpServer): Server {
               driver: {
                 id: activeTrip.driverId,
                 name: driverUser?.fullName ?? 'Driver',
-                photoUrl: `https://i.pravatar.cc/150?u=${activeTrip.driverId}`,
+                // Real uploaded picture when there is one; the deterministic
+                // placeholder keeps the card from showing a blank circle.
+                photoUrl:
+                  driverUser?.avatarUrl ?? `https://i.pravatar.cc/150?u=${activeTrip.driverId}`,
                 rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
                 vehicle: vehicle ? {
                   plate: vehicle.plateNumber,

@@ -180,6 +180,7 @@ export async function getRiderProfileBundle(userId: string) {
       email: users.email,
       emailVerified: users.emailVerified,
       fullName: users.fullName,
+      avatarUrl: users.avatarUrl,
       phone: users.phone,
       locale: users.locale,
       status: users.status,

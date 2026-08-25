@@ -2,7 +2,7 @@
 // Wraps GET /api/v1/rider/auth/me, PATCH /me, POST /send-otp, POST /verify-otp.
 import type { Locale, Rider } from '@teeko/shared';
 
-import { api } from './_fetch';
+import { api, resolveMediaUrl } from './_fetch';
 
 type RiderMeResponse = {
   user: {
@@ -10,6 +10,7 @@ type RiderMeResponse = {
     email: string | null;
     emailVerified: boolean;
     fullName: string | null;
+    avatarUrl: string | null;
     phone: string | null;
     locale: Locale;
     status: 'active' | 'suspended' | 'deactivated';
@@ -26,6 +27,7 @@ function toRider(res: RiderMeResponse): Rider {
     name: res.user.fullName ?? '',
     phone: res.user.phone ?? '',
     email: res.user.email ?? undefined,
+    avatarUrl: resolveMediaUrl(res.user.avatarUrl),
     rating: res.riderProfile.ratingAvg ?? 0,
     languagePref: res.user.locale,
     verified: res.user.emailVerified,
@@ -48,6 +50,37 @@ export async function updateMe(patch: {
     method: 'PATCH',
     body: JSON.stringify(patch),
   });
+}
+
+/**
+ * Upload a new profile picture. `uri` is whatever the image picker handed back
+ * (a `file://` path on device); React Native's FormData takes that shape
+ * directly and streams the file, so nothing is ever read into JS memory.
+ *
+ * Returns the absolute URL of the stored image, ready to render.
+ */
+export async function uploadAvatar(file: {
+  uri: string;
+  name?: string;
+  mimeType?: string;
+}): Promise<string> {
+  const form = new FormData();
+  form.append('file', {
+    uri: file.uri,
+    name: file.name ?? 'avatar.jpg',
+    type: file.mimeType ?? 'image/jpeg',
+  } as unknown as Blob);
+  const res = await api<{ avatarUrl: string }>('/api/v1/rider/auth/me/avatar', {
+    method: 'POST',
+    body: form,
+  });
+  // Non-null: the server only answers 200 with a stored path.
+  return resolveMediaUrl(res.avatarUrl)!;
+}
+
+/** Remove the current profile picture and fall back to the initials avatar. */
+export async function removeAvatar(): Promise<void> {
+  await api<{ avatarUrl: null }>('/api/v1/rider/auth/me/avatar', { method: 'DELETE' });
 }
 
 /**

@@ -16,6 +16,7 @@ export {
   notificationsApi,
   api,
   ApiError,
+  resolveMediaUrl,
   setApiTokenGetter,
   setApiUnauthorizedHandler,
 } from './client';
