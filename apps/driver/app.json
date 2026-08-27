@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teeko Driver",
     "slug": "teeko-driver",
-    "version": "0.0.11",
+    "version": "0.0.12",
     "orientation": "portrait",
     "scheme": "teekodriver",
     "userInterfaceStyle": "automatic",
@@ -24,7 +24,7 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "versionCode": 10
+      "versionCode": 11
     },
     "plugins": [
       "expo-router",
