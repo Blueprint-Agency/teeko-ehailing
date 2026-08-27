@@ -1,19 +1,21 @@
 'use client';
 import {
   Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  Divider, Typography, Box, Collapse, Toolbar, useMediaQuery, useTheme,
+  Divider, Typography, Box, Collapse, Toolbar, Badge, Tooltip,
+  useMediaQuery, useTheme,
 } from '@mui/material';
 import {
   Dashboard, People, DirectionsCar, Map, Gavel, TrendingUp,
   Payments, Security, History, SupportAgent,
   Campaign, Settings, ExpandLess, ExpandMore,
-  AssignmentTurnedIn, Policy, Speed,
+  AssignmentTurnedIn, Policy, Speed, PendingActions,
 } from '@mui/icons-material';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRbac } from '@/hooks/useRbac';
 import { useUiStore } from '@/stores/ui';
+import { usePendingProfileChanges } from '@/hooks/usePendingProfileChanges';
 
 export const DRAWER_WIDTH = 220;
 
@@ -22,7 +24,43 @@ interface NavItem {
   icon: React.ReactNode;
   href?: string;
   permission?: string;
-  children?: { label: string; href: string; permission?: string; exact?: boolean }[];
+  /** Items awaiting an admin decision — surfaces as an action badge. */
+  action?: NavAction;
+  children?: {
+    label: string;
+    href: string;
+    permission?: string;
+    exact?: boolean;
+    action?: NavAction;
+  }[];
+}
+
+interface NavAction {
+  count: number;
+  hint: string;
+}
+
+/**
+ * Marks a nav entry as needing an admin decision. Rendered only when something
+ * is queued, so an unbadged sidebar genuinely means nothing is waiting.
+ */
+function ActionBadge({ action }: { action?: NavAction }) {
+  if (!action || action.count < 1) return null;
+  return (
+    <Tooltip title={action.hint}>
+      <Badge
+        badgeContent={action.count}
+        color="warning"
+        max={99}
+        sx={{
+          mr: 0.75,
+          '& .MuiBadge-badge': { fontSize: 9, height: 15, minWidth: 15, px: 0.5 },
+        }}
+      >
+        <PendingActions fontSize="small" color="warning" />
+      </Badge>
+    </Tooltip>
+  );
 }
 
 export function Sidebar() {
@@ -35,12 +73,23 @@ export function Sidebar() {
   const toggle = (key: string) =>
     setOpenGroups((p) => ({ ...p, [key]: !p[key] }));
 
+  // Name/phone edits sit in a review queue until an admin approves them; the
+  // badge is the only cue an admin gets before opening the drivers list.
+  const pendingProfileChanges = usePendingProfileChanges();
+  const profileChangeAction: NavAction = {
+    count: pendingProfileChanges,
+    hint: `${pendingProfileChanges} driver profile change${
+      pendingProfileChanges === 1 ? '' : 's'
+    } waiting for review`,
+  };
+
   const nav: NavItem[] = [
     { label: 'Dashboard', icon: <Dashboard fontSize="small" />, href: '/dashboard' },
     {
       label: 'Drivers', icon: <DirectionsCar fontSize="small" />,
+      action: profileChangeAction,
       children: [
-        { label: 'All Drivers',   href: '/drivers' },
+        { label: 'All Drivers',   href: '/drivers', action: profileChangeAction },
         { label: 'Documents',     href: '/drivers/documents' },
         { label: 'EVP Tracker',   href: '/drivers/evp' },
         { label: 'Appeals',       href: '/drivers/appeals' },
@@ -109,6 +158,7 @@ export function Sidebar() {
                 <ListItemButton onClick={() => toggle(key)} sx={{ borderRadius: 1, mb: 0.25 }} selected={anyActive && !open}>
                   <ListItemIcon sx={{ minWidth: 32 }}>{item.icon}</ListItemIcon>
                   <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13 }} />
+                  <ActionBadge action={item.action} />
                   {open ? <ExpandLess fontSize="small" /> : <ExpandMore fontSize="small" />}
                 </ListItemButton>
                 <Collapse in={open}>
@@ -122,6 +172,7 @@ export function Sidebar() {
                         sx={{ pl: 4.5, borderRadius: 1, mb: 0.25 }}
                       >
                         <ListItemText primary={child.label} primaryTypographyProps={{ fontSize: 12 }} />
+                        <ActionBadge action={child.action} />
                       </ListItemButton>
                     ))}
                   </List>
@@ -140,6 +191,7 @@ export function Sidebar() {
             >
               <ListItemIcon sx={{ minWidth: 32 }}>{item.icon}</ListItemIcon>
               <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13 }} />
+              <ActionBadge action={item.action} />
             </ListItemButton>
           );
         })}
