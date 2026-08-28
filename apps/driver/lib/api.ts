@@ -161,16 +161,12 @@ export type EarningsResponse = {
     status: string;
     at: string;
   }>;
-  cashout: {
-    eligible: boolean;
-    connectStatus: string;
-    payoutsEnabled: boolean;
-    cooldownHoursLeft: number;
-    minCashoutRm: number;
-    /** Settled and cashable today. null when the balance couldn't be read. */
-    availableRm: number | null;
-    /** Earned but still inside Stripe's settlement hold. */
-    clearingRm: number | null;
+  payout: {
+    /** False until the driver has registered a bank account to be paid into. */
+    bankAccountSet: boolean;
+    bankName: string | null;
+    /** Earned but not yet covered by a payout — the next transfer's amount. */
+    pendingRm: number;
     /** Paid out, not yet credited by the bank. */
     inTransitRm: number;
     /** ISO date of the soonest expected bank credit, if any payout is in flight. */
@@ -268,6 +264,27 @@ export type SosAlert = {
   createdAt: string;
   resolvedAt: string | null;
   notifiedContacts: EmergencyContact[];
+};
+
+// The driver's payout bank account. The server never returns the full account
+// number — a change means re-entering it.
+export type BankAccount = {
+  bankName: string;
+  accountHolderName: string;
+  accountNumberMasked: string;
+  updatedAt: string;
+};
+
+export type BankAccountInput = {
+  bankName: string;
+  accountHolderName: string;
+  accountNumber: string;
+};
+
+export type BankAccountResponse = {
+  /** Null until the driver has set one up. */
+  account: BankAccount | null;
+  banks: string[];
 };
 
 export type ConnectStatus = {
@@ -397,11 +414,6 @@ export const api = {
   },
   earnings: {
     get: () => req<EarningsResponse>('/driver/earnings'),
-    cashout: () =>
-      req<{ amountRm: number; status: string; method: 'instant' | 'standard' }>(
-        '/driver/earnings/cashout',
-        { method: 'POST' },
-      ),
   },
   profile: {
     get: () =>
@@ -474,6 +486,17 @@ export const api = {
     list: () => req<DriverDispute[]>('/driver/disputes'),
     create: (input: CreateDriverDisputeInput) =>
       req<DriverDispute>('/driver/disputes', { method: 'POST', body: JSON.stringify(input) }),
+  },
+  // Payout bank account. Teeko pays drivers by bank transfer from the admin
+  // payout sheet, so the details are collected in-app. `get` also returns the
+  // bank list the picker renders, keeping it in step with server validation.
+  bankAccount: {
+    get: () => req<BankAccountResponse>('/driver/bank-account'),
+    save: (input: BankAccountInput) =>
+      req<BankAccountResponse>('/driver/bank-account', {
+        method: 'PUT',
+        body: JSON.stringify(input),
+      }),
   },
   // Stripe Connect payout onboarding. `onboard` returns a hosted Stripe URL the
   // app opens in the system browser; status is polled on return.

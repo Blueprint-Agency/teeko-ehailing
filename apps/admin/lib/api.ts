@@ -315,6 +315,50 @@ export interface SupportTicketRow {
   messages: number;
 }
 
+// ── Payout sheet ──────────────────────────────────────────────────────────────
+/** One driver's payout for a date range. Amounts are major-unit ringgit (RM). */
+export interface PayoutSheetRow {
+  driverId: string;
+  driverName: string;
+  /** Null until the driver registers a bank account in the app. */
+  bank: string | null;
+  accountHolderName: string | null;
+  /** Masked to the last 4 digits — the full number is export-only. */
+  account: string | null;
+  hasBankAccount: boolean;
+  tripCount: number;
+  gross: number;
+  commission: number;
+  amount: number;
+}
+
+export interface PayoutSheet {
+  period: { start: string; end: string };
+  rows: PayoutSheetRow[];
+}
+
+export interface PayoutSheetTrip {
+  id: string;
+  date: string;
+  category: string;
+  pickup: string | null;
+  dropoff: string | null;
+  fare: number;
+  commission: number;
+  net: number;
+}
+
+/** Export rows carry the full account number, so this endpoint is role-gated. */
+export interface PayoutExportRow {
+  driverId: string;
+  driverName: string;
+  bank: string;
+  accountHolderName: string;
+  accountNumber: string;
+  tripCount: number;
+  amount: number;
+}
+
 // ── Revenue reports ───────────────────────────────────────────────────────────
 export interface RevenueDay {
   date: string;
@@ -552,6 +596,27 @@ export const adminApi = {
 
   updateSupportStatus: (id: string, status: SupportTicketStatus) =>
     put<{ ok: boolean; ticket: SupportTicketRow }>(`/support/${id}`, { status }),
+
+  // ── Payout sheet ─────────────────────────────────────────────────────────────
+  getPayoutSheet: (start: string, end: string) =>
+    get<PayoutSheet>(`/payouts/sheet?start=${start}&end=${end}`),
+
+  getPayoutSheetTrips: (driverId: string, start: string, end: string) =>
+    get<{ trips: PayoutSheetTrip[] }>(
+      `/payouts/sheet/${driverId}/trips?start=${start}&end=${end}`,
+    ),
+
+  /**
+   * Executes the payout and returns the transfer file rows (full account
+   * numbers) — super admin / finance only. This is a write: the covered
+   * earnings are marked paid, so re-running the same range pays nothing twice.
+   * Omit `driverIds` to pay every driver with outstanding earnings in range.
+   */
+  exportPayoutSheet: (start: string, end: string, driverIds?: string[]) =>
+    post<{ period: { start: string; end: string }; rows: PayoutExportRow[] }>(
+      `/payouts/sheet/export?start=${start}&end=${end}`,
+      { driverIds },
+    ),
 
   // ── Revenue reports ──────────────────────────────────────────────────────────
   getRevenueDaily: (days = 30) => get<RevenueDay[]>(`/revenue/daily?days=${days}`),

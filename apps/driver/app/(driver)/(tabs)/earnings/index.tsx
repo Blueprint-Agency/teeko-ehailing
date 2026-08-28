@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  StatusBar, ScrollView, Alert, ActivityIndicator, RefreshControl,
+  StatusBar, ScrollView, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import ScreenHeader from '../../../../components/driver/ScreenHeader';
@@ -27,7 +27,6 @@ export default function EarningsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [cashingOut, setCashingOut] = useState(false);
   const colors = useColors();
   const { activeTheme } = useTheme();
   const router = useRouter();
@@ -57,31 +56,6 @@ export default function EarningsScreen() {
     setRefreshing(true);
     load();
   }, [load]);
-
-  const handleCashout = async () => {
-    if (cashingOut) return;
-    setCashingOut(true);
-    try {
-      const res = await api.earnings.cashout();
-      // Instant payouts aren't available in Malaysia, so this is normally a
-      // standard bank transfer — don't promise minutes when it takes days.
-      Alert.alert(
-        t('driver.earlyCashout'),
-        `RM ${res.amountRm.toFixed(2)} is on its way to your bank account.` +
-          (res.method === 'instant'
-            ? ' It should arrive within minutes.'
-            : ' It usually arrives in 1–2 business days.'),
-      );
-      await load();
-    } catch (err) {
-      Alert.alert(
-        'Cashout failed',
-        err instanceof Error ? err.message : 'Please try again later.',
-      );
-    } finally {
-      setCashingOut(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -113,7 +87,7 @@ export default function EarningsScreen() {
   const barMax = Math.max(...data.dailyBreakdown.map((d) => d.amountRm), 0);
   const weekTotal = data.week.netCents / 100;
   const todayTotal = data.today.netCents / 100;
-  const { cashout } = data;
+  const { payout } = data;
 
   return (
     <View style={styles.root}>
@@ -132,74 +106,48 @@ export default function EarningsScreen() {
           <Text style={styles.heroAmount}>RM {weekTotal.toFixed(2)}</Text>
           <Text style={styles.heroSub}>{t('driver.tripsCompleted', { count: data.week.tripCount })}</Text>
 
-          {/* The hero figure is what they've *earned*; this is what Stripe will
-              release today. Card money sits in a settlement hold for days, and
-              without this row the gap reads as missing pay. */}
-          {cashout.payoutsEnabled && cashout.availableRm != null && (
-            <View style={styles.balanceRow}>
-              <View style={styles.balanceCell}>
-                <Text style={styles.balanceLabel}>Available</Text>
-                <Text style={styles.balanceValue}>RM {cashout.availableRm.toFixed(2)}</Text>
-              </View>
-              {cashout.clearingRm != null && cashout.clearingRm > 0 && (
-                <View style={styles.balanceCell}>
-                  <Text style={styles.balanceLabel}>Clearing</Text>
-                  <Text style={[styles.balanceValue, styles.balanceMuted]}>
-                    RM {cashout.clearingRm.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-              {cashout.inTransitRm > 0 && (
-                <View style={styles.balanceCell}>
-                  <Text style={styles.balanceLabel}>To bank</Text>
-                  <Text style={[styles.balanceValue, styles.balanceMuted]}>
-                    RM {cashout.inTransitRm.toFixed(2)}
-                  </Text>
-                  {cashout.inTransitArrival && (
-                    <Text style={styles.balanceHint}>
-                      {new Date(cashout.inTransitArrival).toLocaleDateString('en-MY', {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
-                    </Text>
-                  )}
-                </View>
-              )}
+          {/* The hero figure is what they've *earned* this week; these are the
+              amounts still owed. Without them, a payout that has left Teeko but
+              hasn't reached the bank reads as missing pay. */}
+          <View style={styles.balanceRow}>
+            <View style={styles.balanceCell}>
+              <Text style={styles.balanceLabel}>Pending payout</Text>
+              <Text style={styles.balanceValue}>RM {payout.pendingRm.toFixed(2)}</Text>
             </View>
-          )}
-
-          {cashout.payoutsEnabled ? (
-            <TouchableOpacity
-              style={[styles.cashoutBtn, (!cashout.eligible || cashingOut) && styles.cashoutBtnDisabled]}
-              disabled={!cashout.eligible || cashingOut}
-              onPress={handleCashout}
-            >
-              {cashingOut
-                ? <ActivityIndicator color="#000" />
-                : <Text style={styles.cashoutText}>{t('driver.earlyCashout')}</Text>}
-            </TouchableOpacity>
-          ) : (
-            // No Connect account yet — cashout is impossible, so send them to setup.
-            <TouchableOpacity style={styles.cashoutBtn} onPress={() => router.push('/(driver)/payouts')}>
-              <Text style={styles.cashoutText}>Set up payouts</Text>
-            </TouchableOpacity>
-          )}
-          {cashout.payoutsEnabled && cashout.cooldownHoursLeft > 0 && (
-            <Text style={styles.cashoutNote}>
-              Next cashout available in {cashout.cooldownHoursLeft}h
-            </Text>
-          )}
-          {cashout.payoutsEnabled &&
-            cashout.cooldownHoursLeft === 0 &&
-            cashout.availableRm != null &&
-            cashout.availableRm < cashout.minCashoutRm && (
-              <Text style={styles.cashoutNote}>
-                Minimum cashout is RM {cashout.minCashoutRm.toFixed(2)}
-                {cashout.clearingRm != null && cashout.clearingRm > 0
-                  ? ` — RM ${cashout.clearingRm.toFixed(2)} is still clearing.`
-                  : '.'}
-              </Text>
+            {payout.inTransitRm > 0 && (
+              <View style={styles.balanceCell}>
+                <Text style={styles.balanceLabel}>To bank</Text>
+                <Text style={[styles.balanceValue, styles.balanceMuted]}>
+                  RM {payout.inTransitRm.toFixed(2)}
+                </Text>
+                {payout.inTransitArrival && (
+                  <Text style={styles.balanceHint}>
+                    {new Date(payout.inTransitArrival).toLocaleDateString('en-MY', {
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </Text>
+                )}
+              </View>
             )}
+          </View>
+
+          {payout.bankAccountSet ? (
+            <Text style={styles.cashoutNote}>
+              Paid to your {payout.bankName} account on the payout cycle.
+            </Text>
+          ) : (
+            // Nothing to pay into yet — the earnings are safe, but they can't be
+            // transferred until the driver registers an account.
+            <>
+              <TouchableOpacity style={styles.cashoutBtn} onPress={() => router.push('/(driver)/payouts')}>
+                <Text style={styles.cashoutText}>Set up bank account</Text>
+              </TouchableOpacity>
+              <Text style={styles.cashoutNote}>
+                Add your bank account so Teeko can transfer your earnings.
+              </Text>
+            </>
+          )}
         </View>
 
         {/* Today card */}
@@ -303,7 +251,6 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 12,
     marginTop: 16,
   },
-  cashoutBtnDisabled: { opacity: 0.4 },
   cashoutText: { color: '#000', fontWeight: '800', fontSize: 15 },
   cashoutNote: { color: colors.textSec, fontSize: 11, marginTop: 8 },
 

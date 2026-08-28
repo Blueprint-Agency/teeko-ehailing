@@ -8,6 +8,7 @@ import { routes as status } from './status.routes';
 import { routes as trips } from './trips.routes';
 import { routes as earnings } from './earnings.routes';
 import { routes as connect } from './connect.routes';
+import { routes as bankAccount } from './bank-account.routes';
 import { routes as incentives } from './incentives.routes';
 import { routes as ratings } from './ratings.routes';
 import { routes as safety } from './safety.routes';
@@ -32,6 +33,7 @@ export async function driverRoutes(app: FastifyInstance) {
     await scope.register(trips, { prefix: '/trips' });
     await scope.register(earnings, { prefix: '/earnings' });
     await scope.register(connect, { prefix: '/connect' });
+    await scope.register(bankAccount, { prefix: '/bank-account' });
     await scope.register(incentives, { prefix: '/incentives' });
     await scope.register(ratings, { prefix: '/ratings' });
     await scope.register(safety);

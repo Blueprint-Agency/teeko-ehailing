@@ -2,11 +2,12 @@
 // Drizzle queries for the payouts domain: Stripe Connect accounts, driver
 // payouts, and reads over the driver-earnings mirror. Private to the module.
 
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, sql } from 'drizzle-orm';
 
 import { db } from '../../config/db';
 import {
   connectAccounts,
+  driverBankAccounts,
   driverEarnings,
   payouts,
 } from '../../db/schema/payments';
@@ -67,6 +68,15 @@ export async function updateConnectByStripeId(
     .update(connectAccounts)
     .set({ ...patch, updatedAt: new Date() })
     .where(eq(connectAccounts.stripeAccountId, stripeAccountId));
+}
+
+// ---------- bank accounts ----------
+
+/** The account finance transfers to, or undefined until the driver adds one. */
+export async function getBankAccount(driverId: string) {
+  return db.query.driverBankAccounts.findFirst({
+    where: eq(driverBankAccounts.driverId, driverId),
+  });
 }
 
 // ---------- payouts ----------
@@ -145,6 +155,20 @@ export async function earningsSummary(
     commissionCents: Number(r?.commissionCents ?? 0),
     netCents: Number(r?.netCents ?? 0),
   };
+}
+
+/**
+ * Net earnings no payout has covered yet — what the driver's next bank
+ * transfer will carry. Keyed on `payoutId`, not `transferred`: the latter
+ * records the Stripe Connect transfer made at charge time, which says nothing
+ * about whether the money has reached the driver's own bank.
+ */
+export async function unpaidNetCents(driverId: string): Promise<number> {
+  const rows = await db
+    .select({ netCents: sql<number>`coalesce(sum(${driverEarnings.netCents}), 0)` })
+    .from(driverEarnings)
+    .where(and(eq(driverEarnings.driverId, driverId), isNull(driverEarnings.payoutId)));
+  return Number(rows[0]?.netCents ?? 0);
 }
 
 export async function recentEarnings(driverId: string, limit = 20) {
