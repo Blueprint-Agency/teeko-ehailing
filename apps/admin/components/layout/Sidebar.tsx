@@ -1,7 +1,7 @@
 'use client';
 import {
   Drawer, List, ListItemButton, ListItemIcon, ListItemText,
-  Divider, Typography, Box, Collapse, Toolbar, Badge, Tooltip,
+  Divider, Typography, Box, Collapse, Toolbar, Tooltip,
   useMediaQuery, useTheme,
 } from '@mui/material';
 import {
@@ -42,23 +42,14 @@ interface NavAction {
 
 /**
  * Marks a nav entry as needing an admin decision. Rendered only when something
- * is queued, so an unbadged sidebar genuinely means nothing is waiting.
+ * is queued, so an unmarked sidebar genuinely means nothing is waiting. The
+ * count stays out of the nav — the icon flags the queue, the tooltip names it.
  */
 function ActionBadge({ action }: { action?: NavAction }) {
   if (!action || action.count < 1) return null;
   return (
     <Tooltip title={action.hint}>
-      <Badge
-        badgeContent={action.count}
-        color="warning"
-        max={99}
-        sx={{
-          mr: 0.75,
-          '& .MuiBadge-badge': { fontSize: 9, height: 15, minWidth: 15, px: 0.5 },
-        }}
-      >
-        <PendingActions fontSize="small" color="warning" />
-      </Badge>
+      <PendingActions fontSize="small" color="warning" sx={{ mr: 0.75 }} />
     </Tooltip>
   );
 }
