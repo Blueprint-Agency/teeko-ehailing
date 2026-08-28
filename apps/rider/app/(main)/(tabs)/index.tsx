@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 
 import {
   useLocationStore,
+  useNotificationStore,
   usePaymentsStore,
   usePlacesStore,
   useTripStore,
@@ -21,6 +22,9 @@ import { RecentPlaceRow } from '../../../components/RecentPlaceRow';
 export default function HomeTab() {
   const router = useRouter();
   const t = useT();
+  const notifications = useNotificationStore((s) => s.items);
+  const localRead = useNotificationStore((s) => s.localRead);
+  const hasUnread = notifications.some((n) => !n.readAt && !localRead.has(n.id));
   const recent = usePlacesStore((s) => s.recent);
   const saved = usePlacesStore((s) => s.saved);
   const loadRecent = usePlacesStore((s) => s.loadRecent);
@@ -111,9 +115,12 @@ export default function HomeTab() {
             haptic="light"
             accessibilityRole="button"
             accessibilityLabel={t('driver.notificationsTitle')}
-            className="h-10 w-10 items-center justify-center rounded-full active:bg-muted"
+            className="relative h-10 w-10 items-center justify-center rounded-full active:bg-muted"
           >
             <Icon name="notifications-none" size={24} color="#111827" />
+            {hasUnread ? (
+              <View className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
+            ) : null}
           </Pressable>
         </View>
 

@@ -41,8 +41,10 @@ export default function ReceiptScreen() {
 
   const disputeSheetRef = useRef<BottomSheetHandle>(null);
   const disputes = useDisputeStore((s) => (id ? s.byTrip[id] : undefined));
+  const allDisputes = useDisputeStore((s) => s.all);
   const submitting = useDisputeStore((s) => s.submitting);
   const loadDisputes = useDisputeStore((s) => s.loadForTrip);
+  const loadAllDisputes = useDisputeStore((s) => s.loadAll);
   const submitDispute = useDisputeStore((s) => s.submit);
   const pushToast = useUIStore((s) => s.pushToast);
 
@@ -71,10 +73,16 @@ export default function ReceiptScreen() {
   // "Report an issue" button when the rider has already raised one.
   useEffect(() => {
     if (id) loadDisputes(id);
-  }, [id, loadDisputes]);
+    loadAllDisputes();
+  }, [id, loadDisputes, loadAllDisputes]);
 
   const cancelled = receipt?.status === 'cancelled';
   const existingDispute: RiderDispute | undefined = disputes?.[0];
+
+  const pendingDisputesCount = allDisputes.filter(
+    (d) => !['resolved', 'rejected', 'refund_completed'].includes(d.status),
+  ).length;
+  const atDisputeLimit = pendingDisputesCount >= 5;
 
   /** Whether the 48-hour window for filing a report has passed. */
   const isPast48Hours = (() => {
@@ -90,6 +98,11 @@ export default function ReceiptScreen() {
 
   const handleSubmitDispute = async (input: DisputeSubmitInput) => {
     if (!id) return;
+    if (atDisputeLimit) {
+      disputeSheetRef.current?.dismiss();
+      pushToast({ kind: 'error', message: t('dispute.limitReached') });
+      return;
+    }
     const result = await submitDispute({ tripId: id, ...input });
     disputeSheetRef.current?.dismiss();
     pushToast(
@@ -259,14 +272,24 @@ export default function ReceiptScreen() {
               ) : (
                 <View className="px-gutter py-3">
                   <Text tone="secondary" className="mb-3 text-sm">
-                    {isPast48Hours ? t('dispute.windowClosed') : t('dispute.prompt')}
+                    {atDisputeLimit
+                      ? t('dispute.limitReached')
+                      : isPast48Hours
+                        ? t('dispute.windowClosed')
+                        : t('dispute.prompt')}
                   </Text>
                   <Button
                     label={t('dispute.reportIssue')}
                     variant="ghost"
                     leadingIcon="error-outline"
-                    disabled={isPast48Hours}
-                    onPress={() => disputeSheetRef.current?.present()}
+                    disabled={isPast48Hours || atDisputeLimit}
+                    onPress={() => {
+                      if (atDisputeLimit) {
+                        pushToast({ kind: 'error', message: t('dispute.limitReached') });
+                        return;
+                      }
+                      disputeSheetRef.current?.present();
+                    }}
                   />
                 </View>
               )}

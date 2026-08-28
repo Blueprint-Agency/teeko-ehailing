@@ -1,22 +1,12 @@
-import { useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { useCallback, useEffect } from 'react';
+import { ActivityIndicator, FlatList, View } from 'react-native';
 
+import { useNotificationStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import { Icon, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
-import mockData from '../../data/mock-notifications-rider.json';
-
-type Category = 'trip' | 'promo' | 'account' | 'payment' | 'system';
-
-interface NotificationItem {
-  id: string;
-  category: Category;
-  title: string;
-  body: string;
-  createdAt: string;
-  readAt: string | null;
-}
+type Category = 'trip' | 'promo' | 'account' | 'payment' | 'system' | 'broadcast';
 
 const CATEGORY_ICON: Record<Category, React.ComponentProps<typeof Icon>['name']> = {
   trip: 'directions-car',
@@ -24,6 +14,7 @@ const CATEGORY_ICON: Record<Category, React.ComponentProps<typeof Icon>['name']>
   account: 'person',
   payment: 'credit-card',
   system: 'notifications',
+  broadcast: 'campaign',
 };
 
 const CATEGORY_COLOR: Record<Category, string> = {
@@ -32,6 +23,7 @@ const CATEGORY_COLOR: Record<Category, string> = {
   account: '#059669',
   payment: '#7C3AED',
   system: '#6B7280',
+  broadcast: '#E11D2E',
 };
 
 function useTimeAgo() {
@@ -50,20 +42,23 @@ export default function NotificationsScreen() {
   const t = useT();
   const timeAgo = useTimeAgo();
 
-  const [items, setItems] = useState<NotificationItem[]>(mockData as NotificationItem[]);
+  const items = useNotificationStore((s) => s.items);
+  const loading = useNotificationStore((s) => s.loading);
+  const localRead = useNotificationStore((s) => s.localRead);
+  const load = useNotificationStore((s) => s.load);
+  const markRead = useNotificationStore((s) => s.markRead);
+  const markAllRead = useNotificationStore((s) => s.markAllRead);
 
-  const hasUnread = items.some((n) => !n.readAt);
+  useEffect(() => { void load(); }, [load]);
 
-  const markRead = (id: string) => {
-    setItems((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, readAt: new Date().toISOString() } : n)),
-    );
-  };
+  const hasUnread = items.some((n) => !n.readAt && !localRead.has(n.id));
 
-  const markAllRead = () => {
-    const now = new Date().toISOString();
-    setItems((prev) => prev.map((n) => ({ ...n, readAt: n.readAt ?? now })));
-  };
+  const handlePress = useCallback(
+    (id: string, isRead: boolean) => {
+      if (!isRead) void markRead(id);
+    },
+    [markRead],
+  );
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
@@ -85,7 +80,7 @@ export default function NotificationsScreen() {
         </View>
         {hasUnread ? (
           <Pressable
-            onPress={markAllRead}
+            onPress={() => void markAllRead()}
             haptic="light"
             accessibilityRole="button"
             className="rounded-full px-3 py-1.5 active:bg-muted"
@@ -97,7 +92,11 @@ export default function NotificationsScreen() {
         ) : null}
       </View>
 
-      {items.length === 0 ? (
+      {loading && items.length === 0 ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#E11D2E" />
+        </View>
+      ) : items.length === 0 ? (
         <View className="flex-1 items-center justify-center px-8">
           <Icon name="notifications-none" size={48} color="#9CA3AF" />
           <Text weight="bold" className="mt-4 text-base">
@@ -113,13 +112,16 @@ export default function NotificationsScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
           showsVerticalScrollIndicator={false}
+          refreshing={loading}
+          onRefresh={() => void load()}
           renderItem={({ item }) => {
-            const isRead = !!item.readAt;
-            const color = CATEGORY_COLOR[item.category];
-            const iconName = CATEGORY_ICON[item.category];
+            const isRead = !!item.readAt || localRead.has(item.id);
+            const category = (item.category ?? 'system') as Category;
+            const color = CATEGORY_COLOR[category] ?? CATEGORY_COLOR.system;
+            const iconName = CATEGORY_ICON[category] ?? CATEGORY_ICON.system;
             return (
               <Pressable
-                onPress={() => !isRead && markRead(item.id)}
+                onPress={() => handlePress(item.id, isRead)}
                 haptic="light"
                 accessibilityRole="button"
                 className={
@@ -138,10 +140,7 @@ export default function NotificationsScreen() {
                 {/* Content */}
                 <View className="flex-1">
                   <View className="mb-1 flex-row items-start justify-between">
-                    <Text
-                      weight={isRead ? 'medium' : 'bold'}
-                      className="mr-2 flex-1 text-sm"
-                    >
+                    <Text weight={isRead ? 'medium' : 'bold'} className="mr-2 flex-1 text-sm">
                       {item.title}
                     </Text>
                     <Text tone="secondary" className="text-xs">

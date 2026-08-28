@@ -37,6 +37,10 @@ export default function DisputesScreen() {
   );
 
   const isEmpty = disputes.length === 0;
+  const pendingCount = disputes.filter(
+    (d) => !['resolved', 'rejected', 'refund_completed'].includes(d.status),
+  ).length;
+  const atLimit = pendingCount >= 5;
 
   return (
     <ScreenContainer edges={['top', 'left', 'right']}>
@@ -55,6 +59,15 @@ export default function DisputesScreen() {
           {t('dispute.myReportsTitle')}
         </Text>
       </View>
+
+      {/* Limit banner */}
+      {atLimit && (
+        <View className="mx-gutter mb-2 rounded-lg bg-amber-50 px-4 py-3">
+          <Text className="text-sm text-amber-800">
+            {t('dispute.limitReached')}
+          </Text>
+        </View>
+      )}
 
       {loading && isEmpty ? (
         <View className="flex-1 items-center justify-center">

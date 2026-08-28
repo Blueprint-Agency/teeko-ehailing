@@ -5,7 +5,7 @@ import { api } from './_fetch';
 
 export interface NotificationItem {
   id: string;
-  category: 'trip' | 'promo' | 'account' | 'payment' | 'system';
+  category: 'trip' | 'promo' | 'account' | 'payment' | 'system' | 'broadcast' | 'evp' | 'doc_expiry' | 'payout' | 'suspension' | 'incentive' | string;
   title: string;
   body: string;
   deeplink?: string | null;

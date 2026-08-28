@@ -189,7 +189,8 @@
     "tripRef": "Trip",
     "viewReceipt": "View receipt",
     "viewReport": "View report",
-    "windowClosed": "Reports can only be submitted within 48 hours of the trip ending."
+    "windowClosed": "Reports can only be submitted within 48 hours of the trip ending.",
+    "limitReached": "You can have at most 5 pending dispute tickets at a time. Please wait for one to be resolved before raising a new one."
   },
   "support": {
     "sectionTitle": "Support",
