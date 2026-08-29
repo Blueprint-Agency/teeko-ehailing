@@ -243,7 +243,7 @@ export default function ReceiptScreen() {
             <Section title={t('dispute.sectionTitle')}>
               {existingDispute ? (
                 <Pressable
-                  onPress={() => router.push('/(main)/account/disputes')}
+                  onPress={() => router.navigate('/(main)/account/disputes')}
                   haptic="light"
                   accessibilityRole="button"
                   className="px-gutter py-3 active:bg-muted"

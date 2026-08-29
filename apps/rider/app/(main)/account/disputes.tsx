@@ -100,7 +100,7 @@ export default function DisputesScreen() {
                 dispute={d}
                 t={t}
                 last={i === disputes.length - 1}
-                onPress={() => router.push(`/(main)/receipt/${d.tripId}`)}
+                onPress={() => router.navigate(`/(main)/receipt/${d.tripId}`)}
               />
             ))}
           </View>
