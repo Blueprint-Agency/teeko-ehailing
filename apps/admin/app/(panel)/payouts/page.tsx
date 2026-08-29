@@ -15,6 +15,7 @@ import {
   RevenueDay,
   PayoutSheetRow,
   PayoutSheetTrip,
+  PayoutHistoryRow,
 } from '@/lib/api';
 
 const FINANCE_EMAIL = 'finance@teeko.my';
@@ -37,6 +38,42 @@ function downloadCsv(rows: (string | number)[][], filename: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/** Trip breakdown shared by both drill-downs: outstanding and already paid. */
+function TripTable({ trips, loading }: { trips: PayoutSheetTrip[]; loading: boolean }) {
+  if (loading) {
+    return <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>;
+  }
+  return (
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          <TableCell>Date</TableCell>
+          <TableCell>Route</TableCell>
+          <TableCell>Type</TableCell>
+          <TableCell align="right">Fare</TableCell>
+          <TableCell align="right">Commission</TableCell>
+          <TableCell align="right">Net</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {trips.map((t) => (
+          <TableRow key={t.id}>
+            <TableCell>{dayjs(t.date).format('DD MMM YYYY, HH:mm')}</TableCell>
+            <TableCell>{t.pickup ?? '—'} → {t.dropoff ?? '—'}</TableCell>
+            <TableCell><Chip label={t.category} size="small" variant="outlined" /></TableCell>
+            <TableCell align="right">{rm(t.fare)}</TableCell>
+            <TableCell align="right">{rm(t.commission)}</TableCell>
+            <TableCell align="right"><b>{rm(t.net)}</b></TableCell>
+          </TableRow>
+        ))}
+        {trips.length === 0 && (
+          <TableRow><TableCell colSpan={6} align="center">No trips to show.</TableCell></TableRow>
+        )}
+      </TableBody>
+    </Table>
+  );
 }
 
 export default function PayoutsPage() {
@@ -89,6 +126,12 @@ export default function PayoutsPage() {
   const [tripsLoading, setTripsLoading] = useState(false);
   // Bumped after an export so the sheet refetches — paid rows drop out of it.
   const [reload, setReload] = useState(0);
+  const [history, setHistory] = useState<PayoutHistoryRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState('');
+  const [paidPayout, setPaidPayout] = useState<PayoutHistoryRow | null>(null);
+  const [paidTrips, setPaidTrips] = useState<PayoutSheetTrip[]>([]);
+  const [paidTripsLoading, setPaidTripsLoading] = useState(false);
 
   const period = `${applied.start} – ${applied.end}`;
 
@@ -104,6 +147,33 @@ export default function PayoutsPage() {
       .finally(() => { if (alive) setSheetLoading(false); });
     return () => { alive = false; };
   }, [applied, reload]);
+
+  // Executed payouts for the same range. Refetched after an export, since that
+  // is exactly what moves rows from the sheet into this table.
+  useEffect(() => {
+    let alive = true;
+    setHistoryLoading(true);
+    adminApi
+      .getPayoutHistory(applied.start, applied.end)
+      .then((data) => { if (alive) { setHistory(data.rows); setHistoryError(''); } })
+      .catch((e) => { if (alive) { setHistory([]); setHistoryError(e instanceof Error ? e.message : 'Failed to load payout history'); } })
+      .finally(() => { if (alive) setHistoryLoading(false); });
+    return () => { alive = false; };
+  }, [applied, reload]);
+
+  // The trips one executed payout covered.
+  useEffect(() => {
+    if (!paidPayout) return;
+    let alive = true;
+    setPaidTripsLoading(true);
+    setPaidTrips([]);
+    adminApi
+      .getPayoutTrips(paidPayout.id)
+      .then((data) => { if (alive) setPaidTrips(data.trips); })
+      .catch(() => { if (alive) setPaidTrips([]); })
+      .finally(() => { if (alive) setPaidTripsLoading(false); });
+    return () => { alive = false; };
+  }, [paidPayout]);
 
   // Trip log drill-down for one driver, over the applied range.
   useEffect(() => {
@@ -247,6 +317,36 @@ export default function PayoutsPage() {
     },
   ];
 
+  const historyColumns: GridColDef<PayoutHistoryRow>[] = [
+    {
+      field: 'paidAt', headerName: 'Paid on', width: 170,
+      valueFormatter: (v) => dayjs(v as string).format('DD MMM YYYY, HH:mm'),
+    },
+    { field: 'driverName', headerName: 'Driver', flex: 1, minWidth: 170 },
+    { field: 'bank', headerName: 'Bank', width: 150, valueFormatter: (v) => v ?? '—' },
+    { field: 'account', headerName: 'Account', width: 120, valueFormatter: (v) => v ?? '—' },
+    { field: 'tripCount', headerName: 'Trips', width: 90, type: 'number' },
+    { field: 'amount', headerName: 'Paid (RM)', width: 140, type: 'number', valueFormatter: (v) => rm(Number(v)) },
+    {
+      // 'pending' = instructed, not yet confirmed credited by the bank.
+      field: 'status', headerName: 'Status', width: 130,
+      renderCell: ({ row }) => (
+        <Chip
+          label={row.status} size="small" variant="outlined"
+          color={row.status === 'paid' ? 'success' : row.status === 'failed' ? 'error' : 'warning'}
+        />
+      ),
+    },
+    {
+      field: 'trips', headerName: 'Trip Log', width: 130, sortable: false, filterable: false,
+      renderCell: ({ row }) => (
+        <Button size="small" variant="text" onClick={() => setPaidPayout(row)}>
+          View Trips
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <Box>
       <Typography variant="h6" fontWeight={700} mb={0.5}>Payout Management</Typography>
@@ -348,6 +448,24 @@ export default function PayoutsPage() {
         />
       </Box>
 
+      {/* Payout History — where exported (paid) trips remain visible */}
+      <Divider sx={{ my: 4 }} />
+      <Typography variant="h6" fontWeight={700} mb={0.5}>Payout History</Typography>
+      <Typography variant="body2" color="text.secondary" mb={2}>
+        Payouts already executed in this range. Open one to see the trips it covered and the
+        commission Teeko kept on each — those trips have left the sheet above.
+      </Typography>
+
+      {historyError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setHistoryError('')}>{historyError}</Alert>}
+
+      <Box sx={{ height: 420, mb: 2 }}>
+        <DataGrid
+          rows={history} columns={historyColumns} loading={historyLoading}
+          pageSizeOptions={[25, 50]} disableRowSelectionOnClick
+          slots={{ toolbar: GridToolbar }} slotProps={{ toolbar: { showQuickFilter: true } }}
+        />
+      </Box>
+
       {/* Revenue Reports section */}
       <Divider sx={{ my: 4 }} />
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2.5 }}>
@@ -420,43 +538,36 @@ export default function PayoutsPage() {
           </Typography>
         </DialogTitle>
         <DialogContent>
-          {tripsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>
-          ) : (
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Route</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell align="right">Fare</TableCell>
-                  <TableCell align="right">Commission</TableCell>
-                  <TableCell align="right">Net</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {modalTrips.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell>{dayjs(t.date).format('DD MMM YYYY, HH:mm')}</TableCell>
-                    <TableCell>{t.pickup ?? '—'} → {t.dropoff ?? '—'}</TableCell>
-                    <TableCell><Chip label={t.category} size="small" variant="outlined" /></TableCell>
-                    <TableCell align="right">{rm(t.fare)}</TableCell>
-                    <TableCell align="right">{rm(t.commission)}</TableCell>
-                    <TableCell align="right"><b>{rm(t.net)}</b></TableCell>
-                  </TableRow>
-                ))}
-                {modalTrips.length === 0 && (
-                  <TableRow><TableCell colSpan={6} align="center">No trips in this range.</TableCell></TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
+          <TripTable trips={modalTrips} loading={tripsLoading} />
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'space-between', px: 3 }}>
           <Typography variant="subtitle1" fontWeight={700}>
             Total payout: {rm(modalTrips.reduce((s, t) => s + t.net, 0))}
           </Typography>
           <Button onClick={() => setTripDriver(null)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Paid trip log — the breakdown behind one executed payout */}
+      <Dialog open={!!paidPayout} onClose={() => setPaidPayout(null)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Paid Trips — {paidPayout?.driverName}
+          <Typography variant="body2" color="text.secondary">
+            {paidPayout && `${rm(paidPayout.amount)} paid ${dayjs(paidPayout.paidAt).format('DD MMM YYYY, HH:mm')}`}
+            {paidPayout?.bank ? ` · ${paidPayout.bank} ${paidPayout.account}` : ''}
+            {' · '}{paidTripsLoading ? '…' : `${paidTrips.length} trips`}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <TripTable trips={paidTrips} loading={paidTripsLoading} />
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'space-between', px: 3 }}>
+          <Typography variant="subtitle1" fontWeight={700}>
+            Commission kept: {rm(paidTrips.reduce((s, t) => s + t.commission, 0))}
+            {'  ·  '}
+            Paid to driver: {rm(paidTrips.reduce((s, t) => s + t.net, 0))}
+          </Typography>
+          <Button onClick={() => setPaidPayout(null)}>Close</Button>
         </DialogActions>
       </Dialog>
 

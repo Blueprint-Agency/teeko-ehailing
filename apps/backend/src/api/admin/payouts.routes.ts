@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, sql } from 'drizzle-orm';
 
 import { db } from '../../config/db';
 import { requireRole } from '../../http/middleware/requireRole';
@@ -248,4 +248,96 @@ export async function routes(app: FastifyInstance) {
       return { period: { start, end }, rows: paid.sort((a, b) => b.amount - a.amount) };
     },
   );
+
+  // ── GET /payouts/history?start&end&driverId ────────────────────────────────
+  // Payouts already executed, newest first. This is where a driver's paid
+  // trips live once the export has retired them from the sheet — without it
+  // an exported period would simply disappear from the admin's view.
+  app.get<{ Querystring: { start?: string; end?: string; driverId?: string } }>(
+    '/history',
+    async (req) => {
+      const { start, end, from, to } = parseRange(req.query);
+
+      const rows = await db
+        .select({
+          id: payouts.id,
+          driverId: payouts.driverId,
+          driverName: users.fullName,
+          bankName: driverBankAccounts.bankName,
+          accountNumber: driverBankAccounts.accountNumber,
+          amountCents: payouts.amountCents,
+          method: payouts.method,
+          status: payouts.status,
+          createdAt: payouts.createdAt,
+          arrivalDate: payouts.arrivalDate,
+          // Trips covered, counted from the earnings the payout stamped.
+          tripCount: sql<number>`(
+            select count(*) from ${driverEarnings}
+            where ${driverEarnings.payoutId} = ${payouts.id}
+          )`,
+        })
+        .from(payouts)
+        .leftJoin(users, eq(users.id, payouts.driverId))
+        .leftJoin(driverBankAccounts, eq(driverBankAccounts.driverId, payouts.driverId))
+        .where(
+          and(
+            gte(payouts.createdAt, from),
+            lt(payouts.createdAt, to),
+            ...(req.query.driverId ? [eq(payouts.driverId, req.query.driverId)] : []),
+          ),
+        )
+        .orderBy(desc(payouts.createdAt));
+
+      return {
+        period: { start, end },
+        rows: rows.map((r) => ({
+          id: r.id,
+          driverId: r.driverId,
+          driverName: r.driverName ?? r.driverId,
+          bank: r.bankName,
+          account: maskAccount(r.accountNumber),
+          amount: rm(r.amountCents),
+          method: r.method,
+          status: r.status,
+          paidAt: r.createdAt,
+          arrivalDate: r.arrivalDate,
+          tripCount: Number(r.tripCount),
+        })),
+      };
+    },
+  );
+
+  // ── GET /payouts/:payoutId/trips ───────────────────────────────────────────
+  // The trips one executed payout covered, with the commission Teeko kept on
+  // each — the paid-out counterpart of the sheet's trip log.
+  app.get<{ Params: { payoutId: string } }>('/:payoutId/trips', async (req) => {
+    const rows = await db
+      .select({
+        id: trips.id,
+        date: trips.completedAt,
+        category: trips.category,
+        pickup: trips.pickupAddress,
+        dropoff: trips.dropoffAddress,
+        grossCents: driverEarnings.grossCents,
+        commissionCents: driverEarnings.commissionCents,
+        netCents: driverEarnings.netCents,
+      })
+      .from(driverEarnings)
+      .innerJoin(trips, eq(trips.id, driverEarnings.tripId))
+      .where(eq(driverEarnings.payoutId, req.params.payoutId))
+      .orderBy(asc(trips.completedAt));
+
+    return {
+      trips: rows.map((r) => ({
+        id: r.id,
+        date: r.date,
+        category: r.category,
+        pickup: r.pickup,
+        dropoff: r.dropoff,
+        fare: rm(r.grossCents),
+        commission: rm(r.commissionCents),
+        net: rm(r.netCents),
+      })),
+    };
+  });
 }

@@ -359,6 +359,22 @@ export interface PayoutExportRow {
   amount: number;
 }
 
+/** An executed payout. Where a driver's paid trips live after an export. */
+export interface PayoutHistoryRow {
+  id: string;
+  driverId: string;
+  driverName: string;
+  bank: string | null;
+  account: string | null;
+  amount: number;
+  method: string;
+  /** 'pending' until the bank confirms the transfer. */
+  status: string;
+  paidAt: string;
+  arrivalDate: string | null;
+  tripCount: number;
+}
+
 // ── Revenue reports ───────────────────────────────────────────────────────────
 export interface RevenueDay {
   date: string;
@@ -617,6 +633,16 @@ export const adminApi = {
       `/payouts/sheet/export?start=${start}&end=${end}`,
       { driverIds },
     ),
+
+  /** Payouts already executed in the range — the paid counterpart of the sheet. */
+  getPayoutHistory: (start: string, end: string, driverId?: string) =>
+    get<{ period: { start: string; end: string }; rows: PayoutHistoryRow[] }>(
+      `/payouts/history?start=${start}&end=${end}${driverId ? `&driverId=${driverId}` : ''}`,
+    ),
+
+  /** The trips one executed payout covered, with the commission on each. */
+  getPayoutTrips: (payoutId: string) =>
+    get<{ trips: PayoutSheetTrip[] }>(`/payouts/${payoutId}/trips`),
 
   // ── Revenue reports ──────────────────────────────────────────────────────────
   getRevenueDaily: (days = 30) => get<RevenueDay[]>(`/revenue/daily?days=${days}`),
