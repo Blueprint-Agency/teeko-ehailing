@@ -354,6 +354,29 @@ export type DriverFinishedTrip = {
   finishedAt: string;
 };
 
+// A row of the driver's in-app inbox. `category` is the server enum; the
+// screen keeps a fallback so a category added later still renders.
+export type DriverNotificationCategory =
+  | 'trip'
+  | 'evp'
+  | 'doc_expiry'
+  | 'payout'
+  | 'suspension'
+  | 'incentive'
+  | 'broadcast';
+
+export type DriverNotification = {
+  id: string;
+  category: DriverNotificationCategory | string;
+  title: string;
+  body: string;
+  deeplink: string | null;
+  refId: string | null;
+  createdAt: string;
+  /** Null while unread. */
+  readAt: string | null;
+};
+
 export type CreateDriverDisputeInput = {
   tripId?: string | null;
   category: DriverDisputeCategory;
@@ -504,6 +527,15 @@ export const api = {
     list: () => req<DriverDispute[]>('/driver/disputes'),
     create: (input: CreateDriverDisputeInput) =>
       req<DriverDispute>('/driver/disputes', { method: 'POST', body: JSON.stringify(input) }),
+  },
+  // In-app inbox. Push (FCM) is not wired yet — these rows are the only
+  // delivery channel, so the screen reloads them on focus.
+  notifications: {
+    list: () => req<DriverNotification[]>('/driver/notifications'),
+    markRead: (id: string) =>
+      req<{ ok: true }>(`/driver/notifications/${id}/read`, { method: 'PATCH' }),
+    markAllRead: () =>
+      req<{ ok: true }>('/driver/notifications/read-all', { method: 'PATCH' }),
   },
   // Payout bank account. Teeko pays drivers by bank transfer from the admin
   // payout sheet, so the details are collected in-app. `get` also returns the

@@ -13,6 +13,7 @@ import { useT } from '@teeko/i18n';
 import { api, resolveMediaUrl, type DriverProfile } from '../../../../lib/api';
 import { getSocket } from '../../../../lib/socket';
 import { useDriverStore } from '../../../../store/useDriverStore';
+import { useNotificationStore } from '../../../../store/useNotificationStore';
 
 // Mock surge for v0.1 — replace with the live surge feed when it exists.
 const SURGE = { multiplier: 1.4, area: 'Bukit Bintang' };
@@ -39,10 +40,17 @@ export default function HomeScreen() {
   // take a second (permissions + first GPS fix) and a double tap would otherwise
   // fire two conflicting calls.
   const [togglePending, setTogglePending] = useState(false);
+  // Bell badge. The inbox is the only delivery channel until push is wired, so
+  // the count is refreshed whenever home regains focus.
+  const loadNotifications = useNotificationStore((s) => s.load);
+  const unreadCount = useNotificationStore(
+    (s) => s.items.filter((n) => !n.readAt && !s.localRead.includes(n.id)).length,
+  );
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      void loadNotifications();
       api.earnings
         // The day window's totals *are* today's — the home card wants nothing else.
         .get('day')
@@ -53,7 +61,7 @@ export default function HomeScreen() {
         .then((res) => { if (!cancelled) setProfile(res.profile); })
         .catch(() => { if (!cancelled) setProfile(null); });
       return () => { cancelled = true; };
-    }, []),
+    }, [loadNotifications]),
   );
 
   const handleResumeTrip = () => {
@@ -214,9 +222,11 @@ export default function HomeScreen() {
 
         <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/(driver)/notifications')}>
           <Bell size={22} color={colors.text} strokeWidth={1.75} />
-          <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
-            <Text style={styles.notifBadgeText}>2</Text>
-          </View>
+          {unreadCount > 0 ? (
+            <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
+              <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
       </View>
 
