@@ -174,7 +174,8 @@
     "tripRef": "行程",
     "viewReceipt": "查看收据",
     "viewReport": "查看申诉",
-    "windowClosed": "报告只能在行程结束后48小时内提交。"
+    "windowClosed": "报告只能在行程结束后48小时内提交。",
+    "limitReached": "您最多只能同时拥有 5 个待处理的争议工单。请等待工单解决后再提交新的工单。"
   },
   "support": {
     "sectionTitle": "支持",

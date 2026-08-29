@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { db } from '../../db';
 import { disputes, trips } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
@@ -52,6 +52,25 @@ export const disputesService = {
     }
     if (!['completed', 'cancelled', 'no_show'].includes(trip.status)) {
       throw new DomainError('TRIP_NOT_DISPUTABLE', 'You can only dispute a finished trip.', 422);
+    }
+
+    // Limit riders to at most 5 pending dispute tickets
+    const pendingDisputes = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(disputes)
+      .where(
+        and(
+          eq(disputes.riderId, riderId),
+          eq(disputes.raisedBy, 'rider'),
+          notInArray(disputes.status, ['resolved', 'rejected', 'refund_completed']),
+        ),
+      );
+    if (Number(pendingDisputes[0]?.count ?? 0) >= 5) {
+      throw new DomainError(
+        'DISPUTE_LIMIT_REACHED',
+        'You can have at most 5 pending dispute tickets at a time. Please wait for one to be resolved before raising a new one.',
+        429,
+      );
     }
 
     // Scoped to rider-raised rows so a driver's report on the same trip

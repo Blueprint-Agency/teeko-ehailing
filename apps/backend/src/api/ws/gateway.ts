@@ -88,6 +88,9 @@ export function mountSocketIO(httpServer: HttpServer): Server {
           socket.join(`rider:${user.id}`);
           socket.emit('auth.ok', { role: 'rider', userId: user.id });
           console.log(`[WS] auth.ok  rider  userId=${user.id}`);
+          // Mark this rider as online. 5-min TTL acts as a safety net for apps
+          // killed without a clean disconnect (no heartbeat on the rider side).
+          await redis.set(`rider:online:${user.id}`, '1', 'EX', 300).catch(() => null);
 
           // Re-emit current trip status so rider recovers any missed event on reconnect
           const activeTrip = await db.query.trips.findFirst({
@@ -206,6 +209,7 @@ export function mountSocketIO(httpServer: HttpServer): Server {
         }
       } else {
         trackingService.unregisterRider(userId, socket.id);
+        await trackingService.clearRiderOnlineStatus(userId);
       }
     });
   });

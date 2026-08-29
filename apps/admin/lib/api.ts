@@ -225,6 +225,22 @@ export interface Trip {
   dispute: boolean;
 }
 
+export interface BroadcastRecord {
+  id: string;
+  segment: string;
+  title: string;
+  message: string;
+  sentAt: string;
+  composedBy: string;
+}
+
+export interface SendBroadcastResult {
+  ok: boolean;
+  broadcastId: string;
+  reach: number;
+  sentAt: string;
+}
+
 export interface MetricsOverview {
   activeTrips: number;
   driversOnline: number;
@@ -492,6 +508,11 @@ export const adminApi = {
   getDrivers: () => get<Driver[]>('/drivers'),
 
   getMetricsOverview: () => get<MetricsOverview>('/metrics/overview'),
+
+  getBroadcasts: () => get<BroadcastRecord[]>('/broadcasts'),
+
+  sendBroadcast: (body: { segment: string; title: string; message: string }) =>
+    post<SendBroadcastResult>('/broadcasts', body),
 
   getTrips: (limit = 500) => get<Trip[]>(`/trips?limit=${limit}`),
 

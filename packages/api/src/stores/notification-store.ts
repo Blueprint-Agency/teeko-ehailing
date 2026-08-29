@@ -5,6 +5,14 @@ import { create } from 'zustand';
 
 import * as notificationsApi from '../client/notifications';
 import type { NotificationItem } from '../client/notifications';
+import { useUIStore } from './ui-store';
+
+interface NotificationSocket {
+  on(event: string, fn: (...args: any[]) => void): void;
+  off(event: string, fn?: (...args: any[]) => void): void;
+}
+
+let activeSocket: NotificationSocket | null = null;
 
 export type NotificationState = {
   items: NotificationItem[];
@@ -15,6 +23,8 @@ export type NotificationState = {
   load: () => Promise<void>;
   markRead: (id: string) => Promise<void>;
   markAllRead: () => Promise<void>;
+  connectSocket: (socket: NotificationSocket) => void;
+  addIncomingNotification: (item: NotificationItem) => void;
 };
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
@@ -31,6 +41,30 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     } catch (e) {
       set({ loading: false, error: (e as Error).message });
     }
+  },
+
+  connectSocket(socket) {
+    if (activeSocket) {
+      activeSocket.off('notification.new');
+    }
+    activeSocket = socket;
+
+    socket.on('notification.new', (item: NotificationItem) => {
+      get().addIncomingNotification(item);
+    });
+  },
+
+  addIncomingNotification(item: NotificationItem) {
+    // Deduplicate in case load() also fetched it
+    const exists = get().items.some((n) => n.id === item.id);
+    if (!exists) {
+      set((s) => ({ items: [item, ...s.items] }));
+    }
+    // Push in-app toast for instant awareness
+    useUIStore.getState().pushToast({
+      kind: 'info',
+      message: `${item.title}: ${item.body}`,
+    });
   },
 
   async markRead(id) {

@@ -174,7 +174,8 @@
     "tripRef": "Perjalanan",
     "viewReceipt": "Lihat resit",
     "viewReport": "Lihat laporan",
-    "windowClosed": "Laporan hanya boleh dikemukakan dalam masa 48 jam selepas perjalanan tamat."
+    "windowClosed": "Laporan hanya boleh dikemukakan dalam masa 48 jam selepas perjalanan tamat.",
+    "limitReached": "Anda hanya boleh mempunyai maksimum 5 tiket pertikaian yang belum selesai pada satu masa. Sila tunggu sehingga satu diselesaikan sebelum membuat yang baru."
   },
   "support": {
     "sectionTitle": "Sokongan",
