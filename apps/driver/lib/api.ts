@@ -130,22 +130,39 @@ export type EarningsSummary = {
   netCents: number;
 };
 
+export type EarningsPeriod = 'day' | 'week' | 'month';
+
 export type EarningsResponse = {
+  /** Window the totals, trend and breakdown describe. */
+  period: EarningsPeriod;
   lifetime: EarningsSummary;
-  today: EarningsSummary;
-  week: EarningsSummary;
-  dailyBreakdown: Array<{
-    date: string;
-    day: string;
+  /** Totals for the selected window, and for the same-length one before it. */
+  current: EarningsSummary;
+  previous: EarningsSummary;
+  /** Percent change vs the previous window; null when there is no baseline. */
+  trend: {
+    netPct: number | null;
+    tripsPct: number | null;
+    avgPct: number | null;
+  };
+  /** Chart columns, oldest first: 4-hour blocks, days, or weeks. */
+  breakdown: Array<{
+    key: string;
+    label: string;
     amountRm: number;
     trips: number;
-    isToday: boolean;
+    isCurrent: boolean;
   }>;
+  /** True when older trips in the window were dropped to cap the response. */
+  recentTruncated: boolean;
+  /** Trips completed within the selected window, newest first. */
   recent: Array<{
     tripId: string;
     grossRm: number;
     netRm: number;
     transferred: boolean;
+    /** A payout has carried this earning to the driver's bank. */
+    paidOut: boolean;
     at: string;
     pickupAddress: string | null;
     dropoffAddress: string | null;
@@ -413,7 +430,8 @@ export const api = {
       }),
   },
   earnings: {
-    get: () => req<EarningsResponse>('/driver/earnings'),
+    get: (period: EarningsPeriod = 'week') =>
+      req<EarningsResponse>(`/driver/earnings?period=${period}`),
   },
   profile: {
     get: () =>

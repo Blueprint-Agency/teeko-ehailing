@@ -44,8 +44,9 @@ export default function HomeScreen() {
     useCallback(() => {
       let cancelled = false;
       api.earnings
-        .get()
-        .then((res) => { if (!cancelled) setToday(res.today); })
+        // The day window's totals *are* today's — the home card wants nothing else.
+        .get('day')
+        .then((res) => { if (!cancelled) setToday(res.current); })
         .catch(() => { if (!cancelled) setToday(null); });
       api.profile
         .get()

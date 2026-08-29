@@ -19,6 +19,24 @@ export const DarkColors = {
   online: '#00D47E',
   offline: '#505060',
   surge: '#FF6B2B',
+
+  // Soft fills for icon chips and trend pills. Kept as literals rather than
+  // computed alphas so the palette stays a plain object the style factories read.
+  accentTint: 'rgba(225, 29, 46, 0.16)',
+  successTint: 'rgba(0, 212, 126, 0.16)',
+  dangerTint: 'rgba(255, 59, 92, 0.16)',
+  infoTint: 'rgba(77, 166, 255, 0.16)',
+  warningTint: 'rgba(255, 171, 0, 0.16)',
+
+  // A hairline that reads as separation rather than as an outline.
+  borderSoft: '#1E1E28',
+
+  // Dark surfaces get their depth from the border — a black shadow on a near
+  // black background is invisible, so elevation is switched off here.
+  shadowColor: '#000000',
+  shadowOpacity: 0,
+  shadowRadius: 0,
+  shadowElevation: 0,
 };
 
 export const LightColors = {
@@ -40,6 +58,20 @@ export const LightColors = {
   online: '#00A860',
   offline: '#9090A4',
   surge: '#D44A00',
+
+  accentTint: 'rgba(255, 107, 107, 0.14)',
+  successTint: 'rgba(0, 168, 96, 0.12)',
+  dangerTint: 'rgba(224, 0, 46, 0.10)',
+  infoTint: 'rgba(32, 128, 208, 0.12)',
+  warningTint: 'rgba(204, 136, 0, 0.14)',
+
+  borderSoft: '#EFEFF5',
+
+  // Light cards float on a shadow instead of being ringed by a border.
+  shadowColor: '#1A1A2E',
+  shadowOpacity: 0.07,
+  shadowRadius: 14,
+  shadowElevation: 3,
 };
 
 // Default export for backwards-compat (dark theme)
