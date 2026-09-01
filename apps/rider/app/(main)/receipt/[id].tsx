@@ -242,12 +242,7 @@ export default function ReceiptScreen() {
           {canDispute ? (
             <Section title={t('dispute.sectionTitle')}>
               {existingDispute ? (
-                <Pressable
-                  onPress={() => router.navigate('/(main)/account/disputes')}
-                  haptic="light"
-                  accessibilityRole="button"
-                  className="px-gutter py-3 active:bg-muted"
-                >
+                <View className="px-gutter py-3">
                   <View className="flex-row items-center justify-between">
                     <Text weight="medium" className="text-base">
                       {t(`dispute.categoryLabel.${existingDispute.category}`)}
@@ -262,13 +257,7 @@ export default function ReceiptScreen() {
                       {`${t('dispute.resolutionLabel')}: ${existingDispute.resolution}`}
                     </Text>
                   ) : null}
-                  <View className="mt-2 flex-row items-center">
-                    <Text weight="medium" className="text-sm text-primary">
-                      {t('dispute.viewReport')}
-                    </Text>
-                    <Icon name="chevron-right" size={18} color="#E11D2E" />
-                  </View>
-                </Pressable>
+                </View>
               ) : (
                 <View className="px-gutter py-3">
                   <Text tone="secondary" className="mb-3 text-sm">
