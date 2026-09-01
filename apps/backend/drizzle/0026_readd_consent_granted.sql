@@ -1,0 +1,11 @@
+-- Re-add consent_log.granted as a properly-journaled migration.
+--
+-- The original change (orphaned 0022_yummy_wallflower.sql) was generated on a
+-- parallel branch and never made it into meta/_journal.json, so `drizzle-kit
+-- migrate` skipped it. Prod never got the column and PDPA consent queries
+-- (pdpaService.listConsents) failed with Postgres 42703 (undefined_column),
+-- surfacing as a 500 on the admin PDPA Tools page.
+--
+-- Idempotent: a no-op where the column already exists (dev/local applied it
+-- out-of-band via db:push).
+ALTER TABLE "consent_log" ADD COLUMN IF NOT EXISTS "granted" boolean DEFAULT true NOT NULL;

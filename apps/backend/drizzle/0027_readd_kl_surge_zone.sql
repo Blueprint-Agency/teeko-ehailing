@@ -1,5 +1,9 @@
--- Add a city-wide "Kuala Lumpur City" surge zone so KL is drawn on the admin
--- surge map like the district zones (KLCC, KL Sentral, Bangsar, …).
+-- Re-add the "Kuala Lumpur City" surge zone as a properly-journaled migration.
+--
+-- Carried over from the orphaned 0021_add_kl_surge_zone.sql (same parallel-branch
+-- collision as 0026): it existed on disk but was never in meta/_journal.json, so
+-- `drizzle-kit migrate` never ran it and prod is missing the KL city surge zone
+-- on the admin surge map.
 --
 -- A regular hexagon (~7.5 km across) centred on the KL city core. Uses
 -- manual_multiplier + a far-future manual_until so the rate shows immediately,
