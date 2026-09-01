@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teeko",
     "slug": "teeko-rider",
-    "version": "0.0.9",
+    "version": "0.0.13",
     "orientation": "portrait",
     "scheme": "teeko",
     "userInterfaceStyle": "light",
@@ -54,11 +54,16 @@
       ],
       "expo-notifications",
       "expo-localization",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Teeko uses your photos so you can set a profile picture.",
+          "cameraPermission": "Teeko uses your camera so you can take a profile picture."
+        }
+      ]
     ],
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "0.0.10",
     "updates": {
       "url": "https://u.expo.dev/64dad399-68e0-4def-9640-6c1c718e4416"
     },

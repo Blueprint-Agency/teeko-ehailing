@@ -2,42 +2,67 @@
 import {
   Box, Typography, Grid, Card, CardContent, TextField, Button,
   Alert, Stack, Chip, Select, MenuItem, FormControl, InputLabel, Divider,
+  CircularProgress,
 } from '@mui/material';
-import { useNotificationStore } from '@/stores/notification';
 import { useAdminAuthStore } from '@/stores/auth';
 import { useRbac } from '@/hooks/useRbac';
-import { useState } from 'react';
+import { adminApi, BroadcastRecord } from '@/lib/api';
+import { useState, useEffect, useCallback } from 'react';
 
 const SEGMENTS = [
-  { value: 'all_drivers', label: 'All Drivers' },
   { value: 'all_riders', label: 'All Riders' },
-  { value: 'city_kl', label: 'Kuala Lumpur (Riders + Drivers)' },
-  { value: 'city_pj', label: 'Petaling Jaya (Riders + Drivers)' },
+  { value: 'all_drivers', label: 'All Drivers' },
 ];
 
-const REACH: Record<string, number> = { all_drivers: 18, all_riders: 15, city_kl: 24, city_pj: 12 };
-
 export default function NotificationsPage() {
-  const notifications = useNotificationStore((s) => s.notifications);
-  const addNotification = useNotificationStore((s) => s.addNotification);
   const profile = useAdminAuthStore((s) => s.profile);
   const { can } = useRbac();
 
-  const [segment, setSegment] = useState('all_drivers');
+  const [segment, setSegment] = useState('all_riders');
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
   const [done, setDone] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSend = () => {
-    addNotification({ segment, title, message, sentBy: profile?.id ?? 'unknown', reach: REACH[segment] ?? 0 });
-    setDone(`Notification sent to ${REACH[segment]} users.`);
-    setTitle(''); setMessage('');
+  const [history, setHistory] = useState<BroadcastRecord[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    try {
+      const rows = await adminApi.getBroadcasts();
+      setHistory(rows);
+    } catch {
+      // non-fatal — history just stays empty
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadHistory(); }, [loadHistory]);
+
+  const handleSend = async () => {
+    setError('');
+    setSending(true);
+    try {
+      const result = await adminApi.sendBroadcast({ segment, title, message });
+      setDone(`Notification sent to ${result.reach} recipients.`);
+      setTitle('');
+      setMessage('');
+      void loadHistory();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to send notification.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
     <Box>
       <Typography variant="h6" fontWeight={700} mb={2.5}>Broadcast Notifications</Typography>
       {done && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setDone('')}>{done}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
       <Grid container spacing={2}>
         {can('send_notifications') && (
@@ -52,10 +77,34 @@ export default function NotificationsPage() {
                       {SEGMENTS.map((s) => <MenuItem key={s.value} value={s.value}>{s.label}</MenuItem>)}
                     </Select>
                   </FormControl>
-                  <Chip label={`~${REACH[segment]} recipients`} size="small" color="info" sx={{ alignSelf: 'flex-start' }} />
-                  <TextField label="Title" fullWidth size="small" value={title} onChange={(e) => setTitle(e.target.value)} inputProps={{ maxLength: 80 }} helperText={`${title.length}/80`} />
-                  <TextField label="Message" fullWidth size="small" multiline rows={4} value={message} onChange={(e) => setMessage(e.target.value)} inputProps={{ maxLength: 300 }} helperText={`${message.length}/300`} />
-                  <Button variant="contained" disabled={!title || !message} onClick={handleSend}>Send Notification</Button>
+                  <TextField
+                    label="Title"
+                    fullWidth
+                    size="small"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    inputProps={{ maxLength: 80 }}
+                    helperText={`${title.length}/80`}
+                  />
+                  <TextField
+                    label="Message"
+                    fullWidth
+                    size="small"
+                    multiline
+                    rows={4}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    inputProps={{ maxLength: 300 }}
+                    helperText={`${message.length}/300`}
+                  />
+                  <Button
+                    variant="contained"
+                    disabled={!title || !message || sending}
+                    onClick={handleSend}
+                    startIcon={sending ? <CircularProgress size={16} color="inherit" /> : undefined}
+                  >
+                    {sending ? 'Sending…' : 'Send Notification'}
+                  </Button>
                 </Stack>
               </CardContent>
             </Card>
@@ -66,21 +115,30 @@ export default function NotificationsPage() {
           <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider' }}>
             <CardContent sx={{ p: 2 }}>
               <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Sent History</Typography>
-              <Stack spacing={1.5} divider={<Divider />}>
-                {notifications.map((n) => (
-                  <Box key={n.id}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
-                      <Typography variant="body2" fontWeight={600}>{n.title}</Typography>
-                      <Typography variant="caption" color="text.secondary">{new Date(n.sentAt).toLocaleString()}</Typography>
+              {historyLoading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              ) : history.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">No broadcasts sent yet.</Typography>
+              ) : (
+                <Stack spacing={1.5} divider={<Divider />}>
+                  {history.map((n) => (
+                    <Box key={n.id}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
+                        <Typography variant="body2" fontWeight={600}>{n.title}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {new Date(n.sentAt).toLocaleString()}
+                        </Typography>
+                      </Box>
+                      <Typography variant="caption" color="text.secondary" display="block">{n.message}</Typography>
+                      <Stack direction="row" spacing={1} mt={0.5}>
+                        <Chip label={n.segment.replace('_', ' ')} size="small" variant="outlined" />
+                      </Stack>
                     </Box>
-                    <Typography variant="caption" color="text.secondary" display="block">{n.message}</Typography>
-                    <Stack direction="row" spacing={1} mt={0.5}>
-                      <Chip label={n.segment.replace('_', ' ')} size="small" variant="outlined" />
-                      <Chip label={`${n.reach} recipients`} size="small" />
-                    </Stack>
-                  </Box>
-                ))}
-              </Stack>
+                  ))}
+                </Stack>
+              )}
             </CardContent>
           </Card>
         </Grid>

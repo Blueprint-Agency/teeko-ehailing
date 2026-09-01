@@ -1,5 +1,6 @@
 import { sql, type Column } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   boolean,
   index,
   integer,
@@ -184,11 +185,18 @@ export const driverEarnings = pgTable(
     commissionCents: integer().notNull(),
     netCents: integer().notNull(),
     transferred: boolean().notNull().default(false),
+    // The payout that covered this earning; null while the driver is still
+    // owed it. Deliberately *not* `transferred` — that flag records the Stripe
+    // Connect transfer made at charge time, which says nothing about whether
+    // the money has reached the driver's own bank account.
+    payoutId: uuid().references((): AnyPgColumn => payouts.id),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex('uq_earning_trip').on(t.tripId), // one earning per trip
     index('idx_earning_driver').on(t.driverId, t.createdAt),
+    // Drives "what do we still owe this driver" on every earnings screen load.
+    index('idx_earning_unpaid').on(t.driverId, t.payoutId),
   ],
 );
 
@@ -209,6 +217,27 @@ export const connectAccounts = pgTable('connect_accounts', {
 });
 
 // ---------------------------------------------------------------------------
+// Driver bank accounts — the details finance needs to pay a driver out.
+//
+// Teeko settles driver earnings by bank transfer from the admin payout sheet
+// (Payout Management → Export & Submit), so the driver supplies these directly
+// in the app rather than through a hosted provider flow. Only what the payout
+// sheet prints is stored: bank, account holder name, account number.
+// ---------------------------------------------------------------------------
+export const driverBankAccounts = pgTable('driver_bank_accounts', {
+  id: uuid().primaryKey().defaultRandom(),
+  driverId: uuid()
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  bankName: text().notNull(),
+  accountHolderName: text().notNull(),
+  accountNumber: text().notNull(),
+  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+});
+
+// ---------------------------------------------------------------------------
 // Driver payouts to bank (instant cashouts + scheduled).
 // ---------------------------------------------------------------------------
 export const payouts = pgTable(
@@ -222,6 +251,9 @@ export const payouts = pgTable(
     amountCents: integer().notNull(),
     method: payoutMethod().notNull().default('standard'),
     status: payoutStatus().notNull().default('pending'),
+    // Stripe's estimate of when the money lands in the driver's bank. Null for
+    // rails that don't tell us (and for rows written before this column).
+    arrivalDate: timestamp({ withTimezone: true }),
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

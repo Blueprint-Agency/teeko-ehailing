@@ -6,7 +6,7 @@ import {
 import { APIProvider, Map, Marker, Polygon } from '@vis.gl/react-google-maps';
 import { useRbac } from '@/hooks/useRbac';
 import { Fragment, useState, useEffect, useCallback } from 'react';
-import { adminApi, SurgeZone } from '@/lib/api';
+import { adminApi, SurgeConfig, SurgeZone } from '@/lib/api';
 
 const DEFAULT_ZONE_COLOR = '#FF8C00';
 const KL_CENTER = { lat: 3.1478, lng: 101.6953 };
@@ -33,20 +33,24 @@ export default function SurgePage() {
   const { can } = useRbac();
   const canEdit = can('manage_surge');
 
+  const [config, setConfig] = useState<SurgeConfig | null>(null);
   const [zones, setZones] = useState<SurgeZone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
   const [saving, setSaving] = useState<string | null>(null); // zone id currently persisting
+  const [savingConfig, setSavingConfig] = useState(false);
 
   // ── Load ───────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      setZones(await adminApi.getSurgeZones());
+      const [cfg, zs] = await Promise.all([adminApi.getSurgeConfig(), adminApi.getSurgeZones()]);
+      setConfig(cfg);
+      setZones(zs);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load surge zones');
+      setError(e instanceof Error ? e.message : 'Failed to load surge control');
     } finally {
       setLoading(false);
     }
@@ -80,6 +84,26 @@ export default function SurgePage() {
   const commitMultiplier = (zone: SurgeZone, value: number) =>
     persist(zone.id, { multiplier: value }, `${zone.name} multiplier set to ${value}×.`);
 
+  // ── General KL surge (base rate; zones override it) ──────────────────────────
+  // Slider drag updates local state only; commit persists on release.
+  const setConfigLocal = (value: number) =>
+    setConfig((c) => (c ? { ...c, multiplier: value } : c));
+
+  async function commitConfig(value: number) {
+    setSavingConfig(true);
+    setError('');
+    try {
+      const { config: updated } = await adminApi.updateSurgeConfig(value);
+      setConfig(updated);
+      setDone(`General KL surge set to ${value}×.`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to update general surge');
+      await load(); // resync on failure
+    } finally {
+      setSavingConfig(false);
+    }
+  }
+
   return (
     <Box>
       <Typography variant="h6" fontWeight={700} mb={2.5}>Surge Control</Typography>
@@ -95,6 +119,41 @@ export default function SurgePage() {
       {loading ? (
         <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>
       ) : (
+      <>
+      {/* General KL surge — the base rate applied wherever no zone overrides it */}
+      <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', mb: 2, opacity: savingConfig ? 0.6 : 1 }}>
+        <CardContent sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={600}>General Surge — Kuala Lumpur</Typography>
+              <Typography variant="caption" color="text.secondary">
+                Base multiplier across KL. Zones below override it for their areas.
+              </Typography>
+            </Box>
+            <Chip
+              label={config && config.multiplier > 1 ? `${config.multiplier}× city-wide` : 'No general surge'}
+              size="small"
+              color={config && config.multiplier > 1 ? 'warning' : 'default'}
+            />
+          </Box>
+          <Box sx={{ px: 1, mt: 1.5 }}>
+            <Typography variant="caption" color="text.secondary">
+              Multiplier: {config?.multiplier ?? 1}×
+            </Typography>
+            {canEdit && config && (
+              <Slider
+                size="small" min={1} max={3} step={0.1}
+                value={config.multiplier}
+                disabled={savingConfig}
+                onChange={(_, v) => setConfigLocal(v as number)}
+                onChangeCommitted={(_, v) => commitConfig(v as number)}
+                marks={[{ value: 1, label: '1×' }, { value: 2, label: '2×' }, { value: 3, label: '3×' }]}
+              />
+            )}
+          </Box>
+        </CardContent>
+      </Card>
+
       <Grid container spacing={2}>
         {/* Surge zone map */}
         <Grid item xs={12} md={7}>
@@ -148,7 +207,10 @@ export default function SurgePage() {
         <Grid item xs={12} md={5}>
           <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', height: '100%' }}>
             <CardContent sx={{ p: 2 }}>
-              <Typography variant="subtitle2" fontWeight={600} mb={1.5}>Zone Rules</Typography>
+              <Typography variant="subtitle2" fontWeight={600} mb={0.25}>Zone Overrides</Typography>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
+                Override the general KL rate for specific areas.
+              </Typography>
               {zones.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">No surge zones configured.</Typography>
               ) : (
@@ -191,6 +253,7 @@ export default function SurgePage() {
           </Card>
         </Grid>
       </Grid>
+      </>
       )}
     </Box>
   );

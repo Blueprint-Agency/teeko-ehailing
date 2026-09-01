@@ -12,12 +12,16 @@ export default function MainLayout() {
       <Stack.Screen name="in-trip" options={{ gestureEnabled: false }} />
       <Stack.Screen name="trip-complete" options={{ gestureEnabled: false }} />
       <Stack.Screen name="receipt/[id]" />
+      <Stack.Screen name="ride-history" />
       <Stack.Screen name="account/personal" options={{ presentation: 'modal' }} />
       <Stack.Screen name="account/security" options={{ presentation: 'modal' }} />
       <Stack.Screen name="account/change-password" options={{ presentation: 'modal' }} />
       <Stack.Screen name="account/payments" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="account/disputes" />
+      <Stack.Screen name="account/support" />
       <Stack.Screen name="account/add-card" options={{ presentation: 'modal' }} />
       <Stack.Screen name="account/demo" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="notifications" />
     </Stack>
   );
 }

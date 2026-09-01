@@ -28,8 +28,16 @@ export const users = pgTable('users', {
   phone: text().unique(),
   email: text(),
   passwordHash: text(),
+  // Last time the account password was changed — by the in-app OTP flow, the
+  // signed-out Clerk reset, or a Clerk `user.updated` webhook. Drives the
+  // one-change-per-week cooldown; NULL means "never changed, always allowed".
+  passwordChangedAt: timestamp({ withTimezone: true }),
   emailVerified: boolean().notNull().default(false),
   fullName: text(),
+  // Profile picture. Holds whatever `lib/storage` returned on upload — a
+  // `/uploads/...` path locally, an absolute URL once GCS/R2 is wired — so
+  // clients must resolve a relative value against the API origin.
+  avatarUrl: text(),
   locale: localeEnum().notNull().default('en'),
   status: userStatus().notNull().default('active'),
   // PDPA 2010 consent record. Captured by our own checkbox at driver sign-up —

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Teeko Driver",
     "slug": "teeko-driver",
-    "version": "0.0.9",
+    "version": "0.0.13",
     "orientation": "portrait",
     "scheme": "teekodriver",
     "userInterfaceStyle": "automatic",
@@ -24,7 +24,7 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "versionCode": 8
+      "versionCode": 12
     },
     "plugins": [
       "expo-router",
@@ -32,6 +32,13 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Teeko Driver needs your location to show nearby ride requests."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Teeko Driver uses your photos so you can set a profile picture.",
+          "cameraPermission": "Teeko Driver uses your camera so you can take a profile picture."
         }
       ]
     ],

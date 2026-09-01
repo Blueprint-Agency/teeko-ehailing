@@ -1,6 +1,8 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   date,
+  index,
   integer,
   numeric,
   pgEnum,
@@ -71,3 +73,48 @@ export const driverRadiusSettings = pgTable('driver_radius_settings', {
   maxRadiusKm: numeric({ precision: 4, scale: 1 }).notNull().default('5'),
   categories: text().array().notNull().default(['go']),
 });
+
+// ── Driver profile change review ────────────────────────────────────────────
+// A driver's name and phone are identity evidence for APAD/JPJ, so an edit is a
+// *request*, not a write: the row lands here as `pending`, an admin approves or
+// rejects it, and only an approval copies the value onto `users`. One field may
+// change once every 30 days, counted from the last approval of THAT field —
+// `appliedAt` is the clock, so a rejected request costs the driver nothing.
+export const profileChangeField = pgEnum('profile_change_field', ['full_name', 'phone']);
+export const profileChangeStatus = pgEnum('profile_change_status', [
+  'pending',
+  'approved',
+  'rejected',
+  'cancelled',
+]);
+
+export const driverProfileChangeRequests = pgTable(
+  'driver_profile_change_requests',
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    driverId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
+    field: profileChangeField().notNull(),
+    // Snapshot of what the field held when the request was raised, so the
+    // reviewer sees the before/after even if something else moved since.
+    currentValue: text(),
+    requestedValue: text().notNull(),
+    status: profileChangeStatus().notNull().default('pending'),
+    reviewedBy: uuid().references(() => users.id),
+    reviewedAt: timestamp({ withTimezone: true }),
+    // Admin's reason — required on reject, shown to the driver in-app.
+    reviewNote: text(),
+    // Set only when the value actually reached `users`. This, not reviewedAt,
+    // is what the 30-day cooldown measures from.
+    appliedAt: timestamp({ withTimezone: true }),
+    createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('driver_profile_change_requests_driver_idx').on(t.driverId),
+    index('driver_profile_change_requests_status_idx').on(t.status),
+    // At most one open request per field — the driver edits the pending value
+    // by cancelling and re-submitting, never by stacking requests.
+    uniqueIndex('driver_profile_change_requests_open_idx')
+      .on(t.driverId, t.field)
+      .where(sql`status = 'pending'`),
+  ],
+);

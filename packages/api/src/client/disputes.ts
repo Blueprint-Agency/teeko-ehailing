@@ -18,3 +18,8 @@ export async function listForTrip(tripId: string): Promise<RiderDispute[]> {
     `/api/v1/rider/disputes?tripId=${encodeURIComponent(tripId)}`,
   );
 }
+
+/** Every dispute the signed-in rider has raised (across all their trips). */
+export async function listAll(): Promise<RiderDispute[]> {
+  return api<RiderDispute[]>('/api/v1/rider/disputes');
+}

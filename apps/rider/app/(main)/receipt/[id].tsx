@@ -3,21 +3,15 @@ import { ScrollView, View } from 'react-native';
 
 import { tripsApi, useDisputeStore, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
-import type { DisputeStatus, RiderDispute, TripReceipt } from '@teeko/shared';
+import type { RiderDispute, TripReceipt } from '@teeko/shared';
 import { Button, type BottomSheetHandle, Icon, Pressable, ScreenContainer, Spinner, Text } from '@teeko/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { DisputeSheet, type DisputeSubmitInput } from '../../../components/DisputeSheet';
+import { DisputeStatusPill } from '../../../components/DisputeStatusPill';
 
 // Trip statuses that can be disputed (finished trips only).
 const DISPUTABLE: TripReceipt['status'][] = ['completed', 'cancelled'];
-
-const DISPUTE_STATUS_I18N: Record<DisputeStatus, string> = {
-  open: 'dispute.statusOpen',
-  under_review: 'dispute.statusUnderReview',
-  resolved: 'dispute.statusResolved',
-  rejected: 'dispute.statusRejected',
-};
 
 function money(myr: number): string {
   return `RM ${myr.toFixed(2)}`;
@@ -47,8 +41,10 @@ export default function ReceiptScreen() {
 
   const disputeSheetRef = useRef<BottomSheetHandle>(null);
   const disputes = useDisputeStore((s) => (id ? s.byTrip[id] : undefined));
+  const allDisputes = useDisputeStore((s) => s.all);
   const submitting = useDisputeStore((s) => s.submitting);
   const loadDisputes = useDisputeStore((s) => s.loadForTrip);
+  const loadAllDisputes = useDisputeStore((s) => s.loadAll);
   const submitDispute = useDisputeStore((s) => s.submit);
   const pushToast = useUIStore((s) => s.pushToast);
 
@@ -77,14 +73,36 @@ export default function ReceiptScreen() {
   // "Report an issue" button when the rider has already raised one.
   useEffect(() => {
     if (id) loadDisputes(id);
-  }, [id, loadDisputes]);
+    loadAllDisputes();
+  }, [id, loadDisputes, loadAllDisputes]);
 
   const cancelled = receipt?.status === 'cancelled';
   const existingDispute: RiderDispute | undefined = disputes?.[0];
+
+  const pendingDisputesCount = allDisputes.filter(
+    (d) => !['resolved', 'rejected', 'refund_completed'].includes(d.status),
+  ).length;
+  const atDisputeLimit = pendingDisputesCount >= 5;
+
+  /** Whether the 48-hour window for filing a report has passed. */
+  const isPast48Hours = (() => {
+    if (!receipt) return false;
+    const endIso = receipt.completedAt ?? receipt.cancelledAt;
+    if (!endIso) return false;
+    const endMs = new Date(endIso).getTime();
+    if (isNaN(endMs)) return false;
+    return Date.now() - endMs > 48 * 60 * 60 * 1000;
+  })();
+
   const canDispute = receipt != null && DISPUTABLE.includes(receipt.status);
 
   const handleSubmitDispute = async (input: DisputeSubmitInput) => {
     if (!id) return;
+    if (atDisputeLimit) {
+      disputeSheetRef.current?.dismiss();
+      pushToast({ kind: 'error', message: t('dispute.limitReached') });
+      return;
+    }
     const result = await submitDispute({ tripId: id, ...input });
     disputeSheetRef.current?.dismiss();
     pushToast(
@@ -229,7 +247,7 @@ export default function ReceiptScreen() {
                     <Text weight="medium" className="text-base">
                       {t(`dispute.categoryLabel.${existingDispute.category}`)}
                     </Text>
-                    <DisputeStatusPill status={existingDispute.status} label={t(DISPUTE_STATUS_I18N[existingDispute.status])} />
+                    <DisputeStatusPill status={existingDispute.status} />
                   </View>
                   <Text tone="secondary" className="mt-1 text-sm">
                     {existingDispute.description}
@@ -243,13 +261,24 @@ export default function ReceiptScreen() {
               ) : (
                 <View className="px-gutter py-3">
                   <Text tone="secondary" className="mb-3 text-sm">
-                    {t('dispute.prompt')}
+                    {atDisputeLimit
+                      ? t('dispute.limitReached')
+                      : isPast48Hours
+                        ? t('dispute.windowClosed')
+                        : t('dispute.prompt')}
                   </Text>
                   <Button
                     label={t('dispute.reportIssue')}
                     variant="ghost"
                     leadingIcon="error-outline"
-                    onPress={() => disputeSheetRef.current?.present()}
+                    disabled={isPast48Hours || atDisputeLimit}
+                    onPress={() => {
+                      if (atDisputeLimit) {
+                        pushToast({ kind: 'error', message: t('dispute.limitReached') });
+                        return;
+                      }
+                      disputeSheetRef.current?.present();
+                    }}
                   />
                 </View>
               )}
@@ -265,22 +294,6 @@ export default function ReceiptScreen() {
         onConfirm={handleSubmitDispute}
       />
     </ScreenContainer>
-  );
-}
-
-function DisputeStatusPill({ status, label }: { status: DisputeStatus; label: string }) {
-  const tone =
-    status === 'resolved'
-      ? 'bg-primary-50 text-primary'
-      : status === 'rejected'
-        ? 'bg-muted text-ink-secondary'
-        : 'bg-muted text-ink-primary';
-  return (
-    <View className={`rounded-full px-3 py-1 ${tone.split(' ')[0]}`}>
-      <Text weight="medium" className={`text-xs ${tone.split(' ')[1]}`}>
-        {label}
-      </Text>
-    </View>
   );
 }
 

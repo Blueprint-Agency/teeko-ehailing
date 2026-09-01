@@ -42,6 +42,16 @@ const BookBody = z.object({
   riderId: z.string().min(1),
 });
 
+// Query for GET /trips. Every field is optional so an unparameterised call
+// still returns the newest page — `limit` caps at 50 in the service too.
+const HistoryQuery = z.object({
+  status: z.enum(['upcoming', 'completed', 'cancelled']).optional(),
+  /** Only trips created within the last N days. */
+  days: z.coerce.number().int().positive().max(3650).optional(),
+  limit: z.coerce.number().int().min(1).max(50).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
 function mockRoutePolyline(
   fromLat: number, fromLng: number,
   toLat: number, toLng: number,
@@ -160,10 +170,17 @@ export async function routes(app: FastifyInstance) {
     }
   });
 
-  // GET /api/v1/rider/trips — trip history
-  app.get('/', async (req, reply) => {
+  // GET /api/v1/rider/trips — paged, filterable trip history.
+  // Response: { items, total, limit, offset, hasMore }.
+  app.get<{ Querystring: Record<string, string | undefined> }>('/', async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
-    return tripsService.getRiderTrips(req.user.id);
+    const q = HistoryQuery.parse(req.query ?? {});
+    return tripsService.getRiderTrips(req.user.id, {
+      status: q.status,
+      since: q.days ? new Date(Date.now() - q.days * 24 * 60 * 60 * 1000) : undefined,
+      limit: q.limit,
+      offset: q.offset,
+    });
   });
 
   // GET /api/v1/rider/trips/:id — trip detail / receipt

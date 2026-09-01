@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Image,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell } from 'lucide-react-native';
@@ -10,9 +10,10 @@ import OnlineToggle from '../../../../components/driver/OnlineToggle';
 import { useColors } from '../../../../constants/colors';
 import { useTheme } from '../../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import { api, type DriverProfile } from '../../../../lib/api';
+import { api, resolveMediaUrl, type DriverProfile } from '../../../../lib/api';
 import { getSocket } from '../../../../lib/socket';
 import { useDriverStore } from '../../../../store/useDriverStore';
+import { useNotificationStore } from '../../../../store/useNotificationStore';
 
 // Mock surge for v0.1 — replace with the live surge feed when it exists.
 const SURGE = { multiplier: 1.4, area: 'Bukit Bintang' };
@@ -39,20 +40,28 @@ export default function HomeScreen() {
   // take a second (permissions + first GPS fix) and a double tap would otherwise
   // fire two conflicting calls.
   const [togglePending, setTogglePending] = useState(false);
+  // Bell badge. The inbox is the only delivery channel until push is wired, so
+  // the count is refreshed whenever home regains focus.
+  const loadNotifications = useNotificationStore((s) => s.load);
+  const unreadCount = useNotificationStore(
+    (s) => s.items.filter((n) => !n.readAt && !s.localRead.includes(n.id)).length,
+  );
 
   useFocusEffect(
     useCallback(() => {
       let cancelled = false;
+      void loadNotifications();
       api.earnings
-        .get()
-        .then((res) => { if (!cancelled) setToday(res.today); })
+        // The day window's totals *are* today's — the home card wants nothing else.
+        .get('day')
+        .then((res) => { if (!cancelled) setToday(res.current); })
         .catch(() => { if (!cancelled) setToday(null); });
       api.profile
         .get()
         .then((res) => { if (!cancelled) setProfile(res.profile); })
         .catch(() => { if (!cancelled) setProfile(null); });
       return () => { cancelled = true; };
-    }, []),
+    }, [loadNotifications]),
   );
 
   const handleResumeTrip = () => {
@@ -185,6 +194,8 @@ export default function HomeScreen() {
     api.driver.setRadius(r).catch(() => null);
   };
 
+  const avatarSrc = resolveMediaUrl(profile?.avatarUrl);
+
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
@@ -193,9 +204,13 @@ export default function HomeScreen() {
       <View style={[styles.hud, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
         <TouchableOpacity style={styles.avatarBtn} onPress={() => router.push('/(driver)/(tabs)/profile')}>
           <View style={[styles.avatar, { backgroundColor: colors.surfaceHigh, borderColor: colors.accent }]}>
-            <Text style={[styles.avatarText, { color: colors.accent }]}>
-              {profile?.fullName?.trim().charAt(0) ?? '·'}
-            </Text>
+            {avatarSrc ? (
+              <Image source={{ uri: avatarSrc }} style={styles.avatarImage} />
+            ) : (
+              <Text style={[styles.avatarText, { color: colors.accent }]}>
+                {profile?.fullName?.trim().charAt(0) ?? '·'}
+              </Text>
+            )}
           </View>
           <View style={[styles.onlineDot, { borderColor: colors.bg }, isOnline ? { backgroundColor: colors.online } : { backgroundColor: colors.textMut }]} />
         </TouchableOpacity>
@@ -207,9 +222,11 @@ export default function HomeScreen() {
 
         <TouchableOpacity style={styles.notifBtn} onPress={() => router.push('/(driver)/notifications')}>
           <Bell size={22} color={colors.text} strokeWidth={1.75} />
-          <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
-            <Text style={styles.notifBadgeText}>2</Text>
-          </View>
+          {unreadCount > 0 ? (
+            <View style={[styles.notifBadge, { backgroundColor: colors.danger }]}>
+              <Text style={styles.notifBadgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+            </View>
+          ) : null}
         </TouchableOpacity>
       </View>
 
@@ -333,7 +350,9 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%' },
   avatarText: { fontWeight: '800', fontSize: 16 },
   onlineDot: {
     position: 'absolute',

@@ -4,6 +4,7 @@
 import { logger } from '../../config/logger';
 import { isUniqueViolation } from '../../db/errors';
 import { clerk, driverClerk, type ClerkClaims } from '../../external/clerk';
+import { recordPasswordChanged } from '../auth_otp/password-policy';
 import { sendVerificationOtp } from '../auth_otp/service';
 
 import {
@@ -23,6 +24,9 @@ export type RiderMeResponse = {
     email: string | null;
     emailVerified: boolean;
     fullName: string | null;
+    /** Relative `/uploads/...` path or absolute URL; null when never uploaded. */
+    avatarUrl: string | null;
+    phone: string | null;
     locale: 'en' | 'ms' | 'zh' | 'ta';
     status: 'active' | 'suspended' | 'deactivated';
   };
@@ -129,6 +133,8 @@ export async function getOrProvisionRiderMe(claims: ClerkClaims): Promise<RiderM
       email: bundle.email,
       emailVerified: bundle.emailVerified,
       fullName: bundle.fullName,
+      avatarUrl: bundle.avatarUrl,
+      phone: bundle.phone,
       locale: bundle.locale,
       status: bundle.status,
     },
@@ -145,6 +151,9 @@ export type DriverMeResponse = {
     email: string | null;
     emailVerified: boolean;
     fullName: string | null;
+    /** Relative `/uploads/...` path or absolute URL; null when never uploaded. */
+    avatarUrl: string | null;
+    phone: string | null;
     status: 'active' | 'suspended' | 'deactivated';
     pdpaConsentAt: string | null;
   };
@@ -215,7 +224,12 @@ export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<Drive
     .limit(1);
 
   const [userRow] = await db
-    .select({ emailVerified: users.emailVerified, pdpaConsentAt: users.pdpaConsentAt })
+    .select({
+      emailVerified: users.emailVerified,
+      avatarUrl: users.avatarUrl,
+      phone: users.phone,
+      pdpaConsentAt: users.pdpaConsentAt,
+    })
     .from(users)
     .where(eq(users.id, row.id))
     .limit(1);
@@ -242,6 +256,8 @@ export async function getOrProvisionDriverMe(claims: ClerkClaims): Promise<Drive
       email: row.email,
       emailVerified: userRow?.emailVerified ?? false,
       fullName: row.fullName,
+      avatarUrl: userRow?.avatarUrl ?? null,
+      phone: userRow?.phone ?? null,
       status: row.status,
       pdpaConsentAt: userRow?.pdpaConsentAt?.toISOString() ?? null,
     },
@@ -265,12 +281,38 @@ export async function acceptPdpaConsent(userId: string): Promise<void> {
 
 export type RiderMePatch = {
   fullName?: string;
+  phone?: string;
   locale?: 'en' | 'ms' | 'zh' | 'ta';
 };
 
-export async function patchRiderMe(userId: string, patch: RiderMePatch): Promise<void> {
-  await updateRiderFields(userId, patch);
+/**
+ * Store one canonical form per number so the UNIQUE constraint on users.phone
+ * actually bites: strip spaces, dashes and brackets, and rewrite a local
+ * Malaysian `01x…` into `+601x…`. Anything else keeps its leading `+`.
+ */
+export function normalizePhone(input: string): string | null {
+  const cleaned = input.replace(/[\s\-()]/g, '');
+  if (!cleaned) return null;
+  if (cleaned.startsWith('+')) return cleaned;
+  if (cleaned.startsWith('0')) return `+60${cleaned.slice(1)}`;
+  if (cleaned.startsWith('60')) return `+${cleaned}`;
+  return `+${cleaned}`;
 }
+
+function withNormalizedPhone<T extends { phone?: string }>(patch: T) {
+  if (patch.phone === undefined) return patch;
+  // An emptied field means "remove my number", not "store an empty string" —
+  // NULL is what the UNIQUE index tolerates more than once.
+  return { ...patch, phone: normalizePhone(patch.phone) };
+}
+
+export async function patchRiderMe(userId: string, patch: RiderMePatch): Promise<void> {
+  await updateRiderFields(userId, withNormalizedPhone(patch));
+}
+
+// There is deliberately no `patchDriverMe`. A driver's name and phone are
+// identity evidence for APAD/JPJ, so they only change through the review queue
+// in modules/drivers/profile-changes.ts — an admin approval is what writes them.
 
 /**
  * Sync handler for Clerk `user.updated` and `user.deleted` webhooks.
@@ -280,6 +322,8 @@ export async function applyClerkWebhook(event: {
   clerkUserId: string;
   email?: string | null;
   fullName?: string | null;
+  /** Clerk's `password_last_updated_at`, when the event carried one. */
+  passwordChangedAt?: Date | null;
 }): Promise<void> {
   const row = await findUserByExternalId('clerk', event.clerkUserId);
   if (!row) return; // never provisioned on our side; ignore
@@ -287,6 +331,12 @@ export async function applyClerkWebhook(event: {
   if (event.type === 'user.deleted') {
     await softDeleteUser(row.id);
     return;
+  }
+  // Back-stop for the signed-out reset, which changes the password entirely
+  // inside Clerk. `recordPasswordChanged` never moves the clock backwards, so
+  // replaying an old `user.updated` cannot shorten an active cooldown.
+  if (event.passwordChangedAt) {
+    await recordPasswordChanged(row.id, event.passwordChangedAt);
   }
   await updateRiderFields(row.id, {
     email: event.email ?? null,

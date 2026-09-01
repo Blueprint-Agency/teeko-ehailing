@@ -1,5 +1,6 @@
 import { Image, View } from 'react-native';
 
+import { resolveMediaUrl } from '@teeko/api';
 import type { Driver } from '@teeko/shared';
 import { Icon, Text } from '@teeko/ui';
 
@@ -15,7 +16,9 @@ export function DriverCard({ driver, compact }: DriverCardProps) {
   return (
     <View className="flex-row items-center">
       <Image
-        source={{ uri: driver.photoUrl }}
+        // A driver who uploaded a picture sends back a storage path, not a URL,
+        // so it needs the API origin before <Image> can load it.
+        source={{ uri: resolveMediaUrl(driver.photoUrl) }}
         style={{ width: photoSize, height: photoSize, borderRadius: photoSize / 2 }}
       />
       <View className="ml-3 flex-1">

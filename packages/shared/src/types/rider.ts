@@ -24,6 +24,8 @@ export interface Rider {
   name: string;
   phone: string;
   email?: string;
+  /** Absolute URL to the profile picture; undefined when none is set. */
+  avatarUrl?: string;
   rating: number;
   languagePref: Locale;
   verified?: boolean;
@@ -84,6 +86,27 @@ export interface PaymentMethod {
 
 export type LatLng = { lat: number; lng: number };
 
+/** Offset-paged list envelope returned by paged rider endpoints. */
+export interface Page<T> {
+  items: T[];
+  /** Total rows matching the filter, not the rider's lifetime total. */
+  total: number;
+  limit: number;
+  offset: number;
+  hasMore: boolean;
+}
+
+/** Rider-facing status buckets for trip history (maps to several DB statuses). */
+export type TripHistoryStatusFilter = 'upcoming' | 'completed' | 'cancelled';
+
+export interface TripHistoryQuery {
+  status?: TripHistoryStatusFilter;
+  /** Only trips created within the last N days. */
+  days?: number;
+  limit?: number;
+  offset?: number;
+}
+
 export interface Trip {
   id: string;
   status: TripStatus;
@@ -142,9 +165,30 @@ export type DisputeCategory =
   | 'service'
   | 'safety'
   | 'lost_item'
-  | 'other';
+  | 'other'
+  // Driver-raised only — filed from the driver app's Report Issue screen.
+  | 'document'
+  | 'account';
 
-export type DisputeStatus = 'open' | 'under_review' | 'resolved' | 'rejected';
+/** The subset a driver can file under (driver Support → Report Issue). */
+export type DriverDisputeCategory = Extract<
+  DisputeCategory,
+  'overcharge' | 'payment' | 'document' | 'account' | 'other'
+>;
+
+// Full dispute lifecycle — mirrors the backend `dispute_status` pgEnum
+// (apps/backend/src/db/schema/trips.ts). Riders only ever create disputes as
+// `open`; admins drive the rest via the dispute/refund queues.
+export type DisputeStatus =
+  | 'open'
+  | 'under_review'
+  | 'escalated'
+  | 'resolved'
+  | 'rejected'
+  | 'refund_pending'
+  | 'refund_processing'
+  | 'refund_completed'
+  | 'refund_failed';
 
 /** A rider-raised dispute on a finished trip (POST/GET /rider/disputes). */
 export interface RiderDispute {
@@ -166,6 +210,74 @@ export interface CreateDisputeInput {
   category: DisputeCategory;
   amountMyr?: number;
   description: string;
+}
+
+/**
+ * A driver-raised dispute (POST/GET /driver/disputes). Same table and admin
+ * queues as the rider's, but the trip is optional — a document or account
+ * report isn't tied to one.
+ */
+export interface DriverDispute {
+  id: string;
+  tripId: string | null;
+  category: DriverDisputeCategory;
+  status: DisputeStatus;
+  /** Present only for money categories (overcharge / payment). */
+  amountMyr?: number;
+  description: string;
+  /** Filled by an admin once the dispute is resolved or rejected. */
+  resolution?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface CreateDriverDisputeInput {
+  tripId?: string | null;
+  category: DriverDisputeCategory;
+  amountMyr?: number;
+  description: string;
+}
+
+// ─── Support tickets ──────────────────────────────────────────────────────────
+
+// General help-desk categories (mirrors the admin Support page + backend
+// `support_ticket_category` enum). Distinct from disputes, which are trip-scoped.
+export type SupportCategory =
+  | 'technical'
+  | 'complaint'
+  | 'payment'
+  | 'billing'
+  | 'account'
+  | 'documents'
+  | 'safety'
+  | 'other';
+
+// Statuses a rider ever sees on their own ticket. The backend enum also carries
+// driver-appeal states (in_review / denied) the rider never encounters.
+export type SupportStatus = 'open' | 'in_progress' | 'resolved' | 'escalated';
+
+export type SupportPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+/** A rider-raised general support ticket (POST/GET /rider/support). */
+export interface SupportTicket {
+  id: string;
+  subject: string;
+  category: SupportCategory;
+  status: SupportStatus;
+  /** Set by an admin during triage — riders don't choose it. */
+  priority: SupportPriority;
+  description: string;
+  /** Optional trip the ticket references. Not a dispute. */
+  tripId?: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface CreateSupportTicketInput {
+  subject: string;
+  category: SupportCategory;
+  description: string;
+  tripId?: string;
 }
 
 // ─── Directions / Routing ─────────────────────────────────────────────────────

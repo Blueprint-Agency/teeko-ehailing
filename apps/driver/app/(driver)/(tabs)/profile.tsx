@@ -1,11 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet, Image,
   StatusBar, ScrollView, Alert, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
-import { User, FileText, Car, Landmark, HelpCircle, ClipboardList, Lock, ChevronRight, LogOut } from 'lucide-react-native';
+import { User, FileText, Car, Landmark, HelpCircle, ClipboardList, Lock, ChevronRight, LogOut, Camera } from 'lucide-react-native';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme, ThemeType } from '../../../components/ThemeProvider';
@@ -13,7 +13,8 @@ import { useT } from '@teeko/i18n';
 import { useLocale } from '../../../providers/LocaleProvider';
 import { openPortal } from '../../../lib/portal';
 import type { Locale } from '@teeko/shared';
-import { api, type DriverProfile } from '../../../lib/api';
+import { api, resolveMediaUrl, type DriverProfile } from '../../../lib/api';
+import { pickProfileImage, PermissionDeniedError } from '../../../lib/pickProfileImage';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -39,6 +40,7 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<DriverProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -55,7 +57,53 @@ export default function ProfileScreen() {
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
 
+  // The picture is written straight to the profile — it carries no compliance
+  // weight, so it does not go through the name/phone review queue.
+  const changeAvatar = useCallback(async (source: 'camera' | 'library') => {
+    setAvatarBusy(true);
+    try {
+      const picked = await pickProfileImage(source);
+      if (!picked) return; // user backed out of the picker
+      const avatarUrl = await api.profile.uploadAvatar(picked);
+      setProfile((prev) => (prev ? { ...prev, avatarUrl } : prev));
+    } catch (err) {
+      Alert.alert(
+        t('driver.photoFailedTitle'),
+        err instanceof PermissionDeniedError
+          ? t('driver.photoPermissionDenied')
+          : t('driver.photoFailedBody'),
+      );
+    } finally {
+      setAvatarBusy(false);
+    }
+  }, [t]);
+
+  const removeAvatar = useCallback(async () => {
+    setAvatarBusy(true);
+    try {
+      await api.profile.removeAvatar();
+      setProfile((prev) => (prev ? { ...prev, avatarUrl: null } : prev));
+    } catch {
+      Alert.alert(t('driver.photoFailedTitle'), t('driver.photoFailedBody'));
+    } finally {
+      setAvatarBusy(false);
+    }
+  }, [t]);
+
+  const onAvatarPress = useCallback(() => {
+    if (avatarBusy) return;
+    Alert.alert(t('driver.profilePhoto'), undefined, [
+      { text: t('driver.takePhoto'), onPress: () => void changeAvatar('camera') },
+      { text: t('driver.chooseFromLibrary'), onPress: () => void changeAvatar('library') },
+      ...(profile?.avatarUrl
+        ? [{ text: t('driver.removePhoto'), style: 'destructive' as const, onPress: () => void removeAvatar() }]
+        : []),
+      { text: t('common.cancel'), style: 'cancel' as const },
+    ]);
+  }, [avatarBusy, changeAvatar, profile?.avatarUrl, removeAvatar, t]);
+
   const styles = createStyles(colors);
+  const avatarSrc = resolveMediaUrl(profile?.avatarUrl);
 
   // Null rating means "not rated yet" — show a dash, never a made-up score.
   const stars = profile?.rating != null ? Math.round(profile.rating) : 0;
@@ -105,9 +153,29 @@ export default function ProfileScreen() {
             <ActivityIndicator color={colors.accent} style={styles.headerLoader} />
           ) : (
             <>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{displayName.charAt(0)}</Text>
-              </View>
+              <TouchableOpacity
+                onPress={onAvatarPress}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityLabel={t('driver.profilePhoto')}
+                style={styles.avatarWrap}
+              >
+                <View style={styles.avatar}>
+                  {avatarSrc ? (
+                    <Image source={{ uri: avatarSrc }} style={styles.avatarImage} />
+                  ) : (
+                    <Text style={styles.avatarText}>{displayName.charAt(0)}</Text>
+                  )}
+                  {avatarBusy ? (
+                    <View style={styles.avatarOverlay}>
+                      <ActivityIndicator color={colors.accent} />
+                    </View>
+                  ) : null}
+                </View>
+                <View style={styles.avatarBadge}>
+                  <Camera size={14} color={colors.bg} strokeWidth={2} />
+                </View>
+              </TouchableOpacity>
               <Text style={styles.name}>{displayName}</Text>
               <Text style={styles.phone}>{profile?.phone ?? profile?.email ?? ''}</Text>
 
@@ -184,11 +252,12 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{t('driver.account')}</Text>
           {([
-            { label: t('driver.personalInfo'), Icon: User, action: () => Alert.alert(t('driver.personalInfo'), 'Edit personal information') },
+            { label: t('driver.personalInfo'), Icon: User, action: () => router.push('/(driver)/account/personal') },
             // Documents are uploaded and re-verified in the web portal only.
             { label: t('driver.documents'), Icon: FileText, action: () => openPortal('/profile') },
             { label: t('driver.myVehicle'), Icon: Car, action: () => router.push('/(driver)/(tabs)/vehicles') },
             { label: t('driver.bankAccount'), Icon: Landmark, action: () => router.push('/(driver)/payouts') },
+            { label: t('driver.changePassword'), Icon: Lock, action: () => router.push('/(driver)/account/change-password') },
           ] as const).map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
               <item.Icon size={18} color={colors.textSec} strokeWidth={1.75} style={styles.settingIconView} />
@@ -242,12 +311,27 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderBottomColor: colors.border,
     marginBottom: 16,
   },
+  avatarWrap: { marginBottom: 12 },
   avatar: {
     width: 80, height: 80, borderRadius: 40,
     backgroundColor: colors.surfaceHigh,
     borderWidth: 3, borderColor: colors.accent,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: { width: '100%', height: '100%' },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.bg + 'AA',
+  },
+  // Sits on the ring rather than inside it, so it never covers the face.
+  avatarBadge: {
+    position: 'absolute', right: -2, bottom: -2,
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: colors.accent,
+    borderWidth: 2, borderColor: colors.surface,
+    alignItems: 'center', justifyContent: 'center',
   },
   avatarText: { color: colors.accent, fontSize: 34, fontWeight: '800' },
   name: { color: colors.text, fontSize: 22, fontWeight: '800' },

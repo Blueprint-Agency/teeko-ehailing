@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { desc, eq, inArray } from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { db } from '../../config/db';
 import { disputes } from '../../db/schema/trips';
 import { users } from '../../db/schema/identity';
@@ -26,8 +27,9 @@ function serialize(row: DisputeRow & { raiserName?: string | null }) {
   return {
     id: row.id,
     tripId: row.tripId ? row.tripId.slice(0, 8) : null,
-    // Staging's disputes are always rider-raised (riderId is the submitter).
-    raisedBy: 'rider' as const,
+    // Riders file from a trip receipt; drivers from the driver app's Report
+    // Issue screen. `raiserName` is joined from whichever id is set.
+    raisedBy: row.raisedBy,
     raiserName: row.raiserName ?? '—',
     category: row.category,
     status: row.status,
@@ -57,17 +59,26 @@ export async function routes(app: FastifyInstance) {
       return reply.code(400).send({ error: 'invalid_queue', validQueues: Object.keys(QUEUE_STATUSES) });
     }
 
+    const driverUsers = alias(users, 'driver_users');
+
     const rows = await db
       .select({
         dispute: disputes,
-        raiserName: users.fullName,
+        riderName: users.fullName,
+        driverName: driverUsers.fullName,
       })
       .from(disputes)
       .leftJoin(users, eq(users.id, disputes.riderId))
+      .leftJoin(driverUsers, eq(driverUsers.id, disputes.driverId))
       .where(queue ? inArray(disputes.status, [...QUEUE_STATUSES[queue]]) : undefined)
       .orderBy(desc(disputes.createdAt));
 
-    return rows.map((r) => serialize({ ...r.dispute, raiserName: r.raiserName }));
+    return rows.map((r) =>
+      serialize({
+        ...r.dispute,
+        raiserName: r.dispute.raisedBy === 'driver' ? r.driverName : r.riderName,
+      }),
+    );
   });
 
   // ── POST /disputes/:id/resolve ─────────────────────────────────────────────

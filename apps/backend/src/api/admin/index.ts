@@ -7,6 +7,7 @@ import { routes as users } from './users.routes';
 import { routes as riders } from './riders.routes';
 import { routes as admins } from './admins.routes';
 import { routes as drivers } from './drivers.routes';
+import { routes as driverProfileChanges } from './profile-changes.routes';
 import { routes as trips } from './trips.routes';
 import { routes as payments } from './payments.routes';
 import { routes as payouts } from './payouts.routes';
@@ -18,6 +19,7 @@ import { routes as commissions } from './commissions.routes';
 import { routes as surge } from './surge.routes';
 import { routes as feedback } from './feedback.routes';
 import { routes as disputes } from './disputes.routes';
+import { routes as support } from './support.routes';
 import { routes as audit } from './audit.routes';
 
 export async function adminRoutes(app: FastifyInstance) {
@@ -29,6 +31,7 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(riders, { prefix: '/riders' });
   await app.register(admins, { prefix: '/admins' });
   await app.register(drivers, { prefix: '/drivers' });
+  await app.register(driverProfileChanges, { prefix: '/driver-profile-changes' });
   await app.register(trips, { prefix: '/trips' });
   await app.register(payments, { prefix: '/payments' });
   await app.register(payouts, { prefix: '/payouts' });
@@ -40,5 +43,6 @@ export async function adminRoutes(app: FastifyInstance) {
   await app.register(surge, { prefix: '/surge' });
   await app.register(feedback, { prefix: '/feedback' });
   await app.register(disputes, { prefix: '/disputes' });
+  await app.register(support, { prefix: '/support' });
   await app.register(audit, { prefix: '/audit' });
 }

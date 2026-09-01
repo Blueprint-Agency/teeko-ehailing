@@ -5,7 +5,7 @@ const mapsKey = process.env.GOOGLE_MAPS_API_KEY ?? '';
 const config: ExpoConfig = {
   name: 'Teeko',
   slug: 'teeko-rider',
-  version: '0.0.9',
+  version: '0.0.13',
   orientation: 'portrait',
   scheme: 'teeko',
   userInterfaceStyle: 'light',
@@ -59,9 +59,11 @@ const config: ExpoConfig = {
   updates: {
     url: 'https://u.expo.dev/64dad399-68e0-4def-9640-6c1c718e4416',
   },
-  runtimeVersion: {
-    policy: 'appVersion',
-  },
+  // Bare workflow (an ios/ project exists), so runtime-version policies like
+  // { policy: 'appVersion' } aren't supported — it must be a literal string.
+  // Pinned to the current appVersion to stay continuous with updates published
+  // under the old policy. Bump this manually on native/runtime-breaking changes.
+  runtimeVersion: '0.0.13',
   experiments: { typedRoutes: true },
   extra: {
     router: {},
