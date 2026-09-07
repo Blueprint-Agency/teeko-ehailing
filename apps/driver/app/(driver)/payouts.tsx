@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet, Modal, FlatList,
-  StatusBar, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
+  StatusBar, ScrollView, Keyboard, Alert, ActivityIndicator,
 } from 'react-native';
 import { Landmark, CheckCircle2, ChevronDown, Check } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import ScreenHeader from '../../components/driver/ScreenHeader';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
@@ -14,6 +15,7 @@ import { api, type BankAccount } from '../../lib/api';
 // so the driver supplies their bank details here. The server only ever hands
 // back a masked number, which is why a change means re-entering it in full.
 export default function PayoutsScreen() {
+  const router = useRouter();
   const [account, setAccount] = useState<BankAccount | null>(null);
   const [banks, setBanks] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +28,7 @@ export default function PayoutsScreen() {
   const [number, setNumber] = useState('');
   const [confirmNumber, setConfirmNumber] = useState('');
   const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   const colors = useColors();
   const { activeTheme } = useTheme();
@@ -52,6 +55,12 @@ export default function PayoutsScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
 
   const startEdit = () => {
     // The stored number never comes back to the app, so an update is always a
@@ -103,7 +112,7 @@ export default function PayoutsScreen() {
     return (
       <View style={styles.root}>
         <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-        <ScreenHeader title={t('driver.bankAccount')} />
+        <ScreenHeader title={t('driver.bankAccount')} onBack={() => router.back()} />
         <View style={styles.centre}><ActivityIndicator color={colors.accent} /></View>
       </View>
     );
@@ -112,10 +121,18 @@ export default function PayoutsScreen() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle={activeTheme === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.bg} />
-      <ScreenHeader title={t('driver.bankAccount')} />
+      <ScreenHeader title={t('driver.bankAccount')} onBack={() => router.back()} />
 
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+      {/* Padding is driven off the keyboard events directly rather than
+          KeyboardAvoidingView. Expo SDK 54 forces edge-to-edge on Android, so
+          the adjustResize in app.json never shrinks the window and KAV had
+          nothing to react to — the ScrollView kept full height and the lower
+          fields sat under the keyboard with no scroll range. */}
+      <View style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={[styles.scroll, { paddingBottom: 40 + keyboardHeight }]}
+          keyboardShouldPersistTaps="handled"
+        >
           {!editing && account ? (
             <>
               <View style={styles.card}>
@@ -239,7 +256,7 @@ export default function PayoutsScreen() {
             </>
           )}
         </ScrollView>
-      </KeyboardAvoidingView>
+      </View>
 
       <Modal visible={bankPickerOpen} animationType="slide" transparent onRequestClose={() => setBankPickerOpen(false)}>
         <View style={styles.modalBackdrop}>
