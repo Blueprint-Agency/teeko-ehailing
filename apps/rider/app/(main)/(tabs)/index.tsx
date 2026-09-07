@@ -12,7 +12,7 @@ import {
 } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import type { Place } from '@teeko/shared';
-import { Icon, Pressable, Text } from '@teeko/ui';
+import { Icon, ListRow, Pressable, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
 import { DestinationMapCard } from '../../../components/DestinationMapCard';
@@ -77,6 +77,7 @@ export default function HomeTab() {
 
   const homePlace = saved.find((p) => p.category === 'home');
   const workPlace = saved.find((p) => p.category === 'work');
+  const customPlaces = saved.filter((p) => p.category === 'saved');
   // Once a rider has set a payment method, surface the one in use (the default,
   // falling back to the first) instead of the "add payment" prompt.
   const currentPayment =
@@ -189,6 +190,25 @@ export default function HomeTab() {
             </Pressable>
           </View>
         )}
+
+        {customPlaces.length > 0 ? (
+          <View className="mt-6">
+            <Text
+              weight="bold"
+              className="px-gutter pb-2 text-xs uppercase tracking-wide text-ink-secondary"
+            >
+              {t('home.saved')}
+            </Text>
+            {customPlaces.map((p) => (
+              <ListRow
+                key={p.id}
+                leadingIcon="place"
+                title={p.address}
+                onPress={() => onRecent(p)}
+              />
+            ))}
+          </View>
+        ) : null}
 
         {recent.length > 0 ? (
           <View className="mt-6">

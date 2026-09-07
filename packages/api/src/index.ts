@@ -23,7 +23,12 @@ export {
 
 export { useAuthStore, type AuthState } from './stores/auth-store';
 export { useLocationStore, type LocationState } from './stores/location-store';
-export { usePlacesStore, type PlacesState } from './stores/places-store';
+export {
+  usePlacesStore,
+  type PlacesState,
+  MAX_CUSTOM_PLACES,
+  PlacesLimitError,
+} from './stores/places-store';
 export { usePaymentsStore, type PaymentsState } from './stores/payments-store';
 export { useTripStore, type TripState } from './stores/trip-store';
 export { useDisputeStore, type DisputeState } from './stores/dispute-store';

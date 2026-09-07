@@ -3,12 +3,13 @@ import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { useClerk } from '@clerk/clerk-expo';
-import { useAuthStore, usePlacesStore, useTripStore } from '@teeko/api';
+import { MAX_CUSTOM_PLACES, useAuthStore, usePlacesStore, useTripStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
-import type { Locale } from '@teeko/shared';
+import type { Locale, Place } from '@teeko/shared';
 import { type BottomSheetHandle, Icon, ListRow, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
+import { EditPlaceSheet } from '../../../components/EditPlaceSheet';
 import { LanguageSheet } from '../../../components/LanguageSheet';
 import { PermissionDeniedError, pickProfileImage } from '../../../lib/pickProfileImage';
 
@@ -38,6 +39,13 @@ export default function AccountTab() {
   const loadSaved = usePlacesStore((s) => s.loadSaved);
   const removeSaved = usePlacesStore((s) => s.removeSaved);
   const languageSheetRef = useRef<BottomSheetHandle>(null);
+  const editPlaceSheetRef = useRef<BottomSheetHandle>(null);
+  // The place currently being edited, tracked so the shared sheet knows which
+  // one the Change/Remove actions apply to.
+  const [editingPlace, setEditingPlace] = useState<{
+    place: Place;
+    kind: 'home' | 'work' | 'custom';
+  } | null>(null);
 
   const onLogout = () => {
     Alert.alert(t('account.logoutConfirmTitle'), t('account.logoutConfirmBody'), [
@@ -117,6 +125,7 @@ export default function AccountTab() {
   const home = saved.find((p) => p.category === 'home');
   const work = saved.find((p) => p.category === 'work');
   const customPlaces = saved.filter((p) => p.category === 'saved');
+  const atCustomLimit = customPlaces.length >= MAX_CUSTOM_PLACES;
   const setDestination = useTripStore((s) => s.setDestination);
 
   const onShortcutPress = (
@@ -140,29 +149,30 @@ export default function AccountTab() {
     place: NonNullable<typeof home>,
     kind: 'home' | 'work' | 'custom',
   ) => {
-    Alert.alert(t('account.editPlaceTitle'), place.address, [
-      {
-        text: t('account.changeAddress'),
-        onPress: () =>
-          router.push({
-            pathname: '/(main)/search',
-            params:
-              kind === 'custom'
-                ? { intent: 'saveCustom', replaceId: place.id }
-                : { intent: kind === 'home' ? 'saveHome' : 'saveWork' },
-          }),
-      },
-      {
-        text: t('account.removePlace'),
-        style: 'destructive',
-        onPress: () => {
-          removeSaved(place.id).catch(() =>
-            Alert.alert(t('account.removePlaceFailed')),
-          );
-        },
-      },
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
+    setEditingPlace({ place, kind });
+    editPlaceSheetRef.current?.present();
+  };
+
+  const onEditChangeAddress = () => {
+    if (!editingPlace) return;
+    const { place, kind } = editingPlace;
+    editPlaceSheetRef.current?.dismiss();
+    router.push({
+      pathname: '/(main)/search',
+      params:
+        kind === 'custom'
+          ? { intent: 'saveCustom', replaceId: place.id }
+          : { intent: kind === 'home' ? 'saveHome' : 'saveWork' },
+    });
+  };
+
+  const onEditRemove = () => {
+    if (!editingPlace) return;
+    const { place } = editingPlace;
+    editPlaceSheetRef.current?.dismiss();
+    removeSaved(place.id).catch(() =>
+      Alert.alert(t('account.removePlaceFailed')),
+    );
   };
 
   return (
@@ -321,12 +331,15 @@ export default function AccountTab() {
               ) : undefined
             }
           />
-          {customPlaces.map((p) => (
+          {customPlaces.map((p, i) => (
             <ListRow
               key={p.id}
               leadingIcon="place"
               title={p.address}
               onPress={() => onCustomPress(p)}
+              // At the limit there's no "Add place" row after these, so the last
+              // custom place becomes the section's final row.
+              noDivider={atCustomLimit && i === customPlaces.length - 1}
               trailing={
                 <EditButton
                   label={t('account.editPlaceTitle')}
@@ -335,17 +348,19 @@ export default function AccountTab() {
               }
             />
           ))}
-          <ListRow
-            leadingIcon="add-location"
-            title={t('account.addPlace')}
-            onPress={() =>
-              router.push({
-                pathname: '/(main)/search',
-                params: { intent: 'saveCustom' },
-              })
-            }
-            noDivider
-          />
+          {!atCustomLimit ? (
+            <ListRow
+              leadingIcon="add-location"
+              title={t('account.addPlace')}
+              onPress={() =>
+                router.push({
+                  pathname: '/(main)/search',
+                  params: { intent: 'saveCustom' },
+                })
+              }
+              noDivider
+            />
+          ) : null}
         </Section>
 
         <Section title={t('account.preferences')}>
@@ -388,6 +403,14 @@ export default function AccountTab() {
           setLanguage(locale);
           languageSheetRef.current?.dismiss();
         }}
+      />
+
+      <EditPlaceSheet
+        ref={editPlaceSheetRef}
+        place={editingPlace?.place}
+        onChangeAddress={onEditChangeAddress}
+        onRemove={onEditRemove}
+        onCancel={() => editPlaceSheetRef.current?.dismiss()}
       />
     </ScreenContainer>
   );
