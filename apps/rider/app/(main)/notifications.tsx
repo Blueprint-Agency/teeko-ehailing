@@ -4,9 +4,9 @@ import { ActivityIndicator, FlatList, View } from 'react-native';
 import { useNotificationStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import { Icon, Pressable, ScreenContainer, Text } from '@teeko/ui';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 
-type Category = 'trip' | 'promo' | 'account' | 'payment' | 'system' | 'broadcast';
+type Category = 'trip' | 'promo' | 'account' | 'payment' | 'system' | 'broadcast' | 'support';
 
 const CATEGORY_ICON: Record<Category, React.ComponentProps<typeof Icon>['name']> = {
   trip: 'directions-car',
@@ -15,6 +15,7 @@ const CATEGORY_ICON: Record<Category, React.ComponentProps<typeof Icon>['name']>
   payment: 'credit-card',
   system: 'notifications',
   broadcast: 'campaign',
+  support: 'support-agent',
 };
 
 const CATEGORY_COLOR: Record<Category, string> = {
@@ -24,6 +25,7 @@ const CATEGORY_COLOR: Record<Category, string> = {
   payment: '#7C3AED',
   system: '#6B7280',
   broadcast: '#E11D2E',
+  support: '#0891B2',
 };
 
 function useTimeAgo() {
@@ -54,10 +56,19 @@ export default function NotificationsScreen() {
   const hasUnread = items.some((n) => !n.readAt && !localRead.has(n.id));
 
   const handlePress = useCallback(
-    (id: string, isRead: boolean) => {
+    (id: string, isRead: boolean, deeplink?: string | null) => {
       if (!isRead) void markRead(id);
+      // Follow the notification's deeplink (e.g. a support ticket → the support
+      // screen). Guarded so malformed/unknown links don't crash navigation.
+      if (deeplink) {
+        try {
+          router.push(deeplink as Href);
+        } catch {
+          // Unknown route — leave the user on the inbox.
+        }
+      }
     },
-    [markRead],
+    [markRead, router],
   );
 
   return (
@@ -121,7 +132,7 @@ export default function NotificationsScreen() {
             const iconName = CATEGORY_ICON[category] ?? CATEGORY_ICON.system;
             return (
               <Pressable
-                onPress={() => handlePress(item.id, isRead)}
+                onPress={() => handlePress(item.id, isRead, item.deeplink)}
                 haptic="light"
                 accessibilityRole="button"
                 className={
