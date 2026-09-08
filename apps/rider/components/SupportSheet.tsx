@@ -11,7 +11,6 @@ const CATEGORY_KEYS: SupportCategory[] = [
   'payment',
   'billing',
   'account',
-  'documents',
   'safety',
   'other',
 ];
@@ -57,7 +56,7 @@ export const SupportSheet = forwardRef<BottomSheetHandle, SupportSheetProps>(
     };
 
     return (
-      <BottomSheet ref={sheetRef} snapPoints={['90%']}>
+      <BottomSheet ref={sheetRef} snapPoints={['90%']} showCloseButton>
         <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View className="gap-3 pb-4">
             <Text weight="bold" className="text-xl">
@@ -121,17 +120,12 @@ export const SupportSheet = forwardRef<BottomSheetHandle, SupportSheetProps>(
               />
             </View>
 
-            <View className="mt-3 gap-2">
+            <View className="mt-3">
               <Button
                 label={t('support.submit')}
                 onPress={confirm}
                 disabled={!canSubmit}
                 loading={submitting}
-              />
-              <Button
-                label={t('common.cancel')}
-                variant="ghost"
-                onPress={() => sheetRef.current?.dismiss()}
               />
             </View>
           </View>

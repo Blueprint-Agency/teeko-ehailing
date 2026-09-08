@@ -125,7 +125,12 @@ export default function HomeTab() {
           </Pressable>
         </View>
 
-        <Text weight="bold" className="px-gutter pb-5 pt-4 text-3xl leading-tight">
+        <Text
+          weight="bold"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          className="px-gutter pb-3 pt-2 text-2xl leading-tight"
+        >
           {t('home.tagline')}
         </Text>
 
