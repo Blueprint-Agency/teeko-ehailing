@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Phone, Check } from 'lucide-react-native';
@@ -11,7 +11,7 @@ import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import { api } from '../../lib/api';
+import { api, resolveMediaUrl } from '../../lib/api';
 import { useDriverStore } from '../../store/useDriverStore';
 
 const PHASE_KEYS = ['navigating', 'arrived', 'inprogress', 'completed'] as const;
@@ -34,6 +34,17 @@ export default function TripScreen() {
   const { activeTripId, setActiveTripId, activeTrip, setActiveTrip } = useDriverStore();
 
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // The server sends a stored path (or null); it needs the API origin glued on.
+  const [riderPhotoFailed, setRiderPhotoFailed] = useState(false);
+  const riderPhotoSrc = resolveMediaUrl(activeTrip?.riderPhotoUrl);
+  const riderPhoto = riderPhotoFailed ? undefined : riderPhotoSrc;
+
+  // Reset the failure flag when the photo changes, so a later trip's avatar is
+  // not suppressed by a broken URL from the previous one.
+  useEffect(() => {
+    setRiderPhotoFailed(false);
+  }, [riderPhotoSrc]);
 
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
@@ -254,7 +265,17 @@ export default function TripScreen() {
       <View style={styles.card}>
         <View style={styles.riderInfo}>
           <View style={styles.riderAvatar}>
-            <Text style={styles.riderAvatarText}>{activeTrip?.riderName?.[0] ?? '?'}</Text>
+            {riderPhoto ? (
+              <Image
+                source={{ uri: riderPhoto }}
+                style={styles.riderAvatarImage}
+                // A dead/expired URL would otherwise leave an empty circle —
+                // fall back to the initial the same way a photo-less rider does.
+                onError={() => setRiderPhotoFailed(true)}
+              />
+            ) : (
+              <Text style={styles.riderAvatarText}>{activeTrip?.riderName?.[0] ?? '?'}</Text>
+            )}
           </View>
           <View style={styles.riderDetails}>
             <Text style={styles.riderName}>{activeTrip?.riderName ?? '—'}</Text>
@@ -369,6 +390,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   riderAvatarText: { color: colors.accent, fontWeight: '800', fontSize: 18 },
+  // Inset by the 2px accent ring so the photo sits inside it rather than under it.
+  riderAvatarImage: { width: 40, height: 40, borderRadius: 20 },
   riderDetails: { flex: 1, marginLeft: 12 },
   riderName: { color: colors.text, fontSize: 16, fontWeight: '700' },
   riderMeta: { color: colors.textSec, fontSize: 13, marginTop: 2 },

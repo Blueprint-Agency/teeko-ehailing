@@ -11,7 +11,16 @@
 // rider trips routes ship. Phase E's NotImplementedScreen prevents UI from
 // reaching these in the meantime.
 
-import type { Driver, Fare, Place, RideCategory, Trip, TripReceipt } from '@teeko/shared';
+import type {
+  Driver,
+  Fare,
+  Page,
+  Place,
+  RideCategory,
+  Trip,
+  TripHistoryQuery,
+  TripReceipt,
+} from '@teeko/shared';
 
 import { api } from './_fetch';
 
@@ -58,8 +67,19 @@ export async function cancel(tripId: string, reason?: string): Promise<{ cancell
   );
 }
 
-export async function history(): Promise<Trip[]> {
-  return api<Trip[]>('/api/v1/rider/trips');
+/**
+ * Paged, filterable trip history. Filtering is applied server-side so that
+ * paging stays consistent — a client-side filter over one page would hide rows
+ * that belong on it and mis-report whether more exist.
+ */
+export async function history(query: TripHistoryQuery = {}): Promise<Page<Trip>> {
+  const qs = new URLSearchParams();
+  if (query.status) qs.set('status', query.status);
+  if (query.days) qs.set('days', String(query.days));
+  if (query.limit) qs.set('limit', String(query.limit));
+  if (query.offset) qs.set('offset', String(query.offset));
+  const suffix = qs.toString() ? `?${qs}` : '';
+  return api<Page<Trip>>(`/api/v1/rider/trips${suffix}`);
 }
 
 export async function detail(tripId: string): Promise<TripReceipt> {

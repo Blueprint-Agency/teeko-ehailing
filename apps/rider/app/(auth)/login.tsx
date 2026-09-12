@@ -8,6 +8,7 @@ import { useSignIn } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 import { GoogleButton } from '../../components/GoogleButton';
+import { PasswordToggle } from '../../components/PasswordToggle';
 import { useGoogleAuth } from '../../lib/useGoogleAuth';
 
 export default function LoginScreen() {
@@ -19,6 +20,7 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [emailError, setEmailError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
@@ -142,7 +144,7 @@ export default function LoginScreen() {
                   <Input
                     label={t('auth.passwordLabel')}
                     placeholder="••••••••"
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoComplete="password"
                     value={password}
@@ -151,8 +153,25 @@ export default function LoginScreen() {
                       if (passwordError) setPasswordError(undefined);
                     }}
                     error={passwordError}
+                    trailingAdornment={
+                      <PasswordToggle
+                        visible={showPassword}
+                        onToggle={() => setShowPassword((v) => !v)}
+                      />
+                    }
                   />
                 </View>
+
+                <Pressable
+                  className="mt-3 self-end"
+                  onPress={() => router.push({ pathname: '/(auth)/forgot-password', params: { email: email.trim() } })}
+                  haptic="light"
+                  accessibilityRole="link"
+                >
+                  <Text weight="medium" tone="brand" className="text-sm">
+                    {t('auth.forgotPasswordLink')}
+                  </Text>
+                </Pressable>
 
                 <View className="mt-6">
                   <Button

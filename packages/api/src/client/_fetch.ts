@@ -41,18 +41,33 @@ function baseUrl(): string {
   return url;
 }
 
+/**
+ * Resolve a server-supplied media path (avatars, documents) to something the
+ * <Image> component can load. Storage returns a relative `/uploads/...` path
+ * for the local adapter and an absolute URL once GCS/R2 is wired, so only the
+ * relative form needs the API origin glued on.
+ */
+export function resolveMediaUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${baseUrl()}${path.startsWith('/') ? path : `/${path}`}`;
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await tokenGetter();
+  // FormData must set its own multipart Content-Type — it carries the boundary,
+  // and forcing application/json here makes the server reject the upload.
+  const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+    ...(init.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...((init.headers as Record<string, string>) ?? {}),
   };
   const fullUrl = `${baseUrl()}${path}`;
   console.log('[API] -->', init.method ?? 'GET', fullUrl);
   console.log('[API] headers:', JSON.stringify(headers, null, 2));
-  if (init.body) console.log('[API] body:', init.body);
+  if (init.body) console.log('[API] body:', isFormData ? '[multipart form-data]' : init.body);
   let res: Response;
   try {
     res = await fetch(fullUrl, { ...init, headers });

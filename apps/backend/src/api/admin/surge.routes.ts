@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { asc, eq, sql } from 'drizzle-orm';
 import { db } from '../../config/db';
-import { surgeZones } from '../../db/schema/pricing-incentives';
+import { surgeConfig, surgeZones } from '../../db/schema/pricing-incentives';
 import { recordAuditSafe } from '../../modules/admin/audit';
 
 type LatLng = { lat: number; lng: number };
@@ -87,8 +87,56 @@ function serialize(row: ZoneRow, polygon: LatLng[] = []) {
   };
 }
 
+// The general/base surge multiplier lives in the `surge_config` singleton
+// (id = 1). `lookupSurgeMultiplier` in modules/pricing/service.ts falls back to
+// it for any pickup a surge zone doesn't cover — so zones override this rate.
+const SURGE_CONFIG_ID = 1;
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 export async function routes(app: FastifyInstance) {
+  // ── GET /surge/config ──────────────────────────────────────────────────────
+  // The general KL surge rate — the base multiplier applied wherever no active
+  // zone covers the pickup. Zones (below) override it.
+  app.get('/config', async () => {
+    const row = await db.query.surgeConfig.findFirst({ where: eq(surgeConfig.id, SURGE_CONFIG_ID) });
+    return {
+      multiplier: row ? parseFloat(row.multiplier) : MIN_MULTIPLIER,
+      updatedAt: row?.updatedAt?.toISOString() ?? null,
+    };
+  });
+
+  // ── PUT /surge/config ──────────────────────────────────────────────────────
+  // Set the general KL surge multiplier. 1.0× means no general surge (zones can
+  // still surge their own areas).
+  app.put<{ Body: { multiplier?: number } }>('/config', async (req, reply) => {
+    const validated = validateMultiplier(req.body?.multiplier);
+    if ('error' in validated) return reply.code(400).send(validated);
+
+    const value = validated.multiplier.toFixed(2);
+    const [row] = await db
+      .insert(surgeConfig)
+      .values({ id: SURGE_CONFIG_ID, multiplier: value, updatedAt: new Date() })
+      .onConflictDoUpdate({
+        target: surgeConfig.id,
+        set: { multiplier: value, updatedAt: new Date() },
+      })
+      .returning();
+
+    await recordAuditSafe(req, {
+      action: 'update_surge',
+      targetType: 'surge_config',
+      targetId: String(SURGE_CONFIG_ID),
+      targetName: 'General KL surge',
+      details: `General KL surge multiplier set to ${validated.multiplier}×`,
+      payload: { multiplier: validated.multiplier },
+    });
+
+    return {
+      ok: true,
+      config: { multiplier: parseFloat(row!.multiplier), updatedAt: row!.updatedAt.toISOString() },
+    };
+  });
+
   // ── GET /surge/zones ───────────────────────────────────────────────────────
   // List all surge zones with their multiplier, active state and render colour.
   app.get('/zones', async () => {

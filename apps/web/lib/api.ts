@@ -64,11 +64,39 @@ export type DriverMe = {
     email: string | null
     emailVerified: boolean
     fullName: string | null
+    /**
+     * E.164 '+60…'. Null on a legacy account or an interrupted sign-up, which
+     * routes to the blocking add-phone gate — riders dial this number mid-trip.
+     */
+    phone: string | null
+    /** Always 'MY' for a driver once set. */
+    phoneCountry: string | null
+    phoneChangedAt: string | null
     status: 'active' | 'suspended' | 'deactivated'
     pdpaConsentAt: string | null
   }
   driverProfile: { approvalStatus: string }
   application: { state: string; rejectionReason: string | null; submittedAt: string | null } | null
+}
+
+export type PhoneChangeRequest = {
+  id: string
+  requestedValue: string
+  requestedCountry: string | null
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled'
+  /** Raised inside the 30-day window — a flag for the reviewer, not a refusal. */
+  isEarly: boolean
+  reason: string | null
+  reviewNote: string | null
+  createdAt: string
+}
+
+export type PhoneChangeState = {
+  pending: PhoneChangeRequest | null
+  /** ISO instant the field unlocks; null when it is changeable right now. */
+  nextAllowedAt: string | null
+  canRequestEarly: boolean
+  lastDecision: PhoneChangeRequest | null
 }
 
 export const api = {
@@ -80,6 +108,26 @@ export const api = {
   // PDPA 2010 consent, recorded on our side (not in Clerk metadata) so the
   // consent trail stays with us for APAD/JPJ. First consent wins.
   acceptConsent: () => postJson<{ ok: boolean }>('/auth/consent'),
+
+  /**
+   * Registration capture and the legacy-NULL completion gate. No OTP — there
+   * is no existing number to protect — and the server refuses to overwrite an
+   * existing number, so this is not a route around the review queue.
+   * `countryCode` is always 'MY': the field is a fixed '+60' prefix.
+   */
+  /**
+   * Read-only view of the driver's phone-change state. The portal never
+   * changes a number — that happens in the app, where the OTP step lives — but
+   * it shows the same pending / early / cooldown state so the two agree.
+   */
+  getPhoneChangeState: () => get<PhoneChangeState>('/auth/phone-change-state'),
+
+  setInitialPhone: (nationalNumber: string) =>
+    postJson<{ ok: boolean; phone: string; phoneCountry: string }>(
+      '/auth/phone-initial',
+      undefined,
+      { countryCode: 'MY', nationalNumber },
+    ),
 
   sendOtp: () => postJson<{ ok: boolean }>('/auth/send-otp'),
 

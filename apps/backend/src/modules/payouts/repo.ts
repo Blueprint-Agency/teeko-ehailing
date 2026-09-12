@@ -2,11 +2,12 @@
 // Drizzle queries for the payouts domain: Stripe Connect accounts, driver
 // payouts, and reads over the driver-earnings mirror. Private to the module.
 
-import { and, desc, eq, gte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 
 import { db } from '../../config/db';
 import {
   connectAccounts,
+  driverBankAccounts,
   driverEarnings,
   payouts,
 } from '../../db/schema/payments';
@@ -25,6 +26,20 @@ export type PayoutRow = typeof payouts.$inferSelect;
 export async function getConnectAccount(driverId: string): Promise<ConnectAccountRow | undefined> {
   return db.query.connectAccounts.findFirst({
     where: eq(connectAccounts.driverId, driverId),
+  });
+}
+
+/**
+ * Contact details Stripe pre-fills the hosted onboarding form with. Both
+ * columns are nullable — a driver who signed up by phone has neither, and
+ * Stripe simply collects them in the flow instead.
+ */
+export async function getDriverContact(
+  driverId: string,
+): Promise<{ email: string | null; fullName: string | null } | undefined> {
+  return db.query.users.findFirst({
+    where: eq(users.id, driverId),
+    columns: { email: true, fullName: true },
   });
 }
 
@@ -55,6 +70,15 @@ export async function updateConnectByStripeId(
     .where(eq(connectAccounts.stripeAccountId, stripeAccountId));
 }
 
+// ---------- bank accounts ----------
+
+/** The account finance transfers to, or undefined until the driver adds one. */
+export async function getBankAccount(driverId: string) {
+  return db.query.driverBankAccounts.findFirst({
+    where: eq(driverBankAccounts.driverId, driverId),
+  });
+}
+
 // ---------- payouts ----------
 
 export async function insertPayout(data: {
@@ -62,6 +86,7 @@ export async function insertPayout(data: {
   stripePayoutId: string | null;
   amountCents: number;
   method: PayoutRow['method'];
+  arrivalDate?: Date | null;
 }): Promise<PayoutRow> {
   const [row] = await db
     .insert(payouts)
@@ -110,10 +135,15 @@ export type EarningsSummary = {
 export async function earningsSummary(
   driverId: string,
   since?: Date,
+  /** Exclusive upper bound. Needed for prior-period comparisons, which are a
+   *  closed window rather than "everything since". */
+  until?: Date,
 ): Promise<EarningsSummary> {
-  const where = since
-    ? and(eq(driverEarnings.driverId, driverId), gte(driverEarnings.createdAt, since))
-    : eq(driverEarnings.driverId, driverId);
+  const where = and(
+    eq(driverEarnings.driverId, driverId),
+    ...(since ? [gte(driverEarnings.createdAt, since)] : []),
+    ...(until ? [lt(driverEarnings.createdAt, until)] : []),
+  );
   const rows = await db
     .select({
       tripCount: sql<number>`count(*)`,
@@ -132,7 +162,21 @@ export async function earningsSummary(
   };
 }
 
-export async function recentEarnings(driverId: string, limit = 20) {
+/**
+ * Net earnings no payout has covered yet — what the driver's next bank
+ * transfer will carry. Keyed on `payoutId`, not `transferred`: the latter
+ * records the Stripe Connect transfer made at charge time, which says nothing
+ * about whether the money has reached the driver's own bank.
+ */
+export async function unpaidNetCents(driverId: string): Promise<number> {
+  const rows = await db
+    .select({ netCents: sql<number>`coalesce(sum(${driverEarnings.netCents}), 0)` })
+    .from(driverEarnings)
+    .where(and(eq(driverEarnings.driverId, driverId), isNull(driverEarnings.payoutId)));
+  return Number(rows[0]?.netCents ?? 0);
+}
+
+export async function recentEarnings(driverId: string, since?: Date, limit = 100) {
   return db
     .select({
       tripId: driverEarnings.tripId,
@@ -140,6 +184,10 @@ export async function recentEarnings(driverId: string, limit = 20) {
       commissionCents: driverEarnings.commissionCents,
       netCents: driverEarnings.netCents,
       transferred: driverEarnings.transferred,
+      // Whether a payout has actually carried this earning to the driver's
+      // bank. `transferred` is *not* the same thing — it records the Connect
+      // transfer made at charge time, which says nothing about the bank.
+      paidOut: sql<boolean>`${driverEarnings.payoutId} is not null`,
       createdAt: driverEarnings.createdAt,
       // Trip context for the driver's history list. Left-joined so an earning
       // whose trip row was purged still shows its amount rather than vanishing.
@@ -154,32 +202,46 @@ export async function recentEarnings(driverId: string, limit = 20) {
     .leftJoin(trips, eq(trips.id, driverEarnings.tripId))
     .leftJoin(users, eq(users.id, trips.riderId))
     .leftJoin(fareQuotes, eq(fareQuotes.id, trips.fareQuoteId))
-    .where(eq(driverEarnings.driverId, driverId))
+    .where(
+      and(
+        eq(driverEarnings.driverId, driverId),
+        ...(since ? [gte(driverEarnings.createdAt, since)] : []),
+      ),
+    )
     .orderBy(desc(driverEarnings.createdAt))
     .limit(limit);
 }
 
 /**
- * Net earnings bucketed by Malaysian calendar day, for the dashboard chart.
- * Only days with earnings come back — the service pads the gaps.
+ * Net earnings grouped into fixed-width time buckets, for the dashboard chart.
+ * `hour` backs the day view (the service folds hours into blocks); `day` backs
+ * the week and month views. Only buckets with earnings come back — the service
+ * pads the gaps so the chart always renders a full set of columns.
  */
-export async function dailyEarnings(
+export async function bucketedEarnings(
   driverId: string,
   since: Date,
-): Promise<Array<{ day: string; netCents: number; tripCount: number }>> {
-  const day = sql<string>`to_char((${driverEarnings.createdAt} AT TIME ZONE ${MYT})::date, 'YYYY-MM-DD')`;
+  bucket: 'hour' | 'day',
+): Promise<Array<{ key: string; netCents: number; tripCount: number }>> {
+  const local = sql`(${driverEarnings.createdAt} AT TIME ZONE ${MYT})`;
+  // 'YYYY-MM-DDTHH' for hours, 'YYYY-MM-DD' for days — both sort lexically and
+  // match the keys the service derives from the same Malaysian-time boundaries.
+  const key =
+    bucket === 'hour'
+      ? sql<string>`to_char(date_trunc('hour', ${local}), 'YYYY-MM-DD"T"HH24')`
+      : sql<string>`to_char(${local}::date, 'YYYY-MM-DD')`;
   const rows = await db
     .select({
-      day,
+      key,
       netCents: sql<number>`coalesce(sum(${driverEarnings.netCents}), 0)`,
       tripCount: sql<number>`count(*)`,
     })
     .from(driverEarnings)
     .where(and(eq(driverEarnings.driverId, driverId), gte(driverEarnings.createdAt, since)))
-    .groupBy(day)
-    .orderBy(day);
+    .groupBy(key)
+    .orderBy(key);
   return rows.map((r) => ({
-    day: r.day,
+    key: r.key,
     netCents: Number(r.netCents),
     tripCount: Number(r.tripCount),
   }));

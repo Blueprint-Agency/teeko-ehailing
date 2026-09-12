@@ -85,7 +85,14 @@
       "passwordHint": "Min. 8 characters",
       "pdpaConsent": "I consent to the collection and use of my personal data in accordance with Malaysia's PDPA 2010 for driver onboarding and regulatory compliance.",
       "hasAccount": "Already registered?",
-      "loginLink": "Log in"
+      "loginLink": "Log in",
+      "phoneHint": "Malaysian mobile numbers only",
+      "phoneCountryNotAllowed": "Drivers must register a Malaysian (+60) number",
+      "phoneInvalid": "Enter a Malaysian mobile number",
+      "phoneSaveFailed": "Could not save your number. Please try again.",
+      "addPhoneTitle": "Add your phone number",
+      "addPhoneBody": "We need a number so riders can reach you during a trip, and it forms part of your APAD operator record.",
+      "addPhoneCta": "Save and continue"
     }
   },
   "onboarding": {
@@ -192,7 +199,10 @@
       "ms": "Bahasa Malaysia",
       "zh": "Mandarin (Simplified)",
       "ta": "Tamil"
-    }
+    },
+    "phonePending": "“{{value}}” is waiting for Teeko to review.",
+    "phoneEarly": "Flagged as an early change — an admin will review it.",
+    "phoneNextChange": "You can change this again on {{date}}."
   },
   "documents": {
     "upload": "Upload document",

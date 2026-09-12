@@ -7,14 +7,16 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { users } from './identity';
-import { trips } from './trips';
+import { disputeRaiserRole, trips } from './trips';
 
 // NOTE: the `disputes` table + dispute_category / dispute_status enums live in
 // ./trips.ts (the rider-raised disputes model). This file only owns the general
 // `feedback` table, which is independent of disputes.
 
-// Who raised the feedback.
-export const disputeRaiserRole = pgEnum('dispute_raiser_role', ['rider', 'driver']);
+// Who raised the feedback. Declared in ./trips (the `disputes` table needs it
+// too, and that file can't import this one without a cycle) — re-exported here
+// so existing imports keep working.
+export { disputeRaiserRole };
 
 export const feedbackCategory = pgEnum('feedback_category', [
   'app',

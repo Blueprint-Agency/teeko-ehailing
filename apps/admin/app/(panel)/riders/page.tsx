@@ -65,7 +65,7 @@ export default function RidersPage() {
     { field: 'city', headerName: 'City', width: 120 },
     { field: 'status', headerName: 'Status', width: 100, renderCell: ({ value }) => <StatusChip status={value} /> },
     { field: 'trips', headerName: 'Trips', width: 80, type: 'number' },
-    { field: 'totalSpent', headerName: 'Total Spent', width: 110, type: 'number', valueFormatter: ({ value }) => (value == null ? '—' : `RM ${value}`) },
+    { field: 'totalSpent', headerName: 'Total Spent', width: 110, type: 'number', valueFormatter: (value) => (value == null ? '—' : `RM ${value}`) },
     { field: 'escalation', headerName: 'Escalation Lvl', width: 120, type: 'number' },
     { field: 'rating', headerName: 'Rating', width: 80, type: 'number' },
     { field: 'joinDate', headerName: 'Joined', width: 110 },

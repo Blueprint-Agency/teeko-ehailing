@@ -7,6 +7,8 @@ export interface TripOffer {
   destination: { lat: number; lng: number; address: string };
   fareCents: number;
   riderName: string;
+  /** Raw server value — pass through `resolveMediaUrl` before rendering. Null when the rider has no photo. */
+  riderPhotoUrl: string | null;
   /** Countdown seconds — matches backend OFFER_TTL_SEC (15s) */
   countdownSeconds: number;
 }

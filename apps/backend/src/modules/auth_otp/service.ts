@@ -6,6 +6,7 @@ import type { ClerkClient } from '@clerk/backend';
 import { sendEmail, EmailDeliveryError } from '../../external/gmail-smtp';
 
 import { verificationEmail } from './emails';
+import { getPasswordCooldown, recordPasswordChanged } from './password-policy';
 import {
   bumpAttempts,
   findActiveOtp,
@@ -13,7 +14,10 @@ import {
   insertOtp,
   markConsumed,
   markEmailVerified,
+  type OtpPurpose,
 } from './repo';
+
+export type { OtpPurpose };
 
 const CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 1 send per 60s
@@ -30,6 +34,7 @@ function hashCode(code: string): string {
 export type SendOtpResult =
   | { status: 'sent' }
   | { status: 'rate_limited'; retryInSeconds: number }
+  | { status: 'password_cooldown'; nextAllowedAt: string; retryInSeconds: number }
   | { status: 'no_email' }
   | { status: 'delivery_failed'; providerMessage: string; providerStatusCode: number };
 
@@ -37,8 +42,29 @@ export async function sendVerificationOtp(input: {
   userId: string;
   email: string | null;
   fullName: string | null;
+  /**
+   * What the code is for, and — since codes became purpose-scoped — what it
+   * can be spent on. `password_change` is additionally gated by the
+   * one-per-week cooldown, so the user reads "not until Friday" instead of
+   * typing a code that was never going to be spendable.
+   */
+  purpose?: OtpPurpose;
 }): Promise<SendOtpResult> {
+  const purpose: OtpPurpose = input.purpose ?? 'email_verification';
   if (!input.email) return { status: 'no_email' };
+
+  // Refuse before sending, so the user reads "not until Friday" instead of
+  // typing a six-digit code that was never going to be spendable.
+  if (purpose === 'password_change') {
+    const cooldown = await getPasswordCooldown(input.userId);
+    if (cooldown.blocked) {
+      return {
+        status: 'password_cooldown',
+        nextAllowedAt: cooldown.nextAllowedAt!,
+        retryInSeconds: cooldown.retryInSeconds,
+      };
+    }
+  }
 
   const latest = await findLatestOtp(input.userId);
   if (latest) {
@@ -60,9 +86,10 @@ export async function sendVerificationOtp(input: {
     email: input.email,
     codeHash,
     expiresAt,
+    purpose,
   });
 
-  const { subject, html } = verificationEmail({ name: input.fullName, code });
+  const { subject, html } = verificationEmail({ name: input.fullName, code, purpose });
 
   try {
     await sendEmail({ to: input.email, subject, html });
@@ -97,8 +124,19 @@ export async function verifyOtp(input: {
   // Which Clerk instance the user lives in. Riders and drivers are separate
   // instances, so the default (rider) would look drivers up in the wrong one.
   clerkClient?: ClerkClient;
+  /**
+   * Which door the code is being spent on. A code minted for a different
+   * purpose is not a wrong code — it is simply not a candidate, so the caller
+   * gets `no_active_code` and the other code survives for its own screen.
+   */
+  purpose?: OtpPurpose;
+  // Runs after the code matches but *before* it is consumed. If it throws, the
+  // code stays active so the caller can retry without a resend — used by the
+  // change-password flow, where Clerk can still reject the new password.
+  onVerified?: () => Promise<void>;
 }): Promise<VerifyOtpResult> {
-  const active = await findActiveOtp(input.userId);
+  const purpose: OtpPurpose = input.purpose ?? 'email_verification';
+  const active = await findActiveOtp(input.userId, purpose);
   if (!active) return { status: 'no_active_code' };
 
   if (active.expiresAt.getTime() < Date.now()) {
@@ -116,8 +154,19 @@ export async function verifyOtp(input: {
     return { status: 'incorrect' };
   }
 
+  if (input.onVerified) {
+    // Deliberately not wrapped: a failure here must propagate to the caller
+    // with the code still unconsumed.
+    await input.onVerified();
+  }
+
   await markConsumed(active.id);
-  await markEmailVerified(input.userId);
+
+  // Only a code that was actually sent to prove the address counts as proving
+  // it. A `phone_change` code is spent on a phone number and says nothing
+  // about the email, so it must not silently flip `email_verified`.
+  if (purpose !== 'phone_change') await markEmailVerified(input.userId);
+  if (purpose === 'phone_change') return { status: 'verified' };
 
   // Best-effort: also mark Clerk's email verified so any other Clerk-side
   // gates pass. Failure here doesn't block our own verified status — our
@@ -137,4 +186,95 @@ export async function verifyOtp(input: {
   }
 
   return { status: 'verified' };
+}
+
+export type ChangePasswordResult =
+  | { status: 'ok' }
+  | Exclude<VerifyOtpResult, { status: 'verified' }>
+  | { status: 'cooldown'; nextAllowedAt: string; retryInSeconds: number }
+  | { status: 'password_rejected'; code: string; message: string };
+
+/** Clerk backend errors carry `errors: [{ code, message, longMessage }]`. */
+function clerkErrorDetail(err: unknown): { code: string; message: string } | null {
+  const errors = (err as { errors?: Array<{ code?: string; message?: string; longMessage?: string }> })
+    .errors;
+  const first = Array.isArray(errors) ? errors[0] : undefined;
+  if (!first?.code) return null;
+  return { code: first.code, message: first.longMessage ?? first.message ?? 'Password rejected' };
+}
+
+/**
+ * Change the account password after proving identity with an email OTP.
+ *
+ * The password is written with the Clerk **admin** API, which — unlike the
+ * client-side `user.updatePassword` — does not demand the current password.
+ * The OTP is what proves identity here; requiring the old password too would
+ * defeat the point of the screen. The session token still authenticates the
+ * request, so an OTP alone is never sufficient.
+ */
+export async function changePasswordWithOtp(input: {
+  userId: string;
+  clerkUserId: string;
+  code: string;
+  newPassword: string;
+  clerkClient?: ClerkClient;
+}): Promise<ChangePasswordResult> {
+  const clerkClient = input.clerkClient ?? clerk;
+  const rejected: Array<{ code: string; message: string }> = [];
+
+  // One change per week. Checked again here even though /send-otp already
+  // refused to issue a code — a code minted just before the previous change
+  // landed would otherwise still be spendable.
+  const cooldown = await getPasswordCooldown(input.userId);
+  if (cooldown.blocked) {
+    return {
+      status: 'cooldown',
+      nextAllowedAt: cooldown.nextAllowedAt!,
+      retryInSeconds: cooldown.retryInSeconds,
+    };
+  }
+
+  let result: VerifyOtpResult;
+  try {
+    result = await verifyOtp({
+      userId: input.userId,
+      clerkUserId: input.clerkUserId,
+      code: input.code,
+      clerkClient,
+      purpose: 'password_change',
+      onVerified: async () => {
+        try {
+          await clerkClient.users.updateUser(input.clerkUserId, {
+            password: input.newPassword,
+            // Deliberately NOT signing out other sessions: the admin API has no
+            // notion of "current", so it would sign the user out of the very
+            // device they are changing the password on.
+            signOutOfOtherSessions: false,
+          });
+        } catch (err) {
+          const detail = clerkErrorDetail(err);
+          if (detail) {
+            // A weak/pwned password is the user's problem to fix, not an outage.
+            // Record it and rethrow so the OTP survives for the retry.
+            rejected.push(detail);
+          } else {
+            logger.error({ err, clerkUserId: input.clerkUserId }, 'clerk password update failed');
+          }
+          throw err;
+        }
+      },
+    });
+  } catch (err) {
+    const detail = rejected[0];
+    if (!detail) throw err;
+    return { status: 'password_rejected', code: detail.code, message: detail.message };
+  }
+
+  if (result.status === 'verified') {
+    // Starts the 7-day clock. Deliberately after Clerk accepted the password —
+    // a rejected weak password must not cost the driver a week.
+    await recordPasswordChanged(input.userId);
+    return { status: 'ok' };
+  }
+  return result;
 }

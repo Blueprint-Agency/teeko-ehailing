@@ -10,7 +10,9 @@ const CreateBody = z.object({
   description: z.string().min(1).max(2000),
 });
 
-const ListQuery = z.object({ tripId: z.string().min(1) });
+// tripId is optional: with it we scope to one trip, without it we return every
+// dispute the rider has raised (the "My reports" screen).
+const ListQuery = z.object({ tripId: z.string().min(1).optional() });
 
 export async function routes(app: FastifyInstance) {
   // POST /api/v1/rider/disputes — rider raises a dispute on a finished trip.
@@ -33,7 +35,9 @@ export async function routes(app: FastifyInstance) {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
     const { tripId } = ListQuery.parse(req.query);
     try {
-      return await disputesService.listForTrip(req.user.id, tripId);
+      return tripId
+        ? await disputesService.listForTrip(req.user.id, tripId)
+        : await disputesService.listForRider(req.user.id);
     } catch (err) {
       if (err instanceof DomainError) {
         return reply.code(err.statusCode).send({ ok: false, error: { code: err.code, message: err.message } });

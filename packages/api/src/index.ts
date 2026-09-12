@@ -12,18 +12,35 @@ export {
   driversApi,
   routesApi,
   disputesApi,
+  supportApi,
+  notificationsApi,
   api,
   ApiError,
+  resolveMediaUrl,
   setApiTokenGetter,
   setApiUnauthorizedHandler,
 } from './client';
 
+export type {
+  PhoneInput as PhoneInputValue,
+  PhoneWritten,
+  PhoneChangeRequest,
+  PhoneChangeState,
+} from './client/auth';
+
 export { useAuthStore, type AuthState } from './stores/auth-store';
 export { useLocationStore, type LocationState } from './stores/location-store';
-export { usePlacesStore, type PlacesState } from './stores/places-store';
+export {
+  usePlacesStore,
+  type PlacesState,
+  MAX_CUSTOM_PLACES,
+  PlacesLimitError,
+} from './stores/places-store';
 export { usePaymentsStore, type PaymentsState } from './stores/payments-store';
 export { useTripStore, type TripState } from './stores/trip-store';
 export { useDisputeStore, type DisputeState } from './stores/dispute-store';
+export { useSupportStore, type SupportState } from './stores/support-store';
+export { useNotificationStore, type NotificationState } from './stores/notification-store';
 export { useUIStore, type UIState, type Toast } from './stores/ui-store';
 
 export const API_PACKAGE_VERSION = '0.2.0';

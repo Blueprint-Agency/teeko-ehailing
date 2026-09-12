@@ -4,6 +4,9 @@ import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@clerk/nextjs'
 
+import { AddPhoneGate } from '@/components/driver/AddPhoneGate'
+import { useWebAuthStore } from '@/stores/authStore'
+
 /**
  * Client-side route guard for the driver portal.
  *
@@ -20,10 +23,18 @@ import { useAuth } from '@clerk/nextjs'
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth()
   const router = useRouter()
+  const { needsPhone, isAuthenticated, hydrating, hydrate } = useWebAuthStore()
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) router.replace('/auth/login')
   }, [isLoaded, isSignedIn, router])
+
+  // The store is the only place that knows whether our row has a phone, and a
+  // deep link straight to /dashboard may never have passed through a page that
+  // hydrated it.
+  useEffect(() => {
+    if (isLoaded && isSignedIn && !isAuthenticated && !hydrating) void hydrate()
+  }, [isLoaded, isSignedIn, isAuthenticated, hydrating, hydrate])
 
   if (!isLoaded || !isSignedIn) {
     return (
@@ -32,6 +43,12 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
       </div>
     )
   }
+
+  // R6 gate. Rendered in place of the page rather than redirected to, so there
+  // is no URL that skips it — a driver with no number cannot reach the
+  // dashboard. `needsPhone` only becomes true once the store has actually read
+  // our row, so this never flashes while hydrating.
+  if (needsPhone) return <AddPhoneGate />
 
   return <>{children}</>
 }

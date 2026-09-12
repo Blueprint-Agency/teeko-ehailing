@@ -6,7 +6,7 @@ import {
 import { APIProvider, Map, Marker } from '@vis.gl/react-google-maps';
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminApi, LiveTrip } from '@/lib/api';
+import { adminApi, LiveTrip, MetricsOverview } from '@/lib/api';
 
 const KL_CENTER = { lat: 3.1478, lng: 101.6953 };
 const POLL_MS = 10000;
@@ -32,13 +32,19 @@ const markerIcon = (color: string, faded: boolean) =>
 export default function LiveTripMapPage() {
   const router = useRouter();
   const [pins, setPins] = useState<LiveTrip[]>([]);
+  const [stats, setStats] = useState<Pick<MetricsOverview, 'activeTrips' | 'driversOnline' | 'totalRiders'> | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
     try {
-      setPins(await adminApi.getLiveTrips());
+      const [liveTrips, overview] = await Promise.all([
+        adminApi.getLiveTrips(),
+        adminApi.getMetricsOverview(),
+      ]);
+      setPins(liveTrips);
+      setStats({ activeTrips: overview.activeTrips, driversOnline: overview.driversOnline, totalRiders: overview.totalRiders });
       setError('');
       setTick((t) => t + 1);
     } catch (e) {
@@ -56,13 +62,32 @@ export default function LiveTripMapPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
         <Typography variant="h6" fontWeight={700}>Live Trip Map</Typography>
         <Stack direction="row" spacing={1} alignItems="center">
           <Chip label={`${pins.length} active trips`} color="success" size="small" />
           <Chip label={`Refreshed ${tick}×`} size="small" variant="outlined" />
         </Stack>
       </Box>
+
+      {/* Live stats row */}
+      <Stack direction="row" spacing={1.5} mb={2} flexWrap="wrap">
+        <Chip
+          label={`${stats?.activeTrips ?? '—'} Active Trips`}
+          size="small"
+          sx={{ bgcolor: 'success.light', color: 'success.contrastText', fontWeight: 600 }}
+        />
+        <Chip
+          label={`${stats?.totalRiders ?? '—'} Online Riders`}
+          size="small"
+          sx={{ bgcolor: 'info.light', color: 'info.contrastText', fontWeight: 600 }}
+        />
+        <Chip
+          label={`${stats?.driversOnline ?? '—'} Online Drivers`}
+          size="small"
+          sx={{ bgcolor: 'warning.light', color: 'warning.contrastText', fontWeight: 600 }}
+        />
+      </Stack>
 
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
       {!MAPS_API_KEY && (

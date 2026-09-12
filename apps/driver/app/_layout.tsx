@@ -117,6 +117,7 @@ function SocketBridge() {
         destination: { lat: number; lng: number; address: string };
         fare_cents: number;
         rider_name: string;
+        rider_photo_url?: string | null;
       }) => {
         setPendingOffer({
           tripId: data.trip_id,
@@ -125,6 +126,7 @@ function SocketBridge() {
           destination: data.destination,
           fareCents: data.fare_cents,
           riderName: data.rider_name,
+          riderPhotoUrl: data.rider_photo_url ?? null,
           countdownSeconds: 15,
         });
         router.push('/(driver)/request');

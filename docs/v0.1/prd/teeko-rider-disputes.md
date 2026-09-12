@@ -185,3 +185,49 @@ After pulling this change, run from `apps/backend`:
 pnpm db:generate   # emits the disputes migration SQL
 pnpm db:migrate    # applies it (needs DATABASE_URL)
 ```
+
+## 10. Driver-raised disputes (extension)
+
+The driver app's **Support** screen used to show a mock live chat plus a report
+form that went nowhere. Live chat is gone; **Report Issue** now files a real
+dispute into this same table, and a **My reports** tab lists the driver's
+disputes with their status.
+
+**Data model changes** (`0019_driver_disputes`):
+
+| Change | Why |
+|---|---|
+| `raised_by` (`dispute_raiser_role`, default `rider`) | Distinguishes the two sides; admin queues show it verbatim. |
+| `driver_id` (nullable, FK `users.id`) | The filing driver. Exactly one of `rider_id` / `driver_id` is set. |
+| `rider_id` → nullable | Driver-raised rows have no rider. |
+| `trip_id` → nullable | A document or account report isn't tied to a trip. |
+| `dispute_category` += `document`, `account` | Driver-only categories. |
+
+**Driver categories:** `overcharge` (fare dispute), `payment` (payout issue),
+`document` (document upload), `account` (suspension), `other`. Money amounts
+still apply only to `overcharge` / `payment`.
+
+**API** (`apps/backend/src/api/driver/disputes.routes.ts`):
+
+| Method | Path | Notes |
+|---|---|---|
+| `POST` | `/api/v1/driver/disputes` | `tripId` optional; when given, the trip must belong to the driver and be finished. |
+| `GET` | `/api/v1/driver/disputes` | Every dispute the driver has raised. |
+| `GET` | `/api/v1/driver/trips/history?limit=` | Feeds the trip picker — the driver's finished (`completed` / `cancelled` / `no_show`) trips, newest first, max 50. |
+
+The "one open dispute per trip" rule is now scoped per side — a rider's open
+dispute doesn't block the driver's report on the same trip, and vice versa.
+
+**Frontend:** `apps/driver/app/(driver)/support.tsx` (tabs: Report Issue /
+My reports) via `api.disputes` in `apps/driver/lib/api.ts`. The driver app
+calls the backend directly rather than through `@teeko/api`.
+
+The trip is chosen from a **picker over the driver's finished trips**
+(pickup → dropoff, date, fare) rather than typed as an ID, with a **No specific
+trip** option for document and account reports. Because the picker only lists
+finished trips, the "must be a finished trip you drove" rule can't be tripped by
+normal use — the server still enforces it.
+
+**Admin:** `GET /api/v1/admin/disputes` returns the real `raisedBy` and joins
+`raiserName` from whichever id is set, so driver-raised disputes flow through
+the existing Dispute / Refund / Completion queues unchanged.

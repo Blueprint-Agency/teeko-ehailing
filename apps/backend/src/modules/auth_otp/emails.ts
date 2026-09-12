@@ -1,15 +1,38 @@
+import type { OtpPurpose } from './repo';
+
+// Each purpose says plainly what the code will do. A recipient who did not ask
+// for it has to be able to tell "someone is verifying your email" from
+// "someone is changing your phone number" — the second is the one worth
+// acting on, and a generic "verification code" email hides the difference.
+const COPY: Record<OtpPurpose, { subject: (code: string) => string; lead: string }> = {
+  email_verification: {
+    subject: (code) => `Your Teeko verification code: ${code}`,
+    lead: 'Your Teeko verification code is:',
+  },
+  password_change: {
+    subject: (code) => `Teeko password change code: ${code}`,
+    lead: 'Use this code to change your Teeko password:',
+  },
+  phone_change: {
+    subject: (code) => `Teeko phone number change code: ${code}`,
+    lead: 'Use this code to change the phone number on your Teeko account:',
+  },
+};
+
 export function verificationEmail(args: {
   name: string | null;
   code: string;
+  purpose?: OtpPurpose;
 }): { subject: string; html: string } {
   const greeting = args.name ? `Hi ${escapeHtml(args.name)}` : 'Hi there';
+  const copy = COPY[args.purpose ?? 'email_verification'];
   return {
-    subject: `Your Teeko verification code: ${args.code}`,
+    subject: copy.subject(args.code),
     html: `
       <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
         <h1 style="font-size: 22px; margin: 0 0 16px;">${greeting}</h1>
         <p style="font-size: 16px; line-height: 1.5; color: #333;">
-          Your Teeko verification code is:
+          ${copy.lead}
         </p>
         <p style="font-size: 36px; line-height: 1.2; color: #111; letter-spacing: 6px; text-align: center; margin: 24px 0; font-weight: bold;">
           ${args.code}

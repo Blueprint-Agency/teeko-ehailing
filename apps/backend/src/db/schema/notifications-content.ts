@@ -26,6 +26,7 @@ export const notificationCategory = pgEnum('notification_category', [
   'suspension',
   'incentive',
   'broadcast',
+  'support',
 ]);
 
 export const notificationOutbox = pgTable('notification_outbox', {

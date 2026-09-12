@@ -1,11 +1,34 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { driverClerk } from '../../external/clerk';
-import { sendVerificationOtp, verifyOtp } from '../../modules/auth_otp/service';
+import {
+  changePasswordWithOtp,
+  sendVerificationOtp,
+  verifyOtp,
+} from '../../modules/auth_otp/service';
+import { setInitialPhone } from '../../modules/identity/phone';
 import { getOrProvisionDriverMe } from '../../modules/identity/service';
 
 const VerifyBody = z.object({
   code: z.string().regex(/^\d{6}$/, 'must be 6 digits'),
+});
+
+// The app's phone field is a static '+60' chip, not a picker — `countryCode`
+// is optional and defaults to 'MY'. The server re-checks either way; the Expo
+// app is not a trust boundary.
+const PhoneBody = z.object({
+  countryCode: z.string().length(2).optional(),
+  nationalNumber: z.string().min(1).max(24),
+});
+
+// `password_change` brings the one-change-per-week cooldown into play; plain
+// email verification sends no purpose and is never gated.
+const SendOtpBody = z
+  .object({ purpose: z.enum(['email_verification', 'password_change', 'phone_change']).optional() })
+  .optional();
+
+const ChangePasswordBody = VerifyBody.extend({
+  newPassword: z.string().min(8, 'must be at least 8 characters').max(200),
 });
 
 export async function routes(app: FastifyInstance) {
@@ -19,16 +42,45 @@ export async function routes(app: FastifyInstance) {
     return me;
   });
 
+  // POST /api/v1/driver/auth/phone-initial
+  // Registration capture and the legacy-NULL completion gate. No OTP — there
+  // is no existing number to protect — and it refuses to overwrite one, so it
+  // is not a way around the review queue.
+  app.post('/auth/phone-initial', async (req, reply) => {
+    if (!req.user) return reply.code(404).send({ error: 'profile_not_provisioned' });
+    const body = PhoneBody.parse(req.body);
+    const result = await setInitialPhone({
+      userId: req.user.id,
+      role: 'driver',
+      countryCode: body.countryCode ?? 'MY',
+      nationalNumber: body.nationalNumber,
+    });
+    if (result.status === 'invalid') return reply.code(400).send({ error: result.error });
+    if (result.status === 'already_set') {
+      return reply.code(409).send({ error: 'phone_already_set', phone: result.phone });
+    }
+    return { ok: true, phone: result.phone, phoneCountry: result.phoneCountry };
+  });
+
   app.post('/auth/send-otp', async (req, reply) => {
     if (!req.clerkAuth) return reply.code(401).send({ error: 'unauthorized' });
     if (!req.user) return reply.code(404).send({ error: 'profile_not_provisioned' });
 
     const me = await getOrProvisionDriverMe(req.clerkAuth);
+    const body = SendOtpBody.parse(req.body ?? {});
     const result = await sendVerificationOtp({
       userId: req.user.id,
       email: me.user.email,
       fullName: me.user.fullName,
+      purpose: body?.purpose,
     });
+    if (result.status === 'password_cooldown') {
+      return reply.code(429).send({
+        error: 'password_change_cooldown',
+        nextAllowedAt: result.nextAllowedAt,
+        retryInSeconds: result.retryInSeconds,
+      });
+    }
     if (result.status === 'rate_limited') {
       return reply
         .code(429)
@@ -62,6 +114,46 @@ export async function routes(app: FastifyInstance) {
     switch (result.status) {
       case 'verified':
         return { ok: true };
+      case 'no_active_code':
+        return reply.code(400).send({ error: 'no_active_code' });
+      case 'expired':
+        return reply.code(400).send({ error: 'expired' });
+      case 'too_many_attempts':
+        return reply.code(429).send({ error: 'too_many_attempts' });
+      case 'incorrect':
+        return reply.code(400).send({ error: 'incorrect' });
+    }
+  });
+
+  // Change password. The OTP proves identity here — Clerk's client-side
+  // user.updatePassword() demands the current password, which this screen
+  // deliberately does not collect, so the write goes through the admin API.
+  app.post('/auth/change-password', async (req, reply) => {
+    if (!req.clerkAuth) return reply.code(401).send({ error: 'unauthorized' });
+    if (!req.user) return reply.code(404).send({ error: 'profile_not_provisioned' });
+
+    const { code, newPassword } = ChangePasswordBody.parse(req.body);
+    const result = await changePasswordWithOtp({
+      userId: req.user.id,
+      clerkUserId: req.user.clerkUserId,
+      code,
+      newPassword,
+      // Drivers live in the driver Clerk instance, not the rider default.
+      clerkClient: driverClerk,
+    });
+    switch (result.status) {
+      case 'ok':
+        return { ok: true };
+      case 'cooldown':
+        return reply.code(429).send({
+          error: 'password_change_cooldown',
+          nextAllowedAt: result.nextAllowedAt,
+          retryInSeconds: result.retryInSeconds,
+        });
+      case 'password_rejected':
+        return reply
+          .code(422)
+          .send({ error: 'password_rejected', code: result.code, message: result.message });
       case 'no_active_code':
         return reply.code(400).send({ error: 'no_active_code' });
       case 'expired':

@@ -8,13 +8,25 @@ import { useEffect } from 'react';
 
 export default function PanelLayout({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAdminAuthStore((s) => s.isAuthenticated);
+  const hasHydrated = useAdminAuthStore((s) => s.hasHydrated);
+  const logout = useAdminAuthStore((s) => s.logout);
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace('/login');
-  }, [isAuthenticated, router]);
+    // Wait for the persisted store to rehydrate before judging auth, or we'd
+    // bounce a valid session on first paint (initial state is unauthenticated).
+    if (!hasHydrated) return;
+    if (!isAuthenticated) {
+      // The middleware gate trusts the cookie; the store is empty here, so the
+      // two have diverged. Clear the cookie as we leave, otherwise middleware
+      // redirects /login → /dashboard and we loop back to this blank screen.
+      logout();
+      router.replace('/login');
+    }
+  }, [hasHydrated, isAuthenticated, logout, router]);
 
-  if (!isAuthenticated) return null;
+  // Render nothing until we know the answer (pre-hydration) or while leaving.
+  if (!hasHydrated || !isAuthenticated) return null;
 
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>

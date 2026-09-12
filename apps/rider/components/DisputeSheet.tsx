@@ -21,6 +21,10 @@ const CATEGORY_I18N_KEY: Record<DisputeCategory, string> = {
   safety: 'dispute.categoryLabel.safety',
   lost_item: 'dispute.categoryLabel.lost_item',
   other: 'dispute.categoryLabel.other',
+  // Driver-only categories — never offered in CATEGORIES below, listed here
+  // only to stay exhaustive over DisputeCategory.
+  document: 'dispute.categoryLabel.document',
+  account: 'dispute.categoryLabel.account',
 };
 
 // Categories that carry a disputed money amount.

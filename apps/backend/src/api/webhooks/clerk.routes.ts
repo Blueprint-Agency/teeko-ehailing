@@ -12,6 +12,10 @@ type ClerkUserEvent = {
     primary_email_address_id?: string | null;
     first_name?: string | null;
     last_name?: string | null;
+    // Unix millis. Present on `user.updated`; the authoritative signal for the
+    // one-password-change-per-week clock, since the signed-out reset flow talks
+    // to Clerk directly and never reaches our API.
+    password_last_updated_at?: number | null;
   };
 };
 
@@ -70,6 +74,10 @@ async function handleClerkWebhook(
     clerkUserId: evt.data.id,
     email,
     fullName,
+    passwordChangedAt:
+      typeof evt.data.password_last_updated_at === 'number'
+        ? new Date(evt.data.password_last_updated_at)
+        : null,
   });
   return { ok: true };
 }

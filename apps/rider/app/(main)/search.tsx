@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { Alert, FlatList, View } from 'react-native';
 
-import { useLocationStore, usePlacesStore, useTripStore } from '@teeko/api';
+import { PlacesLimitError, useLocationStore, usePlacesStore, useTripStore } from '@teeko/api';
 import type { Place } from '@teeko/shared';
-import { Icon, Input, Pressable, ScreenContainer, Spinner, Text } from '@teeko/ui';
+import { Icon, Input, ListRow, Pressable, ScreenContainer, Spinner, Text } from '@teeko/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { RecentPlaceRow } from '../../components/RecentPlaceRow';
@@ -60,6 +60,10 @@ export default function SearchScreen() {
 
   const homePlace = useMemo(() => saved.find((p) => p.category === 'home'), [saved]);
   const workPlace = useMemo(() => saved.find((p) => p.category === 'work'), [saved]);
+  const customPlaces = useMemo(
+    () => saved.filter((p) => p.category === 'saved'),
+    [saved],
+  );
 
   const onSelectPlace = async (place: Place) => {
     let resolved = place;
@@ -87,8 +91,20 @@ export default function SearchScreen() {
     }
     if (intent === 'saveCustom') {
       // Save the new place first, then drop the one being edited (if any) so a
-      // cancelled edit never loses the original.
-      await saveHomeOrWork('custom', resolved);
+      // cancelled edit never loses the original. Pass replaceId so the store's
+      // cap check excludes the row being replaced during an edit.
+      try {
+        await saveHomeOrWork('custom', resolved, replaceId);
+      } catch (err) {
+        if (err instanceof PlacesLimitError) {
+          Alert.alert(
+            'Saved places full',
+            `You can save up to ${err.limit} custom places. Remove one to add another.`,
+          );
+          return;
+        }
+        throw err;
+      }
       if (replaceId) {
         try {
           await removeSaved(replaceId);
@@ -188,6 +204,14 @@ export default function SearchScreen() {
                     onPress={(_kind, place) => place && onSelectPlace(place)}
                   />
                 ) : null}
+                {customPlaces.map((p) => (
+                  <ListRow
+                    key={p.id}
+                    leadingIcon="place"
+                    title={p.address}
+                    onPress={() => onSelectPlace(p)}
+                  />
+                ))}
               </View>
             ) : null
           }

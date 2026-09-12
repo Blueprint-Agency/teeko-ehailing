@@ -230,6 +230,13 @@ export default function LoginScreen() {
               </View>
 
               <TouchableOpacity
+                style={styles.forgotLink}
+                onPress={() => router.push({ pathname: '/(auth)/forgot-password', params: { email: email.trim() } })}
+              >
+                <Text style={styles.forgotLinkText}>{t('auth.forgotPasswordLink')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.continueBtn, loading && { opacity: 0.6 }]}
                 onPress={handleLogin}
                 activeOpacity={0.85}
@@ -301,6 +308,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 16,
   },
   continueBtnText: { color: '#000', fontSize: 18, fontWeight: '800' },
+
+  forgotLink: { alignSelf: 'flex-end', marginBottom: 16, paddingVertical: 4 },
+  forgotLinkText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
 
   registerLink: { alignItems: 'center', marginBottom: 12 },
   registerLinkText: { color: colors.textSec, fontSize: 14 },

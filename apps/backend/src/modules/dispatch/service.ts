@@ -260,6 +260,8 @@ export const dispatchService = {
       category: trip.category,
       fare_cents: quote?.totalCents ?? 0,
       rider_name: rider?.fullName ?? 'Rider',
+      // Raw stored path (or null); the driver app resolves it against the API origin.
+      rider_photo_url: rider?.avatarUrl ?? null,
       outside_radius: false,
     };
 

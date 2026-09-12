@@ -85,7 +85,14 @@
       "passwordHint": "Min. 8 aksara",
       "pdpaConsent": "Saya bersetuju dengan pengumpulan dan penggunaan data peribadi saya mengikut PDPA 2010 Malaysia untuk tujuan pendaftaran pemandu dan pematuhan kawal selia.",
       "hasAccount": "Sudah mendaftar?",
-      "loginLink": "Log masuk"
+      "loginLink": "Log masuk",
+      "phoneHint": "Nombor mudah alih Malaysia sahaja",
+      "phoneCountryNotAllowed": "Pemandu mesti mendaftar nombor Malaysia (+60)",
+      "phoneInvalid": "Masukkan nombor mudah alih Malaysia",
+      "phoneSaveFailed": "Tidak dapat menyimpan nombor anda. Sila cuba lagi.",
+      "addPhoneTitle": "Tambah nombor telefon anda",
+      "addPhoneBody": "Kami perlukan nombor supaya penumpang boleh menghubungi anda semasa perjalanan, dan ia sebahagian daripada rekod pengendali APAD anda.",
+      "addPhoneCta": "Simpan dan teruskan"
     }
   },
   "onboarding": {
@@ -192,7 +199,10 @@
       "ms": "Bahasa Malaysia",
       "zh": "Mandarin (Simplified)",
       "ta": "Tamil"
-    }
+    },
+    "phonePending": "“{{value}}” sedang menunggu semakan Teeko.",
+    "phoneEarly": "Ditanda sebagai pertukaran awal — pentadbir akan menyemak.",
+    "phoneNextChange": "Anda boleh menukarnya semula pada {{date}}."
   },
   "documents": {
     "upload": "Muat naik dokumen",

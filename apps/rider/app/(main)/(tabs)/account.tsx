@@ -1,14 +1,17 @@
-import { useEffect, useRef } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
+import { Image } from 'expo-image';
 
 import { useClerk } from '@clerk/clerk-expo';
-import { useAuthStore, usePlacesStore, useTripStore } from '@teeko/api';
+import { MAX_CUSTOM_PLACES, useAuthStore, usePlacesStore, useTripStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
-import type { Locale } from '@teeko/shared';
+import type { Locale, Place } from '@teeko/shared';
 import { type BottomSheetHandle, Icon, ListRow, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
+import { EditPlaceSheet } from '../../../components/EditPlaceSheet';
 import { LanguageSheet } from '../../../components/LanguageSheet';
+import { PermissionDeniedError, pickProfileImage } from '../../../lib/pickProfileImage';
 
 const LANGUAGE_LABEL: Record<Locale, string> = {
   en: 'English',
@@ -24,11 +27,25 @@ export default function AccountTab() {
   const languagePref = useAuthStore((s) => s.languagePref);
   const setLanguage = useAuthStore((s) => s.setLanguage);
   const clearProfile = useAuthStore((s) => s.clear);
+  const uploadAvatar = useAuthStore((s) => s.uploadAvatar);
+  const removeAvatar = useAuthStore((s) => s.removeAvatar);
+
+  // `toRider()` maps a null `fullName` to '', so a signed-in rider can legitimately
+  // have no name — trim rather than trusting the value to be non-empty.
+  const displayName = rider?.name?.trim() ?? '';
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const { signOut } = useClerk();
   const saved = usePlacesStore((s) => s.saved);
   const loadSaved = usePlacesStore((s) => s.loadSaved);
   const removeSaved = usePlacesStore((s) => s.removeSaved);
   const languageSheetRef = useRef<BottomSheetHandle>(null);
+  const editPlaceSheetRef = useRef<BottomSheetHandle>(null);
+  // The place currently being edited, tracked so the shared sheet knows which
+  // one the Change/Remove actions apply to.
+  const [editingPlace, setEditingPlace] = useState<{
+    place: Place;
+    kind: 'home' | 'work' | 'custom';
+  } | null>(null);
 
   const onLogout = () => {
     Alert.alert(t('account.logoutConfirmTitle'), t('account.logoutConfirmBody'), [
@@ -53,9 +70,62 @@ export default function AccountTab() {
     if (saved.length === 0) loadSaved();
   }, [saved.length, loadSaved]);
 
+  const changeAvatar = useCallback(
+    async (source: 'camera' | 'library') => {
+      setAvatarBusy(true);
+      try {
+        const picked = await pickProfileImage(source);
+        if (!picked) return; // user backed out of the picker
+        await uploadAvatar(picked);
+      } catch (err) {
+        Alert.alert(
+          t('account.photoFailedTitle'),
+          err instanceof PermissionDeniedError
+            ? t('account.photoPermissionDenied')
+            : t('account.photoFailedBody'),
+        );
+      } finally {
+        setAvatarBusy(false);
+      }
+    },
+    [t, uploadAvatar],
+  );
+
+  const onRemoveAvatar = useCallback(async () => {
+    setAvatarBusy(true);
+    try {
+      await removeAvatar();
+    } catch {
+      Alert.alert(t('account.photoFailedTitle'), t('account.photoFailedBody'));
+    } finally {
+      setAvatarBusy(false);
+    }
+  }, [removeAvatar, t]);
+
+  // Guests have no server profile to attach a picture to — the avatar stays a
+  // plain long-press target for the demo controls until they sign in.
+  const onAvatarPress = useCallback(() => {
+    if (!rider || avatarBusy) return;
+    Alert.alert(t('account.profilePhoto'), undefined, [
+      { text: t('account.takePhoto'), onPress: () => void changeAvatar('camera') },
+      { text: t('account.chooseFromLibrary'), onPress: () => void changeAvatar('library') },
+      ...(rider.avatarUrl
+        ? [
+            {
+              text: t('account.removePhoto'),
+              style: 'destructive' as const,
+              onPress: () => void onRemoveAvatar(),
+            },
+          ]
+        : []),
+      { text: t('common.cancel'), style: 'cancel' as const },
+    ]);
+  }, [avatarBusy, changeAvatar, onRemoveAvatar, rider, t]);
+
   const home = saved.find((p) => p.category === 'home');
   const work = saved.find((p) => p.category === 'work');
   const customPlaces = saved.filter((p) => p.category === 'saved');
+  const atCustomLimit = customPlaces.length >= MAX_CUSTOM_PLACES;
   const setDestination = useTripStore((s) => s.setDestination);
 
   const onShortcutPress = (
@@ -79,29 +149,30 @@ export default function AccountTab() {
     place: NonNullable<typeof home>,
     kind: 'home' | 'work' | 'custom',
   ) => {
-    Alert.alert(t('account.editPlaceTitle'), place.address, [
-      {
-        text: t('account.changeAddress'),
-        onPress: () =>
-          router.push({
-            pathname: '/(main)/search',
-            params:
-              kind === 'custom'
-                ? { intent: 'saveCustom', replaceId: place.id }
-                : { intent: kind === 'home' ? 'saveHome' : 'saveWork' },
-          }),
-      },
-      {
-        text: t('account.removePlace'),
-        style: 'destructive',
-        onPress: () => {
-          removeSaved(place.id).catch(() =>
-            Alert.alert(t('account.removePlaceFailed')),
-          );
-        },
-      },
-      { text: t('common.cancel'), style: 'cancel' },
-    ]);
+    setEditingPlace({ place, kind });
+    editPlaceSheetRef.current?.present();
+  };
+
+  const onEditChangeAddress = () => {
+    if (!editingPlace) return;
+    const { place, kind } = editingPlace;
+    editPlaceSheetRef.current?.dismiss();
+    router.push({
+      pathname: '/(main)/search',
+      params:
+        kind === 'custom'
+          ? { intent: 'saveCustom', replaceId: place.id }
+          : { intent: kind === 'home' ? 'saveHome' : 'saveWork' },
+    });
+  };
+
+  const onEditRemove = () => {
+    if (!editingPlace) return;
+    const { place } = editingPlace;
+    editPlaceSheetRef.current?.dismiss();
+    removeSaved(place.id).catch(() =>
+      Alert.alert(t('account.removePlaceFailed')),
+    );
   };
 
   return (
@@ -112,18 +183,62 @@ export default function AccountTab() {
         showsVerticalScrollIndicator={false}
       >
         <View className="items-center px-gutter pb-6 pt-6">
-          <Pressable
-            onLongPress={() => router.push('/(main)/account/demo' as never)}
-            haptic="medium"
-            accessibilityRole="button"
-            accessibilityLabel="Profile avatar (long-press for demo controls)"
-            className="h-20 w-20 items-center justify-center rounded-full bg-muted"
-          >
-            <Icon name="person" size={40} color="#4B5563" />
-          </Pressable>
-          <Text weight="bold" className="mt-3 text-2xl">
-            {rider?.name ?? t('account.guest')}
-          </Text>
+          <View className="h-20 w-20">
+            <Pressable
+              onPress={onAvatarPress}
+              onLongPress={() => router.push('/(main)/account/demo' as never)}
+              haptic="medium"
+              accessibilityRole="button"
+              accessibilityLabel={
+                rider
+                  ? t('account.profilePhoto')
+                  : 'Profile avatar (long-press for demo controls)'
+              }
+              className="h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-muted"
+            >
+              {rider?.avatarUrl ? (
+                <Image
+                  source={{ uri: rider.avatarUrl }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                />
+              ) : (
+                <Icon name="person" size={40} color="#4B5563" />
+              )}
+              {avatarBusy ? (
+                <View className="absolute inset-0 items-center justify-center bg-black/40">
+                  <ActivityIndicator color="#FFFFFF" />
+                </View>
+              ) : null}
+            </Pressable>
+            {/* Sits on the rim rather than inside it, so it never covers the face. */}
+            {rider ? (
+              <View
+                pointerEvents="none"
+                className="absolute -bottom-0.5 -right-0.5 h-7 w-7 items-center justify-center rounded-full border-2 border-surface bg-primary"
+              >
+                <Icon name="photo-camera" size={14} color="#FFFFFF" />
+              </View>
+            ) : null}
+          </View>
+          {/* `text-center` matters once the name wraps: `items-center` only centres
+              the box, and a wrapped box fills the column with left-aligned lines. */}
+          {rider && !displayName ? (
+            <Pressable
+              onPress={() => router.push('/(main)/account/personal')}
+              haptic="light"
+              accessibilityRole="button"
+              className="mt-3 rounded-full px-3 py-1 active:bg-muted"
+            >
+              <Text weight="bold" className="text-center text-2xl text-ink-secondary">
+                {t('account.addName')}
+              </Text>
+            </Pressable>
+          ) : (
+            <Text weight="bold" className="mt-3 text-center text-2xl">
+              {displayName || t('account.guest')}
+            </Text>
+          )}
           {typeof rider?.rating === 'number' ? (
             <View className="mt-1 flex-row items-center">
               <Icon name="star" size={16} color="#E11D2E" />
@@ -178,6 +293,11 @@ export default function AccountTab() {
             leadingIcon="credit-card"
             title={t('account.paymentMethods')}
             onPress={() => router.push('/(main)/account/payments' as never)}
+          />
+          <ListRow
+            leadingIcon="flag"
+            title={t('dispute.myReportsTitle')}
+            onPress={() => router.push('/(main)/account/disputes' as never)}
             noDivider
           />
         </Section>
@@ -211,12 +331,15 @@ export default function AccountTab() {
               ) : undefined
             }
           />
-          {customPlaces.map((p) => (
+          {customPlaces.map((p, i) => (
             <ListRow
               key={p.id}
               leadingIcon="place"
               title={p.address}
               onPress={() => onCustomPress(p)}
+              // At the limit there's no "Add place" row after these, so the last
+              // custom place becomes the section's final row.
+              noDivider={atCustomLimit && i === customPlaces.length - 1}
               trailing={
                 <EditButton
                   label={t('account.editPlaceTitle')}
@@ -225,17 +348,19 @@ export default function AccountTab() {
               }
             />
           ))}
-          <ListRow
-            leadingIcon="add-location"
-            title={t('account.addPlace')}
-            onPress={() =>
-              router.push({
-                pathname: '/(main)/search',
-                params: { intent: 'saveCustom' },
-              })
-            }
-            noDivider
-          />
+          {!atCustomLimit ? (
+            <ListRow
+              leadingIcon="add-location"
+              title={t('account.addPlace')}
+              onPress={() =>
+                router.push({
+                  pathname: '/(main)/search',
+                  params: { intent: 'saveCustom' },
+                })
+              }
+              noDivider
+            />
+          ) : null}
         </Section>
 
         <Section title={t('account.preferences')}>
@@ -244,6 +369,15 @@ export default function AccountTab() {
             title={t('account.language')}
             subtitle={LANGUAGE_LABEL[languagePref]}
             onPress={() => languageSheetRef.current?.present()}
+            noDivider
+          />
+        </Section>
+
+        <Section title={t('support.sectionTitle')}>
+          <ListRow
+            leadingIcon="support-agent"
+            title={t('support.helpAndSupport')}
+            onPress={() => router.push('/(main)/account/support' as never)}
             noDivider
           />
         </Section>
@@ -269,6 +403,14 @@ export default function AccountTab() {
           setLanguage(locale);
           languageSheetRef.current?.dismiss();
         }}
+      />
+
+      <EditPlaceSheet
+        ref={editPlaceSheetRef}
+        place={editingPlace?.place}
+        onChangeAddress={onEditChangeAddress}
+        onRemove={onEditRemove}
+        onCancel={() => editPlaceSheetRef.current?.dismiss()}
       />
     </ScreenContainer>
   );
