@@ -434,15 +434,31 @@ export interface NewAuditEvent {
 export type ProfileChangeField = 'full_name' | 'phone';
 export type ProfileChangeStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
+export type ProfileChangeRole = 'rider' | 'driver';
+
 export interface ProfileChangeRequest {
   id: string;
-  driverId: string;
-  driverName: string | null;
-  driverEmail: string | null;
+  userId: string;
+  userName: string | null;
+  userEmail: string | null;
+  /** Riders raise phone requests too, so the queue is no longer driver-only. */
+  role: ProfileChangeRole;
   field: ProfileChangeField;
   currentValue: string | null;
   requestedValue: string;
+  /** ISO-3166 alpha-2 for a phone request; null for a name request. */
+  requestedCountry: string | null;
   status: ProfileChangeStatus;
+  /**
+   * Raised inside the 30-day window. Not a rejection — it means the reviewer
+   * is being asked to override a cooldown, so `reason` is present and the row
+   * carries a warning badge.
+   */
+  isEarly: boolean;
+  /** The user's own words. Only present on an early request. */
+  reason: string | null;
+  /** When this person last changed their number — context for an early ask. */
+  phoneChangedAt: string | null;
   reviewNote: string | null;
   reviewedAt: string | null;
   reviewedByName: string | null;
@@ -523,24 +539,32 @@ export const adminApi = {
 
   // ── Driver profile change review ────────────────────────────────────────
   // A driver's name and phone are identity evidence behind their PSV-D and the
-  // APAD/JPJ operator record, so a self-service edit lands here as a request
-  // and only reaches the account when an admin approves it.
-  getProfileChanges: (opts: { driverId?: string; status?: ProfileChangeStatus | 'all' } = {}) => {
+  // APAD/JPJ operator record, so every driver edit lands here as a request and
+  // only reaches the account when an admin approves it. Riders write their own
+  // number, but land here when they want a second change inside 30 days.
+  getProfileChanges: (
+    opts: {
+      userId?: string;
+      status?: ProfileChangeStatus | 'all';
+      role?: ProfileChangeRole | 'all';
+    } = {},
+  ) => {
     const qs = new URLSearchParams();
-    if (opts.driverId) qs.set('driverId', opts.driverId);
+    if (opts.userId) qs.set('userId', opts.userId);
     if (opts.status) qs.set('status', opts.status);
+    if (opts.role) qs.set('role', opts.role);
     const suffix = qs.toString() ? `?${qs}` : '';
     return get<{ requests: ProfileChangeRequest[]; pendingCount: number }>(
-      `/driver-profile-changes${suffix}`,
+      `/profile-changes${suffix}`,
     );
   },
 
-  getProfileChangeCount: () => get<{ pending: number }>('/driver-profile-changes/count'),
+  getProfileChangeCount: () => get<{ pending: number }>('/profile-changes/count'),
 
   /** Approving writes the value onto the account and starts its 30-day cooldown. */
   reviewProfileChange: (requestId: string, decision: 'approve' | 'reject', note?: string) =>
     post<{ ok: boolean; request: ProfileChangeRequest }>(
-      `/driver-profile-changes/${requestId}/review`,
+      `/profile-changes/${requestId}/review`,
       { decision, note },
     ),
 

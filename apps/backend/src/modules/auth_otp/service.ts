@@ -14,7 +14,10 @@ import {
   insertOtp,
   markConsumed,
   markEmailVerified,
+  type OtpPurpose,
 } from './repo';
+
+export type { OtpPurpose };
 
 const CODE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 1 send per 60s
@@ -40,17 +43,19 @@ export async function sendVerificationOtp(input: {
   email: string | null;
   fullName: string | null;
   /**
-   * What the code is for. `password_change` is gated by the one-per-week
-   * cooldown; plain email verification never is, and the two share one code so
-   * the purpose is a policy flag rather than a separate code type.
+   * What the code is for, and — since codes became purpose-scoped — what it
+   * can be spent on. `password_change` is additionally gated by the
+   * one-per-week cooldown, so the user reads "not until Friday" instead of
+   * typing a code that was never going to be spendable.
    */
-  purpose?: 'email_verification' | 'password_change';
+  purpose?: OtpPurpose;
 }): Promise<SendOtpResult> {
+  const purpose: OtpPurpose = input.purpose ?? 'email_verification';
   if (!input.email) return { status: 'no_email' };
 
   // Refuse before sending, so the user reads "not until Friday" instead of
   // typing a six-digit code that was never going to be spendable.
-  if (input.purpose === 'password_change') {
+  if (purpose === 'password_change') {
     const cooldown = await getPasswordCooldown(input.userId);
     if (cooldown.blocked) {
       return {
@@ -81,9 +86,10 @@ export async function sendVerificationOtp(input: {
     email: input.email,
     codeHash,
     expiresAt,
+    purpose,
   });
 
-  const { subject, html } = verificationEmail({ name: input.fullName, code });
+  const { subject, html } = verificationEmail({ name: input.fullName, code, purpose });
 
   try {
     await sendEmail({ to: input.email, subject, html });
@@ -118,12 +124,19 @@ export async function verifyOtp(input: {
   // Which Clerk instance the user lives in. Riders and drivers are separate
   // instances, so the default (rider) would look drivers up in the wrong one.
   clerkClient?: ClerkClient;
+  /**
+   * Which door the code is being spent on. A code minted for a different
+   * purpose is not a wrong code — it is simply not a candidate, so the caller
+   * gets `no_active_code` and the other code survives for its own screen.
+   */
+  purpose?: OtpPurpose;
   // Runs after the code matches but *before* it is consumed. If it throws, the
   // code stays active so the caller can retry without a resend — used by the
   // change-password flow, where Clerk can still reject the new password.
   onVerified?: () => Promise<void>;
 }): Promise<VerifyOtpResult> {
-  const active = await findActiveOtp(input.userId);
+  const purpose: OtpPurpose = input.purpose ?? 'email_verification';
+  const active = await findActiveOtp(input.userId, purpose);
   if (!active) return { status: 'no_active_code' };
 
   if (active.expiresAt.getTime() < Date.now()) {
@@ -148,7 +161,12 @@ export async function verifyOtp(input: {
   }
 
   await markConsumed(active.id);
-  await markEmailVerified(input.userId);
+
+  // Only a code that was actually sent to prove the address counts as proving
+  // it. A `phone_change` code is spent on a phone number and says nothing
+  // about the email, so it must not silently flip `email_verified`.
+  if (purpose !== 'phone_change') await markEmailVerified(input.userId);
+  if (purpose === 'phone_change') return { status: 'verified' };
 
   // Best-effort: also mark Clerk's email verified so any other Clerk-side
   // gates pass. Failure here doesn't block our own verified status — our
@@ -223,6 +241,7 @@ export async function changePasswordWithOtp(input: {
       clerkUserId: input.clerkUserId,
       code: input.code,
       clerkClient,
+      purpose: 'password_change',
       onVerified: async () => {
         try {
           await clerkClient.users.updateUser(input.clerkUserId, {

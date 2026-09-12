@@ -1,7 +1,7 @@
 // modules/identity/repo.ts
 // Drizzle queries for the identity domain. Private to the module; routes
 // must go through the service.
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 import { db } from '../../config/db';
 import {
@@ -150,7 +150,6 @@ export async function updateRiderFields(
     fullName?: string | null;
     locale?: Locale;
     email?: string | null;
-    phone?: string | null;
   },
 ): Promise<void> {
   await db
@@ -159,18 +158,46 @@ export async function updateRiderFields(
       ...(patch.fullName !== undefined ? { fullName: patch.fullName } : {}),
       ...(patch.locale !== undefined ? { locale: patch.locale } : {}),
       ...(patch.email !== undefined ? { email: patch.email } : {}),
-      // users.phone is UNIQUE — a clash surfaces as a unique violation, which
-      // the routes translate into 409 phone_taken.
-      ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
+      // `phone` is deliberately not settable here. Every change after
+      // registration goes through modules/identity/phone.ts, which owns the
+      // OTP check and the 30-day clock.
     })
     .where(eq(users.id, userId));
 }
 
+/**
+ * Soft delete. Stamps `deleted_at` as well as `status` because the
+ * `users_email_lower_unique_idx` partial index (migration 0017) only excludes
+ * rows with `deleted_at IS NOT NULL` — without the stamp a deleted account
+ * would hold its email forever and block re-registration. Idempotent: an
+ * already-stamped row keeps its original timestamp.
+ */
 export async function softDeleteUser(userId: string): Promise<void> {
   await db
     .update(users)
-    .set({ status: 'deactivated' })
-    .where(eq(users.id, userId));
+    .set({ status: 'deactivated', deletedAt: new Date() })
+    .where(and(eq(users.id, userId), isNull(users.deletedAt)));
+}
+
+/**
+ * The live (non-deleted) row currently holding `email`, with its Clerk sub, or
+ * null. Used by JIT provisioning to decide whether an email collision is a
+ * stale row whose Clerk user has since been deleted.
+ */
+export async function findLiveUserByEmail(
+  email: string,
+): Promise<{ id: string; role: string | null; clerkUserId: string | null } | null> {
+  const rows = await db
+    .select({ id: users.id, role: userRoles.role, clerkUserId: externalIdentities.providerSub })
+    .from(users)
+    .leftJoin(userRoles, eq(userRoles.userId, users.id))
+    .leftJoin(
+      externalIdentities,
+      and(eq(externalIdentities.userId, users.id), eq(externalIdentities.provider, 'clerk')),
+    )
+    .where(and(sql`lower(${users.email}) = lower(${email})`, isNull(users.deletedAt)))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
 export async function getRiderProfileBundle(userId: string) {
@@ -182,6 +209,8 @@ export async function getRiderProfileBundle(userId: string) {
       fullName: users.fullName,
       avatarUrl: users.avatarUrl,
       phone: users.phone,
+      phoneCountry: users.phoneCountry,
+      phoneChangedAt: users.phoneChangedAt,
       locale: users.locale,
       status: users.status,
       ratingAvg: riderProfiles.ratingAvg,

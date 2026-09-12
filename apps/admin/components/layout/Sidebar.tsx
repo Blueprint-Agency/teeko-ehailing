@@ -8,7 +8,7 @@ import {
   Dashboard, People, DirectionsCar, Map, Gavel, TrendingUp,
   Payments, Security, History, SupportAgent,
   Campaign, Settings, ExpandLess, ExpandMore,
-  AssignmentTurnedIn, Policy, Speed, PendingActions,
+  AssignmentTurnedIn, Policy, Speed, PendingActions, ManageAccounts,
 } from '@mui/icons-material';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -65,11 +65,12 @@ export function Sidebar() {
     setOpenGroups((p) => ({ ...p, [key]: !p[key] }));
 
   // Name/phone edits sit in a review queue until an admin approves them; the
-  // badge is the only cue an admin gets before opening the drivers list.
+  // badge is the only cue an admin gets before opening the queue. Riders appear
+  // here too now, so the wording is no longer driver-specific.
   const pendingProfileChanges = usePendingProfileChanges();
   const profileChangeAction: NavAction = {
     count: pendingProfileChanges,
-    hint: `${pendingProfileChanges} driver profile change${
+    hint: `${pendingProfileChanges} profile change${
       pendingProfileChanges === 1 ? '' : 's'
     } waiting for review`,
   };
@@ -87,6 +88,10 @@ export function Sidebar() {
       ],
     },
     { label: 'Riders', icon: <People fontSize="small" />, href: '/riders' },
+    {
+      label: 'Profile Changes', icon: <ManageAccounts fontSize="small" />,
+      href: '/profile-changes', action: profileChangeAction,
+    },
     {
       label: 'Trips', icon: <Map fontSize="small" />,
       children: [

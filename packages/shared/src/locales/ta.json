@@ -85,7 +85,14 @@
       "passwordHint": "குறைந்தபட்சம் 8 எழுத்துக்கள்",
       "pdpaConsent": "I consent to the collection and use of my personal data in accordance with Malaysia's PDPA 2010 for driver onboarding and regulatory compliance.",
       "hasAccount": "ஏற்கனவே பதிவு செய்துள்ளீர்களா?",
-      "loginLink": "உள்நுழைய"
+      "loginLink": "உள்நுழைய",
+      "phoneHint": "மலேசிய கைபேசி எண்கள் மட்டும்",
+      "phoneCountryNotAllowed": "ஓட்டுநர்கள் மலேசிய (+60) எண்ணைப் பதிவு செய்ய வேண்டும்",
+      "phoneInvalid": "மலேசிய கைபேசி எண்ணை உள்ளிடவும்",
+      "phoneSaveFailed": "உங்கள் எண்ணைச் சேமிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+      "addPhoneTitle": "உங்கள் தொலைபேசி எண்ணைச் சேர்க்கவும்",
+      "addPhoneBody": "பயணத்தின் போது பயணிகள் உங்களைத் தொடர்பு கொள்ள எண் தேவை; இது உங்கள் APAD ஆபரேட்டர் பதிவின் ஒரு பகுதியாகும்.",
+      "addPhoneCta": "சேமித்துத் தொடரவும்"
     }
   },
   "onboarding": {
@@ -192,7 +199,10 @@
       "ms": "Bahasa Malaysia",
       "zh": "Mandarin (Simplified)",
       "ta": "தமிழ்"
-    }
+    },
+    "phonePending": "“{{value}}” Teeko மதிப்பாய்வுக்குக் காத்திருக்கிறது.",
+    "phoneEarly": "முன்கூட்டிய மாற்றமாகக் குறிக்கப்பட்டது — நிர்வாகி மதிப்பாய்வு செய்வார்.",
+    "phoneNextChange": "{{date}} அன்று மீண்டும் மாற்றலாம்."
   },
   "documents": {
     "upload": "ஆவணத்தைப் பதிவேற்றவும்",

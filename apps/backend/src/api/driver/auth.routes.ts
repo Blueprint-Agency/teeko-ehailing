@@ -6,16 +6,25 @@ import {
   sendVerificationOtp,
   verifyOtp,
 } from '../../modules/auth_otp/service';
+import { setInitialPhone } from '../../modules/identity/phone';
 import { getOrProvisionDriverMe } from '../../modules/identity/service';
 
 const VerifyBody = z.object({
   code: z.string().regex(/^\d{6}$/, 'must be 6 digits'),
 });
 
+// The app's phone field is a static '+60' chip, not a picker — `countryCode`
+// is optional and defaults to 'MY'. The server re-checks either way; the Expo
+// app is not a trust boundary.
+const PhoneBody = z.object({
+  countryCode: z.string().length(2).optional(),
+  nationalNumber: z.string().min(1).max(24),
+});
+
 // `password_change` brings the one-change-per-week cooldown into play; plain
 // email verification sends no purpose and is never gated.
 const SendOtpBody = z
-  .object({ purpose: z.enum(['email_verification', 'password_change']).optional() })
+  .object({ purpose: z.enum(['email_verification', 'password_change', 'phone_change']).optional() })
   .optional();
 
 const ChangePasswordBody = VerifyBody.extend({
@@ -31,6 +40,26 @@ export async function routes(app: FastifyInstance) {
     }
     const me = await getOrProvisionDriverMe(req.clerkAuth);
     return me;
+  });
+
+  // POST /api/v1/driver/auth/phone-initial
+  // Registration capture and the legacy-NULL completion gate. No OTP — there
+  // is no existing number to protect — and it refuses to overwrite one, so it
+  // is not a way around the review queue.
+  app.post('/auth/phone-initial', async (req, reply) => {
+    if (!req.user) return reply.code(404).send({ error: 'profile_not_provisioned' });
+    const body = PhoneBody.parse(req.body);
+    const result = await setInitialPhone({
+      userId: req.user.id,
+      role: 'driver',
+      countryCode: body.countryCode ?? 'MY',
+      nationalNumber: body.nationalNumber,
+    });
+    if (result.status === 'invalid') return reply.code(400).send({ error: result.error });
+    if (result.status === 'already_set') {
+      return reply.code(409).send({ error: 'phone_already_set', phone: result.phone });
+    }
+    return { ok: true, phone: result.phone, phoneCountry: result.phoneCountry };
   });
 
   app.post('/auth/send-otp', async (req, reply) => {

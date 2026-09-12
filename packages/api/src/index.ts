@@ -21,6 +21,13 @@ export {
   setApiUnauthorizedHandler,
 } from './client';
 
+export type {
+  PhoneInput as PhoneInputValue,
+  PhoneWritten,
+  PhoneChangeRequest,
+  PhoneChangeState,
+} from './client/auth';
+
 export { useAuthStore, type AuthState } from './stores/auth-store';
 export { useLocationStore, type LocationState } from './stores/location-store';
 export {

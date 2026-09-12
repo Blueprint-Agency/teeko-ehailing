@@ -6,21 +6,27 @@ import { clearAvatar, readAvatarFile, setAvatar } from '../../modules/identity/a
 import {
   cancelProfileChange,
   getFieldStates,
-  listDriverRequests,
+  listUserRequests,
   submitProfileChange,
   type ProfileChangeField,
   type SubmitResult,
-} from '../../modules/drivers/profile-changes';
+} from '../../modules/profile-changes';
+import { verifyOtp } from '../../modules/auth_otp/service';
 import { DomainError } from '../../shared/errors';
 
-// Loose on input, normalised in the service — same rule as the rider PATCH.
+// The phone arrives as a national number — the app's field is a fixed '+60'
+// chip, not a picker. `countryCode` is accepted but must be 'MY'; the service
+// re-checks rather than trusting the client.
 const PatchBody = z.object({
   fullName: z.string().min(1).max(100).optional(),
-  phone: z
-    .string()
-    .max(20)
-    .regex(/^[+0-9\s\-()]*$/, 'invalid phone number')
-    .optional(),
+  phone: z.string().max(24).optional(),
+  countryCode: z.string().length(2).optional(),
+  // Required whenever `phone` is present: an email OTP with
+  // `purpose: 'phone_change'`, consumed by this call so it cannot be replayed.
+  otpCode: z.string().regex(/^\d{6}$/, 'must be 6 digits').optional(),
+  // Required when the request lands inside the 30-day window. The reviewer
+  // sees it next to the ⚠️ early badge.
+  reason: z.string().min(1).max(300).optional(),
 });
 
 export async function routes(app: FastifyInstance) {
@@ -56,6 +62,23 @@ export async function routes(app: FastifyInstance) {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
     const patch = PatchBody.parse(req.body);
 
+    // The OTP guards the phone and nothing else, so it is spent before any
+    // request is raised — and only when a phone change is actually being
+    // asked for. A name edit still needs no code.
+    if (patch.phone !== undefined) {
+      if (!patch.otpCode) return reply.code(400).send({ error: 'otp_required' });
+      const verified = await verifyOtp({
+        userId: req.user.id,
+        clerkUserId: req.user.clerkUserId,
+        code: patch.otpCode,
+        purpose: 'phone_change',
+      });
+      if (verified.status !== 'verified') {
+        const code = verified.status === 'too_many_attempts' ? 429 : 400;
+        return reply.code(code).send({ error: 'otp_invalid', reason: verified.status });
+      }
+    }
+
     const wanted: Array<{ field: ProfileChangeField; value: string }> = [];
     if (patch.fullName !== undefined) wanted.push({ field: 'full_name', value: patch.fullName });
     if (patch.phone !== undefined) wanted.push({ field: 'phone', value: patch.phone });
@@ -63,9 +86,14 @@ export async function routes(app: FastifyInstance) {
     const results: Array<{ field: ProfileChangeField } & SubmitResult> = [];
     for (const w of wanted) {
       const result = await submitProfileChange({
-        driverId: req.user.id,
+        userId: req.user.id,
+        // Not looked up: this route is only ever reached through driver auth,
+        // and the role is what pins the number to a Malaysian mobile.
+        role: 'driver',
         field: w.field,
         value: w.value,
+        countryCode: w.field === 'phone' ? (patch.countryCode ?? 'MY') : undefined,
+        reason: w.field === 'phone' ? patch.reason : undefined,
       });
       results.push({ field: w.field, ...result });
     }
@@ -98,7 +126,7 @@ export async function routes(app: FastifyInstance) {
   // per-field summary the edit screen needs comes back on GET /profile.
   app.get('/profile/changes', async (req, reply) => {
     if (!req.user) return reply.code(401).send({ error: 'unauthorized' });
-    return { requests: await listDriverRequests(req.user.id) };
+    return { requests: await listUserRequests(req.user.id) };
   });
 
   // DELETE /api/v1/driver/profile/changes/:id — withdraw a request that is

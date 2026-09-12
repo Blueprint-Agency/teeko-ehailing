@@ -11,11 +11,26 @@
     "done": "完成"
   },
   "notImplemented": {
-    "home": { "title": "主页即将推出", "body": "我们正在开发预订流程。敬请期待。" },
-    "rides": { "title": "行程历史即将推出", "body": "完成首次行程后将在此处显示。" },
-    "trips": { "title": "行程流程即将推出", "body": "调度与跟踪功能正在开发中。" },
-    "payments": { "title": "支付即将推出", "body": "支付集成上线后即可添加银行卡或电子钱包。" },
-    "search": { "title": "搜索即将推出", "body": "地点搜索将与预订流程一同上线。" }
+    "home": {
+      "title": "主页即将推出",
+      "body": "我们正在开发预订流程。敬请期待。"
+    },
+    "rides": {
+      "title": "行程历史即将推出",
+      "body": "完成首次行程后将在此处显示。"
+    },
+    "trips": {
+      "title": "行程流程即将推出",
+      "body": "调度与跟踪功能正在开发中。"
+    },
+    "payments": {
+      "title": "支付即将推出",
+      "body": "支付集成上线后即可添加银行卡或电子钱包。"
+    },
+    "search": {
+      "title": "搜索即将推出",
+      "body": "地点搜索将与预订流程一同上线。"
+    }
   },
   "auth": {
     "signupTitle": "创建您的 Teeko 账户",
@@ -469,5 +484,50 @@
     "markAllRead": "全部标为已读",
     "emptyTitle": "暂无通知",
     "emptyBody": "没有新通知。我们将在此告知您的行程、优惠及帐户更新。"
+  },
+  "phone": {
+    "label": "手机号码",
+    "driverHelper": "仅限马来西亚手机号码",
+    "required": "请输入手机号码",
+    "invalid": "请输入有效的手机号码",
+    "countryNotAllowed": "司机必须注册马来西亚 (+60) 号码",
+    "myMobileOnly": "请输入马来西亚手机号码",
+    "searchCountry": "搜索国家或区号",
+    "recent": "最近使用",
+    "allCountries": "所有国家",
+    "noCountryResults": "未找到匹配的国家",
+    "change": "更改",
+    "changeTitle": "更改手机号码",
+    "newNumber": "新号码",
+    "sendCode": "发送验证码",
+    "codeSentTo": "我们已将 6 位验证码发送至 {{email}}",
+    "confirm": "确认",
+    "updated": "号码已更新",
+    "nextChange": "下次可更改时间：{{date}}",
+    "lockedBody": "您已于 {{changed}} 更改号码，可在 {{unlock}} 再次更改。",
+    "requestEarlier": "申请提前更改",
+    "reasonLabel": "原因",
+    "reasonPlaceholder": "请说明您需要再次更改的原因",
+    "reasonRequired": "请填写原因",
+    "submitForReview": "提交审核",
+    "submitted": "已提交审核",
+    "inReview": "审核中 — 提交于 {{date}}",
+    "withdraw": "撤回申请",
+    "withdrawn": "申请已撤回",
+    "rejectedTitle": "更改未获批准",
+    "alreadyPending": "您已有一份申请正在审核中",
+    "driverEarlyNotice": "您在 30 天内已更改过号码。请说明再次更改的原因，管理员将进行审核。",
+    "driverReviewNotice": "更改号码需要管理员批准。",
+    "addTitle": "添加您的手机号码",
+    "addBodyRider": "我们需要一个号码，以便司机在行程中与您联系。",
+    "addBodyDriver": "我们需要一个号码，以便乘客在行程中与您联系。",
+    "addCta": "保存并继续",
+    "otpTitle": "输入验证码",
+    "resend": "重新发送验证码",
+    "resendIn": "{{seconds}} 秒后可重发",
+    "otpInvalid": "验证码不正确",
+    "otpExpired": "验证码已过期",
+    "otpNoCode": "请重新获取验证码",
+    "tooManyAttempts": "尝试次数过多，请重新获取验证码。"
   }
 }

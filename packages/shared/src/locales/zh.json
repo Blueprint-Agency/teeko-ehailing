@@ -85,7 +85,14 @@
       "passwordHint": "最少 8 个字符",
       "pdpaConsent": "我同意根据马来西亚 PDPA 2010 收集和使用我的个人数据，用于司机入职和监管合规目的。",
       "hasAccount": "已经注册？",
-      "loginLink": "登录"
+      "loginLink": "登录",
+      "phoneHint": "仅限马来西亚手机号码",
+      "phoneCountryNotAllowed": "司机必须注册马来西亚 (+60) 号码",
+      "phoneInvalid": "请输入马来西亚手机号码",
+      "phoneSaveFailed": "无法保存您的号码，请重试。",
+      "addPhoneTitle": "添加您的手机号码",
+      "addPhoneBody": "我们需要一个号码，以便乘客在行程中与您联系；它也是您 APAD 运营记录的一部分。",
+      "addPhoneCta": "保存并继续"
     }
   },
   "onboarding": {
@@ -192,7 +199,10 @@
       "ms": "Bahasa Malaysia",
       "zh": "简体中文",
       "ta": "Tamil"
-    }
+    },
+    "phonePending": "“{{value}}” 正在等待 Teeko 审核。",
+    "phoneEarly": "已标记为提前更改 — 管理员将进行审核。",
+    "phoneNextChange": "您可在 {{date}} 再次更改。"
   },
   "documents": {
     "upload": "上传文件",

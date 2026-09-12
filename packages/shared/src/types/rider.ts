@@ -21,8 +21,13 @@ export type PaymentKind = 'cash' | 'card' | 'tng' | 'google_pay';
 
 export interface Rider {
   id: string;
-  name: string;
+  /** E.164, or '' on a legacy account — which routes to the blocking add-phone gate. */
   phone: string;
+  /** ISO-3166 alpha-2 the picker round-trips from. Undefined on un-backfilled rows. */
+  phoneCountry?: string;
+  /** ISO instant of the last change; undefined means never changed, so the next one is free. */
+  phoneChangedAt?: string;
+  name: string;
   email?: string;
   /** Absolute URL to the profile picture; undefined when none is set. */
   avatarUrl?: string;

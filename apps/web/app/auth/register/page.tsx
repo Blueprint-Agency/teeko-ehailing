@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -46,6 +46,9 @@ export default function RegisterPage() {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | undefined>()
+  // The typed national number, kept across the Clerk email-code detour so
+  // provisionAndEnter can still attach it when that path completes.
+  const phoneRef = useRef<string | null>(null)
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -60,6 +63,21 @@ export default function RegisterPage() {
   const provisionAndEnter = async () => {
     await api.getMe()
     await api.acceptConsent()
+    // Clerk owns sign-up, so there is no register endpoint to carry the number
+    // in — it is attached right after provisioning creates our users row.
+    // Held in a ref because the Clerk email-code path finishes in a different
+    // callback, where the form data is no longer in scope.
+    //
+    // A failure here is not worth blocking a completed sign-up over: the
+    // account simply has no phone, and the blocking add-phone gate catches it
+    // on the next load.
+    if (phoneRef.current) {
+      try {
+        await api.setInitialPhone(phoneRef.current)
+      } catch (err) {
+        console.warn('[register] initial phone write failed; gate will catch it', err)
+      }
+    }
     await hydrate()
     router.push('/onboarding/agreement')
   }
@@ -74,6 +92,7 @@ export default function RegisterPage() {
     if (!isLoaded || !signUp) return
     setLoading(true)
     setCodeError(undefined)
+    phoneRef.current = data.phone.trim()
     try {
       // Already signed in: the Clerk credential exists and only our own
       // provisioning is outstanding (e.g. a previous attempt died on a backend
@@ -139,6 +158,8 @@ export default function RegisterPage() {
     if (!isLoaded || !signUp || !code.trim()) return
     setLoading(true)
     setCodeError(undefined)
+    // phoneRef was set when the form was submitted; this callback has no form
+    // data of its own.
     try {
       const attempt = await signUp.attemptEmailAddressVerification({ code: code.trim() })
       if (attempt.status !== 'complete') {
@@ -298,6 +319,32 @@ export default function RegisterPage() {
               error={errors.email?.message}
               {...register('email')}
             />
+            {/* Static '+60', not a country picker: a driver's number goes on
+                the APAD/JPJ operator record and riders dial it mid-trip, so it
+                must be a Malaysian mobile. */}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-[var(--color-text)]">
+                {t('auth.register.phoneLabel')} <span className="text-[var(--color-danger)]">*</span>
+              </label>
+              <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3">
+                <span className="shrink-0 font-medium text-[var(--color-text)]">+60</span>
+                <span className="h-5 w-px shrink-0 bg-[var(--color-border)]" aria-hidden />
+                <input
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="12-345 6789"
+                  maxLength={24}
+                  className="w-full bg-transparent py-2.5 text-[var(--color-text)] outline-none"
+                  {...register('phone')}
+                />
+              </div>
+              <p className="mt-1 text-xs text-[var(--color-text-muted)]">
+                {t('auth.register.phoneHint')}
+              </p>
+              {errors.phone?.message ? (
+                <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.phone.message}</p>
+              ) : null}
+            </div>
             <Input
               label={t('auth.register.password')}
               type="password"

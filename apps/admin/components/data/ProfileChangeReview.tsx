@@ -19,6 +19,8 @@ import {
 // writes the value onto the account and starts that field's 30-day cooldown;
 // rejecting costs the driver nothing and needs a reason they can read in-app.
 export function ProfileChangeReview({ driverId }: { driverId: string }) {
+  // `driverId` is a user id — the prop keeps its name because this component
+  // is still only mounted on the driver detail page.
   const [requests, setRequests] = useState<ProfileChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -35,7 +37,7 @@ export function ProfileChangeReview({ driverId }: { driverId: string }) {
     try {
       // No status filter: the driver's own page shows the whole trail, which is
       // what an auditor asking "when did this name change?" needs.
-      const res = await adminApi.getProfileChanges({ driverId, status: 'all' });
+      const res = await adminApi.getProfileChanges({ userId: driverId, status: 'all' });
       setRequests(res.requests);
       setError('');
     } catch (e) {
@@ -65,11 +67,14 @@ export function ProfileChangeReview({ driverId }: { driverId: string }) {
       await load();
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Failed to review change';
-      // The number was claimed by someone else between submission and review.
+      // Numbers are deliberately not unique, so a collision is never the
+      // problem here — only a format/country rule that has since tightened.
       setError(
-        message.includes('phone_taken')
-          ? 'That number now belongs to another account — reject this request instead.'
-          : message,
+        message.includes('phone_country_not_allowed')
+          ? 'That number is no longer valid for this role — reject this request instead.'
+          : message.includes('phone_invalid')
+            ? 'That number no longer passes validation — reject this request instead.'
+            : message,
       );
     } finally {
       setSubmitting(false);
@@ -139,6 +144,27 @@ export function ProfileChangeReview({ driverId }: { driverId: string }) {
                     <Typography variant="caption" fontWeight={600}>
                       {r.requestedValue}
                     </Typography>
+                    {r.isEarly && (
+                      <Box sx={{ mt: 0.5 }}>
+                        {/* Not a rejection — the reviewer is being asked to
+                            override a cooldown, so show when it started. */}
+                        <Chip
+                          label={`⚠️ Early${
+                            r.phoneChangedAt
+                              ? ` · last changed ${new Date(r.phoneChangedAt).toLocaleDateString()}`
+                              : ''
+                          }`}
+                          size="small"
+                          color="warning"
+                          variant="outlined"
+                        />
+                        {r.reason && (
+                          <Typography variant="caption" color="text.secondary" display="block">
+                            “{r.reason}”
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Typography variant="caption">

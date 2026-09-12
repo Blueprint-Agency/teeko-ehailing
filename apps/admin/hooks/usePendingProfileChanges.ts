@@ -6,10 +6,10 @@ import { adminApi } from '@/lib/api';
 const POLL_MS = 60_000;
 
 /**
- * Pending driver profile-change requests waiting on an admin decision.
+ * Pending profile-change requests — riders and drivers — waiting on a decision.
  *
  * Lives behind a hook because the count drives an action badge in the nav —
- * the queue is otherwise invisible until someone opens the drivers list.
+ * the queue is otherwise invisible until someone opens it.
  * Re-fetches on navigation so a review just approved drops the badge without
  * waiting out the poll interval.
  */

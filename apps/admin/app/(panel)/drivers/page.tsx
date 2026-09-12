@@ -30,14 +30,16 @@ export default function DriversPage() {
   useEffect(() => {
     // Best-effort: a failed queue fetch must not hide the drivers table.
     adminApi
-      .getProfileChanges({ status: 'pending' })
+      .getProfileChanges({ status: 'pending', role: 'driver' })
       .then((res) => setPendingChanges(res.requests))
       .catch(() => setPendingChanges([]));
   }, []);
 
-  // The queue is keyed by driver so the list can flag which rows need a decision.
+  // The queue is keyed by user so the list can flag which rows need a decision.
+  // Narrowed to drivers above — riders raise phone requests here too now, and
+  // their ids would never match a row in this table.
   const pendingDriverIds = useMemo(
-    () => new Set(pendingChanges.map((r) => r.driverId)),
+    () => new Set(pendingChanges.map((r) => r.userId)),
     [pendingChanges],
   );
 

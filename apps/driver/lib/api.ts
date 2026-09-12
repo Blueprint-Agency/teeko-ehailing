@@ -114,6 +114,15 @@ export type DriverMe = {
     fullName: string | null;
     /** Raw server value — pass through `resolveMediaUrl` before rendering. */
     avatarUrl: string | null;
+    /**
+     * E.164 '+60…'. Null on a legacy account or an interrupted sign-up, which
+     * routes to the blocking add-phone gate — a rider dials this number
+     * mid-trip, so a NULL silently degrades the ride.
+     */
+    phone: string | null;
+    /** Always 'MY' for a driver once set. */
+    phoneCountry: string | null;
+    phoneChangedAt: string | null;
     status: string;
     pdpaConsentAt: string | null;
   };
@@ -194,6 +203,7 @@ export type EarningsResponse = {
 export type DriverProfile = {
   id: string;
   fullName: string | null;
+  /** E.164 '+60…'; null on a legacy row, which routes to the add-phone gate. */
   phone: string | null;
   email: string | null;
   /** Raw server value — pass through `resolveMediaUrl` before rendering. */
@@ -222,7 +232,13 @@ export type ProfileChangeRequest = {
   field: ProfileChangeField;
   currentValue: string | null;
   requestedValue: string;
+  /** ISO-3166 alpha-2 for a phone request; always 'MY' for a driver. */
+  requestedCountry: string | null;
   status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  /** Raised inside the 30-day window — a flag for the reviewer, not a refusal. */
+  isEarly: boolean;
+  /** The driver's own words. Required on an early request. */
+  reason: string | null;
   reviewNote: string | null;
   reviewedAt: string | null;
   appliedAt: string | null;
@@ -235,6 +251,11 @@ export type ProfileFieldState = {
   pending: ProfileChangeRequest | null;
   /** Set while the field is inside its 30-day cooldown; null means editable. */
   nextAllowedAt: string | null;
+  /**
+   * Inside the window, but an early request may still be raised — the driver
+   * gets the reason field instead of a hard lock. Phone only.
+   */
+  canRequestEarly: boolean;
   lastDecision: ProfileChangeRequest | null;
 };
 
@@ -244,7 +265,10 @@ export type ProfileChangeResult = { field: ProfileChangeField } & (
   | { status: 'unchanged' }
   | { status: 'already_pending'; request: ProfileChangeRequest }
   | { status: 'cooldown'; nextAllowedAt: string }
-  | { status: 'phone_taken' }
+  | { status: 'reason_required'; nextAllowedAt: string }
+  // A number is never rejected for being "taken": phone numbers are
+  // deliberately not unique. This is a format/country failure.
+  | { status: 'invalid'; error: 'phone_required' | 'phone_invalid' | 'phone_country_not_allowed' }
 );
 
 export type VehicleDocKind = 'car_grant' | 'road_tax' | 'insurance' | 'puspakom';
@@ -392,12 +416,23 @@ export const api = {
     // week rule *before* emailing a code, so the driver never types a code that
     // was never going to be spendable. 429 `password_change_cooldown` carries
     // `nextAllowedAt`.
-    sendOtp: (purpose?: 'email_verification' | 'password_change') =>
+    sendOtp: (purpose?: 'email_verification' | 'password_change' | 'phone_change') =>
       req<{ ok: true }>('/driver/auth/send-otp', {
         method: 'POST',
         body: JSON.stringify(purpose ? { purpose } : {}),
       }),
     verifyOtp: (code: string) => req<{ ok: true }>('/driver/auth/verify-otp', { method: 'POST', body: JSON.stringify({ code }) }),
+    /**
+     * Registration capture and the legacy-NULL completion gate. No OTP — there
+     * is no existing number to protect — and the server refuses to overwrite an
+     * existing number, so this is not a route around the review queue.
+     * `countryCode` is always 'MY': the field is a fixed '+60' chip.
+     */
+    setInitialPhone: (nationalNumber: string) =>
+      req<{ ok: true; phone: string; phoneCountry: string }>('/driver/auth/phone-initial', {
+        method: 'POST',
+        body: JSON.stringify({ countryCode: 'MY', nationalNumber }),
+      }),
     // Verifies the emailed OTP and writes the new password in one call — the
     // server uses Clerk's admin API, so the current password isn't needed.
     changePassword: (code: string, newPassword: string) =>
@@ -463,7 +498,15 @@ export const api = {
     // records and change through the web portal, not here. Even these two are
     // *requests*: nothing changes until an admin approves, so read `results`
     // rather than assuming the returned profile reflects the edit.
-    update: (patch: { fullName?: string; phone?: string }) =>
+    update: (patch: {
+      fullName?: string;
+      /** National number; the '+60' is fixed, the server composes E.164. */
+      phone?: string;
+      /** Required whenever `phone` is sent: a 'phone_change' email OTP. */
+      otpCode?: string;
+      /** Required when the request lands inside the 30-day window. */
+      reason?: string;
+    }) =>
       req<{
         profile: DriverProfile;
         fields: ProfileFieldState[];

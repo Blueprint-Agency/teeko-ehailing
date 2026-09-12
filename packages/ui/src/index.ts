@@ -8,6 +8,7 @@ export { Icon, type IconProps, type IconName } from './primitives/Icon';
 export { Input, type InputProps } from './primitives/Input';
 export { ListRow, type ListRowProps } from './primitives/ListRow';
 export { OTPInput, type OTPInputProps } from './primitives/OTPInput';
+export { PhoneInput, type PhoneInputProps } from './primitives/PhoneInput';
 export { Pill, type PillProps } from './primitives/Pill';
 export { Pressable, type PressableProps, type HapticStyle } from './primitives/Pressable';
 export { Rating, type RatingProps } from './primitives/Rating';

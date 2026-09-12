@@ -8,7 +8,14 @@ import ScreenHeader from '../../../components/driver/ScreenHeader';
 import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import { cooldownSentence, describeCooldown, formatUnlockDate } from '@teeko/shared';
+import {
+  cooldownSentence,
+  describeCooldown,
+  formatPhoneDisplay,
+  formatUnlockDate,
+  parseE164,
+  resolveDriverPhone,
+} from '@teeko/shared';
 import {
   ApiError,
   api,
@@ -34,9 +41,18 @@ export default function PersonalInfoScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState('');
+  // The national number only — the '+60' is a static prefix, never typed.
   const [phone, setPhone] = useState('');
+  const [reason, setReason] = useState('');
+  const [code, setCode] = useState('');
+  // The OTP sheet opens only once a phone change is actually being asked for;
+  // a name-only edit still needs no code.
+  const [otpStep, setOtpStep] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
   const [nameError, setNameError] = useState<string | undefined>();
   const [phoneError, setPhoneError] = useState<string | undefined>();
+  const [reasonError, setReasonError] = useState<string | undefined>();
+  const [codeError, setCodeError] = useState<string | undefined>();
 
   const styles = createStyles(colors);
 
@@ -45,7 +61,10 @@ export default function PersonalInfoScreen() {
   const phoneState = stateOf('phone');
   // A field is locked while a request is in review or its 30-day window is open.
   const nameLocked = !!nameState?.pending || !!nameState?.nextAllowedAt;
-  const phoneLocked = !!phoneState?.pending || !!phoneState?.nextAllowedAt;
+  // Phone is no longer hard-locked by the cooldown. Inside the window the driver
+  // may still ask, with a reason — the request is flagged early for the reviewer.
+  const phoneEarly = phoneState?.canRequestEarly ?? false;
+  const phoneLocked = !!phoneState?.pending;
 
   const load = useCallback(async () => {
     try {
@@ -57,7 +76,9 @@ export default function PersonalInfoScreen() {
       const pendingName = f.find((x) => x.field === 'full_name')?.pending?.requestedValue;
       const pendingPhone = f.find((x) => x.field === 'phone')?.pending?.requestedValue;
       setName(pendingName ?? p.fullName ?? '');
-      setPhone(pendingPhone ?? p.phone ?? '');
+      // The field holds the national number; the '+60' lives in the static
+      // prefix, so strip it back off whatever E.164 the server stored.
+      setPhone(parseE164(pendingPhone ?? p.phone ?? '', 'MY').nationalNumber);
     } catch {
       Alert.alert('Error', 'Could not load your profile. Please try again.');
     } finally {
@@ -67,22 +88,83 @@ export default function PersonalInfoScreen() {
 
   useEffect(() => { load(); }, [load]);
 
+  const currentNational = parseE164(profile?.phone ?? '', 'MY').nationalNumber;
   const dirtyName = !nameLocked && name.trim() !== (profile?.fullName ?? '');
-  const dirtyPhone = !phoneLocked && phone.trim() !== (profile?.phone ?? '');
+  const dirtyPhone = !phoneLocked && phone.replace(/\D/g, '') !== currentNational;
   const canSave = (dirtyName || dirtyPhone) && !!name.trim() && !saving;
 
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const id = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(id);
+  }, [resendIn]);
+
+  /**
+   * Validate, then either submit straight away (name only) or send the code and
+   * open the OTP step (anything touching the phone). Splitting it here means a
+   * driver never receives a code for an edit that was going to fail validation.
+   */
   const onSave = async () => {
     setNameError(undefined);
     setPhoneError(undefined);
+    setReasonError(undefined);
     if (!name.trim()) {
       setNameError('Enter your full name.');
       return;
     }
+
+    if (dirtyPhone) {
+      const resolved = resolveDriverPhone({ nationalNumber: phone });
+      if (!resolved.ok) {
+        setPhoneError(
+          resolved.error === 'phone_country_not_allowed'
+            ? t('phone.countryNotAllowed')
+            : resolved.error === 'phone_required'
+              ? t('phone.required')
+              : t('phone.myMobileOnly'),
+        );
+        return;
+      }
+      if (phoneEarly && !reason.trim()) {
+        setReasonError(t('phone.reasonRequired'));
+        return;
+      }
+      setSaving(true);
+      try {
+        await api.auth.sendOtp('phone_change');
+        setOtpStep(true);
+        setResendIn(60);
+      } catch (err) {
+        const body = err instanceof ApiError ? err.data : {};
+        if (body.error === 'rate_limited') {
+          setResendIn(Number(body.retryInSeconds) || 60);
+          setOtpStep(true);
+        } else {
+          Alert.alert('Error', 'Could not send the verification code.');
+        }
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
+    await submit();
+  };
+
+  /** The actual PATCH. Carries the OTP only when the phone is part of the edit. */
+  const submit = async () => {
+    setCodeError(undefined);
     setSaving(true);
     try {
       const { profile: updated, fields: nextFields, results } = await api.profile.update({
         ...(dirtyName ? { fullName: name.trim() } : {}),
-        ...(dirtyPhone ? { phone: phone.trim() } : {}),
+        ...(dirtyPhone
+          ? {
+              phone: phone.trim(),
+              otpCode: code,
+              ...(phoneEarly ? { reason: reason.trim() } : {}),
+            }
+          : {}),
       });
       setProfile(updated);
       setFields(nextFields);
@@ -94,9 +176,18 @@ export default function PersonalInfoScreen() {
       let submitted = 0;
       for (const r of results) {
         if (r.status === 'submitted') submitted += 1;
-        else if (r.status === 'phone_taken') {
-          setFieldError(r.field, 'That number is already linked to another account.');
+        else if (r.status === 'invalid') {
+          // Never "already taken": numbers are deliberately not unique.
+          setFieldError(
+            r.field,
+            r.error === 'phone_country_not_allowed'
+              ? t('phone.countryNotAllowed')
+              : t('phone.myMobileOnly'),
+          );
+        } else if (r.status === 'reason_required') {
+          setReasonError(t('phone.reasonRequired'));
         } else if (r.status === 'cooldown') {
+          // Name only — the phone's window is an early-request prompt, not a wall.
           setFieldError(r.field, cooldownSentence('change this', r.nextAllowedAt));
         } else if (r.status === 'already_pending') {
           setFieldError(r.field, 'A change to this field is already waiting for review.');
@@ -114,8 +205,21 @@ export default function PersonalInfoScreen() {
       }
     } catch (err) {
       const body = err instanceof ApiError ? err.data : {};
-      if (body.error === 'phone_taken') {
-        setPhoneError('That number is already linked to another account.');
+      if (body.error === 'otp_invalid') {
+        // The code survives a wrong guess, so the driver retries in place
+        // rather than starting the whole edit over.
+        setCodeError(
+          body.reason === 'expired'
+            ? t('phone.otpExpired')
+            : body.reason === 'too_many_attempts'
+              ? t('phone.tooManyAttempts')
+              : body.reason === 'no_active_code'
+                ? t('phone.otpNoCode')
+                : t('phone.otpInvalid'),
+        );
+        setCode('');
+      } else if (body.error === 'otp_required') {
+        setOtpStep(true);
       } else {
         Alert.alert('Error', 'Could not submit your changes.');
       }
@@ -153,9 +257,16 @@ export default function PersonalInfoScreen() {
   const fieldNotice = (state: ProfileFieldState | null): string | null => {
     if (!state) return null;
     if (state.pending) {
-      return `“${state.pending.requestedValue}” is waiting for Teeko to review.`;
+      const shown =
+        state.field === 'phone'
+          ? formatPhoneDisplay(state.pending.requestedValue, state.pending.requestedCountry)
+          : state.pending.requestedValue;
+      return `“${shown}” is waiting for Teeko to review.`;
     }
-    if (state.nextAllowedAt) {
+    // The phone's window is not a lock — `canRequestEarly` turns it into a
+    // prompt for a reason instead, so only say "you can change this again" for
+    // a field that really is frozen.
+    if (state.nextAllowedAt && !state.canRequestEarly) {
       return `Changed recently — you can change this again ${describeCooldown(
         state.nextAllowedAt,
       )} (${formatUnlockDate(state.nextAllowedAt)}).`;
@@ -199,24 +310,80 @@ export default function PersonalInfoScreen() {
 
             <View style={styles.inputBlock}>
               <Text style={styles.inputLabel}>{t('driver.phoneLabel')}</Text>
-              <TextInput
-                style={[styles.textInput, phoneError && styles.inputError, phoneLocked && styles.inputLocked]}
-                placeholder="+60 12 345 6789"
-                placeholderTextColor={colors.textMut}
-                keyboardType="phone-pad"
-                autoComplete="tel"
-                editable={!phoneLocked}
-                value={phone}
-                onChangeText={(v) => { setPhone(v); if (phoneError) setPhoneError(undefined); }}
-              />
+              {/* Static prefix, not a picker: a driver's number sits on the
+                  APAD/JPJ operator record and must be a Malaysian mobile. */}
+              <View style={[styles.phoneRow, phoneError && styles.inputError, phoneLocked && styles.inputLocked]}>
+                <Text style={styles.phonePrefix}>+60</Text>
+                <View style={styles.phoneDivider} />
+                <TextInput
+                  style={styles.phoneInput}
+                  placeholder="12-345 6789"
+                  placeholderTextColor={colors.textMut}
+                  keyboardType="phone-pad"
+                  autoComplete="tel"
+                  maxLength={24}
+                  editable={!phoneLocked}
+                  value={phone}
+                  onChangeText={(v) => { setPhone(v); if (phoneError) setPhoneError(undefined); }}
+                />
+              </View>
+              <Text style={styles.hint}>{t('phone.driverHelper')}</Text>
               {phoneError && <Text style={styles.errorText}>{phoneError}</Text>}
               {fieldNotice(phoneState) && <Text style={styles.hint}>{fieldNotice(phoneState)}</Text>}
+
+              {/* Inside the 30-day window the driver is not blocked — they are
+                  asked why, and the request reaches the reviewer flagged early. */}
+              {phoneEarly && dirtyPhone && !otpStep && (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={styles.hint}>{t('phone.driverEarlyNotice')}</Text>
+                  <TextInput
+                    style={[styles.textInput, reasonError && styles.inputError]}
+                    placeholder={t('phone.reasonPlaceholder')}
+                    placeholderTextColor={colors.textMut}
+                    multiline
+                    maxLength={300}
+                    value={reason}
+                    onChangeText={(v) => { setReason(v); if (reasonError) setReasonError(undefined); }}
+                  />
+                  {reasonError && <Text style={styles.errorText}>{reasonError}</Text>}
+                </View>
+              )}
+
               {phoneState?.pending && (
                 <TouchableOpacity onPress={() => onWithdraw('phone')} hitSlop={8}>
-                  <Text style={styles.linkText}>Withdraw request</Text>
+                  <Text style={styles.linkText}>{t('phone.withdraw')}</Text>
                 </TouchableOpacity>
               )}
             </View>
+
+            {otpStep && (
+              <View style={styles.inputBlock}>
+                <Text style={styles.inputLabel}>{t('phone.otpTitle')}</Text>
+                <Text style={styles.hint}>
+                  {t('phone.codeSentTo', { email: maskEmail(profile?.email) })}
+                </Text>
+                <TextInput
+                  style={[styles.textInput, styles.otpInput, codeError && styles.inputError]}
+                  placeholder="000000"
+                  placeholderTextColor={colors.textMut}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  textContentType="oneTimeCode"
+                  value={code}
+                  onChangeText={(v: string) => { setCode(v.replace(/D/g, '')); if (codeError) setCodeError(undefined); }}
+                />
+                {codeError && <Text style={styles.errorText}>{codeError}</Text>}
+                <TouchableOpacity
+                  onPress={resendIn > 0 ? undefined : onSave}
+                  disabled={resendIn > 0}
+                  hitSlop={8}
+                >
+                  <Text style={[styles.linkText, resendIn > 0 && { opacity: 0.5 }]}>
+                    {resendIn > 0 ? t('phone.resendIn', { seconds: resendIn }) : t('phone.resend')}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.inputBlock}>
               <Text style={styles.inputLabel}>EMAIL</Text>
@@ -234,18 +401,32 @@ export default function PersonalInfoScreen() {
             </Text>
 
             <TouchableOpacity
-              style={[styles.saveBtn, !canSave && { opacity: 0.5 }]}
-              onPress={onSave}
+              style={[styles.saveBtn, (!canSave || (otpStep && code.length !== 6)) && { opacity: 0.5 }]}
+              onPress={otpStep ? submit : onSave}
               activeOpacity={0.85}
-              disabled={!canSave}
+              disabled={!canSave || (otpStep && code.length !== 6)}
             >
-              {saving ? <ActivityIndicator color="#000" /> : <Text style={styles.saveBtnText}>Submit for review</Text>}
+              {saving ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.saveBtnText}>
+                  {otpStep || !dirtyPhone ? t('phone.submitForReview') : t('phone.sendCode')}
+                </Text>
+              )}
             </TouchableOpacity>
           </ScrollView>
         </KeyboardAvoidingView>
       )}
     </View>
   );
+}
+
+/** 'ahmad@mail.com' → 'a***@mail.com'. Enough to recognise, not enough to leak. */
+function maskEmail(email?: string | null): string {
+  if (!email) return 'your email';
+  const [local, domain] = email.split('@');
+  if (!domain || !local) return email;
+  return `${local[0]}***@${domain}`;
 }
 
 const createStyles = (colors: any) => StyleSheet.create({
@@ -268,7 +449,18 @@ const createStyles = (colors: any) => StyleSheet.create({
     borderRadius: 14, borderWidth: 1, borderColor: colors.border,
   },
   readonlyText: { color: colors.textSec, fontSize: 16 },
+  // The '+60' chip and the national-number field read as one control.
+  phoneRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 14, borderWidth: 1, borderColor: colors.border,
+  },
+  phonePrefix: { color: colors.text, fontSize: 17, fontWeight: '600' },
+  phoneDivider: { width: 1, height: 24, backgroundColor: colors.border, marginHorizontal: 12 },
+  phoneInput: { flex: 1, paddingVertical: 16, color: colors.text, fontSize: 17 },
   inputError: { borderColor: '#ef4444' },
+  otpInput: { letterSpacing: 8, fontSize: 24, fontWeight: '700', textAlign: 'center' },
   // A field in review, or inside its 30-day window, reads as evidently frozen.
   inputLocked: { opacity: 0.6 },
   linkText: { color: colors.accent, fontSize: 13, fontWeight: '700', marginTop: 6 },

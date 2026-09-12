@@ -6,9 +6,23 @@ import * as authApi from '../client/auth';
 export type AuthState = {
   rider: Rider | null;
   languagePref: Locale;
+  /**
+   * ISO-2s the rider has picked in the country sheet, most recent first. Kept
+   * in memory only — a convenience for ordering the list, not data worth
+   * persisting or sending anywhere.
+   */
+  recentCountries: string[];
 
   fetchProfile: () => Promise<void>;
-  updateProfile: (patch: { fullName?: string; phone?: string; locale?: Locale }) => Promise<void>;
+  // `phone` is not patchable: a change needs an OTP and is capped at one per
+  // 30 days. Use setInitialPhone / changePhone / requestEarlyPhoneChange.
+  updateProfile: (patch: { fullName?: string; locale?: Locale }) => Promise<void>;
+  setInitialPhone: (input: authApi.PhoneInput) => Promise<void>;
+  changePhone: (input: authApi.PhoneInput & { otpCode: string }) => Promise<string>;
+  requestEarlyPhoneChange: (
+    input: authApi.PhoneInput & { otpCode: string; reason: string },
+  ) => Promise<void>;
+  rememberCountry: (iso2: string) => void;
   uploadAvatar: (file: { uri: string; name?: string; mimeType?: string }) => Promise<void>;
   removeAvatar: () => Promise<void>;
   setLanguage: (locale: Locale) => Promise<void>;
@@ -18,6 +32,7 @@ export type AuthState = {
 export const useAuthStore = create<AuthState>((set, get) => ({
   rider: null,
   languagePref: 'en',
+  recentCountries: [],
 
   async fetchProfile() {
     const rider = await authApi.getMe();
@@ -32,11 +47,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         rider: {
           ...current,
           ...(patch.fullName !== undefined ? { name: patch.fullName } : {}),
-          ...(patch.phone !== undefined ? { phone: patch.phone } : {}),
           ...(patch.locale !== undefined ? { languagePref: patch.locale } : {}),
         },
       });
     }
+  },
+
+  async setInitialPhone(input) {
+    const res = await authApi.setInitialPhone(input);
+    get().rememberCountry(input.countryCode);
+    const current = get().rider;
+    // `phoneChangedAt` stays undefined: the first capture is not a "change",
+    // so the rider's first real change must not be blocked by a cooldown.
+    if (current) set({ rider: { ...current, phone: res.phone, phoneCountry: res.phoneCountry } });
+  },
+
+  /** Resolves with the ISO instant the next change unlocks. */
+  async changePhone(input) {
+    const res = await authApi.changePhone(input);
+    get().rememberCountry(input.countryCode);
+    const current = get().rider;
+    if (current) {
+      set({
+        rider: {
+          ...current,
+          phone: res.phone,
+          phoneCountry: res.phoneCountry,
+          phoneChangedAt: new Date().toISOString(),
+        },
+      });
+    }
+    return res.nextAllowedAt;
+  },
+
+  async requestEarlyPhoneChange(input) {
+    await authApi.requestEarlyPhoneChange(input);
+    get().rememberCountry(input.countryCode);
+    // Nothing on the rider changes yet — an admin has to approve it first.
+  },
+
+  rememberCountry(iso2) {
+    set({ recentCountries: [iso2, ...get().recentCountries.filter((c) => c !== iso2)].slice(0, 5) });
   },
 
   async uploadAvatar(file) {

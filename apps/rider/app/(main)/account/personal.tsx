@@ -1,61 +1,58 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 
-import { useUser } from '@clerk/clerk-expo';
-import { ApiError, useAuthStore, useUIStore } from '@teeko/api';
-import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
-import { useRouter } from 'expo-router';
+import { ApiError, authApi, useAuthStore, useUIStore } from '@teeko/api';
+import type { PhoneChangeState } from '@teeko/api';
+import { formatPhoneDisplay, formatUnlockDate } from '@teeko/shared';
+import { useT } from '@teeko/i18n';
+import { Button, Card, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
+import { useFocusEffect, useRouter } from 'expo-router';
+
+// Name is still a plain save. The phone is not: every change after registration
+// needs an email OTP and is capped at one per 30 days, so it gets its own row
+// with a Change action rather than sitting in the same "Save changes" batch.
 
 export default function PersonalInfoScreen() {
   const router = useRouter();
+  const t = useT();
   const rider = useAuthStore((s) => s.rider);
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const pushToast = useUIStore((s) => s.pushToast);
-  const { user } = useUser();
-
-  // The number now lives on our own users row. Earlier builds parked it in
-  // Clerk's unsafeMetadata, so fall back to that (and to Clerk's own phone) for
-  // riders who set it before the move — the first save migrates it across.
-  const initialPhone =
-    rider?.phone ||
-    user?.primaryPhoneNumber?.phoneNumber ||
-    (typeof user?.unsafeMetadata?.phone === 'string' ? user.unsafeMetadata.phone : '') ||
-    '';
 
   const [name, setName] = useState(rider?.name ?? '');
-  const [phone, setPhone] = useState(initialPhone);
-  const email = rider?.email ?? '';
   const [saving, setSaving] = useState(false);
-  const [phoneError, setPhoneError] = useState<string | undefined>();
+  const [phoneState, setPhoneState] = useState<PhoneChangeState | null>(null);
 
+  const email = rider?.email ?? '';
   const dirtyName = name.trim() !== (rider?.name ?? '');
-  const dirtyPhone = phone.trim() !== initialPhone;
-  const canSave = (dirtyName || dirtyPhone) && !!name.trim();
 
-  const onSave = async () => {
-    setPhoneError(undefined);
+  const loadPhoneState = useCallback(async () => {
+    try {
+      setPhoneState(await authApi.getPhoneChangeState());
+    } catch {
+      // A failed read just means the row renders without its cooldown hint —
+      // the server still enforces both rules, so this is not worth a toast.
+    }
+  }, []);
+
+  // Refetch on focus: the rider may have just come back from the change screen,
+  // or an admin may have decided on their request while the app was open.
+  useFocusEffect(
+    useCallback(() => {
+      void loadPhoneState();
+    }, [loadPhoneState]),
+  );
+
+  const onSaveName = async () => {
     setSaving(true);
     try {
-      await updateProfile({
-        ...(dirtyName ? { fullName: name.trim() } : {}),
-        ...(dirtyPhone ? { phone: phone.trim() } : {}),
-      });
+      await updateProfile({ fullName: name.trim() });
       router.back();
     } catch (err) {
-      if (err instanceof ApiError) {
-        let body: { error?: string } = {};
-        try {
-          body = JSON.parse(err.body);
-        } catch {
-          // Non-JSON body — fall through to the generic toast.
-        }
-        if (body.error === 'phone_taken') {
-          setPhoneError('That number is already linked to another account');
-          return;
-        }
-      }
-      const message = (err as { errors?: Array<{ message?: string }> })
-        .errors?.[0]?.message;
+      const message =
+        err instanceof ApiError
+          ? undefined
+          : (err as { errors?: Array<{ message?: string }> }).errors?.[0]?.message;
       pushToast({
         kind: 'error',
         message: message ? `Save failed: ${message}` : 'Could not save changes.',
@@ -82,6 +79,7 @@ export default function PersonalInfoScreen() {
       >
         <View className="mt-4 gap-4">
           <Input label="Full name" value={name} onChangeText={setName} autoCapitalize="words" />
+
           <View>
             <Text tone="secondary" className="mb-1 text-xs">
               Email
@@ -93,17 +91,21 @@ export default function PersonalInfoScreen() {
               Email is managed by your sign-in account.
             </Text>
           </View>
-          <Input
-            label="Phone"
-            value={phone}
-            onChangeText={(v) => {
-              setPhone(v);
-              if (phoneError) setPhoneError(undefined);
+
+          <PhoneRow
+            phone={rider?.phone ?? ''}
+            phoneCountry={rider?.phoneCountry}
+            state={phoneState}
+            onChange={() => router.push('/(main)/account/phone-change' as never)}
+            onWithdraw={async () => {
+              try {
+                await authApi.withdrawPhoneChangeRequest();
+                pushToast({ kind: 'success', message: t('phone.withdrawn') });
+                await loadPhoneState();
+              } catch {
+                pushToast({ kind: 'error', message: 'Could not withdraw the request.' });
+              }
             }}
-            keyboardType="phone-pad"
-            autoComplete="tel"
-            placeholder="+60 12 345 6789"
-            error={phoneError}
           />
         </View>
       </ScrollView>
@@ -111,11 +113,86 @@ export default function PersonalInfoScreen() {
       <View className="pb-safe pt-2">
         <Button
           label="Save changes"
-          onPress={onSave}
+          onPress={onSaveName}
           loading={saving}
-          disabled={!canSave}
+          disabled={!dirtyName || !name.trim()}
         />
       </View>
     </ScreenContainer>
+  );
+}
+
+function PhoneRow({
+  phone,
+  phoneCountry,
+  state,
+  onChange,
+  onWithdraw,
+}: {
+  phone: string;
+  phoneCountry?: string;
+  state: PhoneChangeState | null;
+  onChange: () => void;
+  onWithdraw: () => void;
+}) {
+  const t = useT();
+  const pending = state?.pending ?? null;
+  const locked = !!state?.nextAllowedAt;
+
+  // Surface a rejection once, so the rider learns *why* rather than just
+  // finding the field editable again.
+  const rejection =
+    state?.lastDecision?.status === 'rejected' && !pending ? state.lastDecision : null;
+
+  return (
+    <View>
+      <Text tone="secondary" className="mb-1 text-xs">
+        {t('phone.label')}
+      </Text>
+      <View className="flex-row items-center rounded-lg border border-border bg-muted px-4 py-3">
+        <Text className="flex-1">{formatPhoneDisplay(phone, phoneCountry) || '—'}</Text>
+        {pending ? (
+          <Text tone="secondary" className="text-xs">
+            {t('phone.inReview', { date: formatUnlockDate(pending.createdAt) })}
+          </Text>
+        ) : (
+          <Pressable onPress={onChange} haptic="selection" accessibilityRole="button">
+            <Text weight="bold" tone="brand" className="text-sm">
+              {t('phone.change')}
+            </Text>
+          </Pressable>
+        )}
+      </View>
+
+      {pending ? (
+        <View className="mt-2 flex-row items-center justify-between">
+          <Text tone="secondary" className="flex-1 text-xs">
+            {formatPhoneDisplay(pending.requestedValue, pending.requestedCountry)}
+          </Text>
+          <Pressable onPress={onWithdraw} haptic="selection" accessibilityRole="button">
+            <Text weight="medium" tone="danger" className="text-xs">
+              {t('phone.withdraw')}
+            </Text>
+          </Pressable>
+        </View>
+      ) : locked ? (
+        <Text tone="faint" className="mt-1 text-xs">
+          {t('phone.nextChange', { date: formatUnlockDate(state!.nextAllowedAt!) })}
+        </Text>
+      ) : null}
+
+      {rejection ? (
+        <Card className="mt-3 border-danger/40 bg-danger/5 p-3">
+          <Text weight="medium" tone="danger" className="text-sm">
+            {t('phone.rejectedTitle')}
+          </Text>
+          {rejection.reviewNote ? (
+            <Text tone="secondary" className="mt-1 text-xs">
+              {rejection.reviewNote}
+            </Text>
+          ) : null}
+        </Card>
+      ) : null}
+    </View>
   );
 }

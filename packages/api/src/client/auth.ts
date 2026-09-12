@@ -12,6 +12,8 @@ type RiderMeResponse = {
     fullName: string | null;
     avatarUrl: string | null;
     phone: string | null;
+    phoneCountry: string | null;
+    phoneChangedAt: string | null;
     locale: Locale;
     status: 'active' | 'suspended' | 'deactivated';
   };
@@ -26,6 +28,8 @@ function toRider(res: RiderMeResponse): Rider {
     id: res.user.id,
     name: res.user.fullName ?? '',
     phone: res.user.phone ?? '',
+    phoneCountry: res.user.phoneCountry ?? undefined,
+    phoneChangedAt: res.user.phoneChangedAt ?? undefined,
     email: res.user.email ?? undefined,
     avatarUrl: resolveMediaUrl(res.user.avatarUrl),
     rating: res.riderProfile.ratingAvg ?? 0,
@@ -40,15 +44,97 @@ export async function getMe(): Promise<Rider> {
   return toRider(res);
 }
 
+// `phone` is deliberately absent. A number change needs an email OTP and is
+// capped at one per 30 days — see the phone endpoints below. Sending `phone`
+// here answers `400 use_phone_endpoint`.
 export async function updateMe(patch: {
   fullName?: string;
-  /** Any human format; the server normalises before storing. '' clears it. */
-  phone?: string;
   locale?: Locale;
 }): Promise<void> {
   await api<{ ok: true }>('/api/v1/rider/auth/me', {
     method: 'PATCH',
     body: JSON.stringify(patch),
+  });
+}
+
+// ── Phone ───────────────────────────────────────────────────────────────────
+// Three calls, because a phone change is three different things depending on
+// where the rider is in the 30-day window.
+
+export type PhoneInput = {
+  /** ISO-3166 alpha-2 from the country picker. */
+  countryCode: string;
+  /** The national number as typed; the server composes E.164. */
+  nationalNumber: string;
+};
+
+export type PhoneWritten = { phone: string; phoneCountry: string };
+
+/**
+ * Registration capture and the legacy-NULL completion gate. No OTP: there is
+ * no existing number to protect, and the server refuses to overwrite one — so
+ * this can never be used to skip the OTP on a real change.
+ */
+export async function setInitialPhone(input: PhoneInput): Promise<PhoneWritten> {
+  return api<PhoneWritten & { ok: true }>('/api/v1/rider/auth/me/phone-initial', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+/**
+ * Self-service change. Answers `409 phone_cooldown` with a `nextAllowedAt`
+ * when the rider is inside the window — the screen turns that into the unlock
+ * date plus the "Request an earlier change" affordance.
+ */
+export async function changePhone(
+  input: PhoneInput & { otpCode: string },
+): Promise<{ phone: string; phoneCountry: string; nextAllowedAt: string }> {
+  return api('/api/v1/rider/auth/me/phone', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export type PhoneChangeRequest = {
+  id: string;
+  requestedValue: string;
+  requestedCountry: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  isEarly: boolean;
+  reason: string | null;
+  reviewNote: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+};
+
+export type PhoneChangeState = {
+  pending: PhoneChangeRequest | null;
+  /** ISO instant the field unlocks; null when it is editable right now. */
+  nextAllowedAt: string | null;
+  canRequestEarly: boolean;
+  /** Last decision, so the screen can surface "rejected: <reason>" once. */
+  lastDecision: PhoneChangeRequest | null;
+};
+
+/** Ask an admin to allow a change inside the 30-day window. Reason required. */
+export async function requestEarlyPhoneChange(
+  input: PhoneInput & { otpCode: string; reason: string },
+): Promise<{ request: PhoneChangeRequest }> {
+  return api('/api/v1/rider/auth/me/phone-change-request', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function getPhoneChangeState(): Promise<PhoneChangeState> {
+  return api<PhoneChangeState>('/api/v1/rider/auth/me/phone-change-request');
+}
+
+/** Withdraw. Costs nothing — the clock only starts when a change is applied. */
+export async function withdrawPhoneChangeRequest(): Promise<void> {
+  await api<{ ok: true }>('/api/v1/rider/auth/me/phone-change-request', {
+    method: 'DELETE',
   });
 }
 
@@ -90,7 +176,7 @@ export async function removeAvatar(): Promise<void> {
  * `nextAllowedAt`. Plain email verification passes no purpose and is never gated.
  */
 export async function sendOtp(
-  purpose?: 'email_verification' | 'password_change',
+  purpose?: 'email_verification' | 'password_change' | 'phone_change',
 ): Promise<void> {
   await api<{ ok: true }>('/api/v1/rider/auth/send-otp', {
     method: 'POST',

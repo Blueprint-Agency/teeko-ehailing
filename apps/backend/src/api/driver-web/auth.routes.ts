@@ -3,7 +3,17 @@ import { z } from 'zod';
 
 import { driverClerk } from '../../external/clerk';
 import { sendVerificationOtp, verifyOtp } from '../../modules/auth_otp/service';
+import { setInitialPhone } from '../../modules/identity/phone';
+import { getFieldStates } from '../../modules/profile-changes';
 import { acceptPdpaConsent, getOrProvisionDriverMe } from '../../modules/identity/service';
+
+// The portal's register form shows a static '+60' chip, so `countryCode` is
+// optional and defaults to 'MY' — but it is still validated, because the Expo
+// app and a hand-rolled request reach the same service.
+const PhoneBody = z.object({
+  countryCode: z.string().length(2).optional(),
+  nationalNumber: z.string().min(1).max(24),
+});
 
 // ---------------------------------------------------------------------------
 // Driver web portal auth. Clerk (driver instance) owns the credential — this
@@ -24,7 +34,7 @@ const VerifyBody = z.object({
 // Same purpose flag as the apps: a `password_change` code is refused while the
 // account is inside its one-change-per-week cooldown.
 const SendOtpBody = z
-  .object({ purpose: z.enum(['email_verification', 'password_change']).optional() })
+  .object({ purpose: z.enum(['email_verification', 'password_change', 'phone_change']).optional() })
   .optional();
 
 export async function routes(app: FastifyInstance) {
@@ -53,6 +63,52 @@ export async function routes(app: FastifyInstance) {
     if (!userId) return reply.code(404).send({ error: 'profile_not_provisioned' });
     await acceptPdpaConsent(userId);
     return { ok: true };
+  });
+
+  // POST /api/v1/driver-web/auth/phone-initial
+  // Registration capture and the legacy-NULL completion gate. Called straight
+  // after Clerk sign-up (the portal collects the number on the register form)
+  // and again by the blocking add-phone screen for an account that predates it.
+  //
+  // No OTP: there is no existing number to protect. The write refuses to
+  // overwrite an existing number, so this is not a route around the review
+  // queue — a driver who already has a number must go through it.
+  app.post('/phone-initial', async (req, reply) => {
+    if (!req.clerkAuth && !req.user) return reply.code(401).send({ error: 'unauthorized' });
+    const me = req.clerkAuth ? await getOrProvisionDriverMe(req.clerkAuth) : null;
+    const userId = me?.user.id ?? req.user?.id;
+    if (!userId) return reply.code(404).send({ error: 'profile_not_provisioned' });
+
+    const body = PhoneBody.parse(req.body);
+    const result = await setInitialPhone({
+      userId,
+      // Pins the number to a Malaysian mobile: a rider dials it mid-trip, and
+      // it sits on the APAD/JPJ operator record.
+      role: 'driver',
+      countryCode: body.countryCode ?? 'MY',
+      nationalNumber: body.nationalNumber,
+    });
+    if (result.status === 'invalid') return reply.code(400).send({ error: result.error });
+    if (result.status === 'already_set') {
+      return reply.code(409).send({ error: 'phone_already_set', phone: result.phone });
+    }
+    return { ok: true, phone: result.phone, phoneCountry: result.phoneCountry };
+  });
+
+  // GET /api/v1/driver-web/auth/phone-change-state
+  // Read-only. The portal does not change numbers — that happens in the app,
+  // where the OTP step lives — but it has to show the same pending / early /
+  // cooldown state, or the two surfaces disagree about what is in review.
+  app.get('/phone-change-state', async (req, reply) => {
+    if (!req.user) return reply.code(404).send({ error: 'profile_not_provisioned' });
+    const states = await getFieldStates(req.user.id);
+    const phone = states.find((s) => s.field === 'phone');
+    return {
+      pending: phone?.pending ?? null,
+      nextAllowedAt: phone?.nextAllowedAt ?? null,
+      canRequestEarly: phone?.canRequestEarly ?? false,
+      lastDecision: phone?.lastDecision ?? null,
+    };
   });
 
   app.post('/send-otp', async (req, reply) => {
