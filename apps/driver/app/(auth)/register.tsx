@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignUp } from '@clerk/clerk-expo';
@@ -10,6 +10,7 @@ import { useTheme } from '../../components/ThemeProvider';
 import { resolveDriverPhone } from '@teeko/shared';
 import { useT } from '@teeko/i18n';
 import { api } from '../../lib/api';
+import { toast } from '../../store/useFeedbackStore';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -76,7 +77,7 @@ export default function RegisterScreen() {
         });
         router.replace('/(auth)/verify-email');
       } else {
-        Alert.alert('Registration failed', `Sign-up incomplete (status: ${created.status}). Disable email verification in Clerk dashboard.`);
+        toast.error(`Sign-up incomplete (status: ${created.status}). Disable email verification in Clerk dashboard.`);
       }
     } catch (err: unknown) {
       const clerkErr = (err as { errors?: Array<{ code?: string; message?: string }> }).errors?.[0];
@@ -87,7 +88,7 @@ export default function RegisterScreen() {
       } else if (clerkErr?.code === 'form_password_pwned' || clerkErr?.code === 'form_password_length_too_short') {
         setPasswordError(clerkErr.message ?? 'Password is too weak.');
       } else {
-        Alert.alert('Registration failed', clerkErr?.message ?? 'Something went wrong. Try again.');
+        toast.error(clerkErr?.message ?? t('driverAlerts.somethingWentWrong'));
       }
     } finally {
       setLoading(false);

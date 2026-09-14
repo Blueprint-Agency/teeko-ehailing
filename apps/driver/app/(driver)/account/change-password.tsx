@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useUser } from '@clerk/clerk-expo';
@@ -12,6 +12,7 @@ import { useTheme } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { cooldownSentence } from '@teeko/shared';
 import { ApiError, api } from '../../../lib/api';
+import { toast, showDialog } from '../../../store/useFeedbackStore';
 
 const PASSWORD_MIN = 8;
 
@@ -46,7 +47,7 @@ export default function ChangePasswordScreen() {
 
   const sendCode = async () => {
     if (!email) {
-      Alert.alert(t('driver.changePassword'), 'No email on file for this account.');
+      toast.error(t('driverAlerts.noEmailOnFile'));
       return;
     }
     setBusy(true);
@@ -55,21 +56,21 @@ export default function ChangePasswordScreen() {
       // the driver could never spend — a password changes once a week.
       await api.auth.sendOtp('password_change');
       setStep('verify');
-      Alert.alert(t('driver.changePassword'), t('driver.pwCodeSent', { email }));
+      toast.success(t('driver.pwCodeSent', { email }));
     } catch (err) {
       const body = err instanceof ApiError ? err.data : {};
       if (body.error === 'password_change_cooldown') {
         const message = body.nextAllowedAt
           ? cooldownSentence('change your password', String(body.nextAllowedAt))
-          : 'You can only change your password once a week.';
+          : t('driverAlerts.pwCooldownWeekly');
         setCooldown(message);
-        Alert.alert('Password recently changed', message);
+        showDialog({ title: t('driverAlerts.pwCooldownTitle'), message });
       } else if (body.error === 'rate_limited') {
-        Alert.alert('Too many attempts', `Try again in ${body.retryInSeconds ?? 60}s.`);
+        toast.error(t('driverAlerts.tooManyAttemptsRetryIn', { s: body.retryInSeconds ?? 60 }));
       } else if (body.error === 'email_delivery_failed') {
-        Alert.alert('Error', String(body.providerMessage ?? 'Email failed to send.'));
+        toast.error(body.providerMessage ? String(body.providerMessage) : t('driverAlerts.emailSendFailed'));
       } else {
-        Alert.alert('Error', 'Could not send verification code.');
+        toast.error(t('driverAlerts.sendCodeFailed'));
       }
     } finally {
       setBusy(false);
@@ -95,7 +96,7 @@ export default function ChangePasswordScreen() {
     setBusy(true);
     try {
       await api.auth.changePassword(code.trim(), newPassword);
-      Alert.alert(t('driver.changePassword'), t('auth.forgotSuccessToast'));
+      toast.success(t('auth.forgotSuccessToast'));
       router.back();
     } catch (err) {
       const body = err instanceof ApiError ? err.data : {};
@@ -104,9 +105,9 @@ export default function ChangePasswordScreen() {
         // landed is still refused here.
         const message = body.nextAllowedAt
           ? cooldownSentence('change your password', String(body.nextAllowedAt))
-          : 'You can only change your password once a week.';
+          : t('driverAlerts.pwCooldownWeekly');
         setCooldown(message);
-        Alert.alert('Password recently changed', message);
+        showDialog({ title: t('driverAlerts.pwCooldownTitle'), message });
       } else if (body.error === 'incorrect' || body.error === 'no_active_code') {
         setCodeError('Invalid or expired code.');
       } else if (body.error === 'expired') {
@@ -121,7 +122,7 @@ export default function ChangePasswordScreen() {
             : String(body.message ?? 'Choose a stronger password.'),
         );
       } else {
-        Alert.alert('Error', 'Could not update password.');
+        toast.error(t('driverAlerts.updatePasswordFailed'));
       }
     } finally {
       setBusy(false);

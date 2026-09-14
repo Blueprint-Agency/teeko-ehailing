@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Alert,
+  View, Text, TouchableOpacity, StyleSheet,
   StatusBar, ScrollView, NativeSyntheticEvent, NativeScrollEvent,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -9,6 +9,7 @@ import { useColors } from '../../../constants/colors';
 import { useTheme } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { openPortal } from '../../../lib/portal';
+import { showDialog } from '../../../store/useFeedbackStore';
 
 const TC_SECTIONS = [
   {
@@ -59,7 +60,7 @@ export default function AgreementScreen() {
   const handleAccept = () => {
     if (!scrolledToBottom) return;
     openPortal('/onboarding/agreement').catch(() =>
-      Alert.alert('Could not open browser', 'Please visit the Teeko driver portal to continue.'),
+      showDialog({ title: t('driverAlerts.browserTitle'), message: t('driverAlerts.browserBody') }),
     );
     router.replace('/(driver)/onboarding/pending');
   };

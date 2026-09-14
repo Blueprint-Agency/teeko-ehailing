@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
-  StatusBar, ScrollView, Alert, ActivityIndicator, RefreshControl,
+  StatusBar, ScrollView, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
@@ -15,6 +15,7 @@ import { openPortal } from '../../../lib/portal';
 import type { Locale } from '@teeko/shared';
 import { api, resolveMediaUrl, type DriverProfile } from '../../../lib/api';
 import { pickProfileImage, PermissionDeniedError } from '../../../lib/pickProfileImage';
+import { toast, showDialog } from '../../../store/useFeedbackStore';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -67,8 +68,7 @@ export default function ProfileScreen() {
       const avatarUrl = await api.profile.uploadAvatar(picked);
       setProfile((prev) => (prev ? { ...prev, avatarUrl } : prev));
     } catch (err) {
-      Alert.alert(
-        t('driver.photoFailedTitle'),
+      toast.error(
         err instanceof PermissionDeniedError
           ? t('driver.photoPermissionDenied')
           : t('driver.photoFailedBody'),
@@ -84,7 +84,7 @@ export default function ProfileScreen() {
       await api.profile.removeAvatar();
       setProfile((prev) => (prev ? { ...prev, avatarUrl: null } : prev));
     } catch {
-      Alert.alert(t('driver.photoFailedTitle'), t('driver.photoFailedBody'));
+      toast.error(t('driver.photoFailedBody'));
     } finally {
       setAvatarBusy(false);
     }
@@ -92,14 +92,17 @@ export default function ProfileScreen() {
 
   const onAvatarPress = useCallback(() => {
     if (avatarBusy) return;
-    Alert.alert(t('driver.profilePhoto'), undefined, [
-      { text: t('driver.takePhoto'), onPress: () => void changeAvatar('camera') },
-      { text: t('driver.chooseFromLibrary'), onPress: () => void changeAvatar('library') },
-      ...(profile?.avatarUrl
-        ? [{ text: t('driver.removePhoto'), style: 'destructive' as const, onPress: () => void removeAvatar() }]
-        : []),
-      { text: t('common.cancel'), style: 'cancel' as const },
-    ]);
+    showDialog({
+      title: t('driver.profilePhoto'),
+      actions: [
+        { label: t('driver.takePhoto'), onPress: () => void changeAvatar('camera') },
+        { label: t('driver.chooseFromLibrary'), onPress: () => void changeAvatar('library') },
+        ...(profile?.avatarUrl
+          ? [{ label: t('driver.removePhoto'), style: 'destructive' as const, onPress: () => void removeAvatar() }]
+          : []),
+        { label: t('common.cancel'), style: 'cancel' as const },
+      ],
+    });
   }, [avatarBusy, changeAvatar, profile?.avatarUrl, removeAvatar, t]);
 
   const styles = createStyles(colors);
@@ -272,7 +275,7 @@ export default function ProfileScreen() {
           {([
             { label: t('driver.helpCenter'), Icon: HelpCircle, action: () => router.push('/(driver)/support') },
             { label: t('driver.terms'), Icon: ClipboardList, action: () => router.push('/(driver)/onboarding/agreement') },
-            { label: t('driver.privacy'), Icon: Lock, action: () => Alert.alert(t('driver.privacy'), 'Privacy policy') },
+            { label: t('driver.privacy'), Icon: Lock, action: () => showDialog({ title: t('driver.privacy'), message: 'Privacy policy' }) },
           ] as const).map((item) => (
             <TouchableOpacity key={item.label} style={styles.settingRow} onPress={item.action}>
               <item.Icon size={18} color={colors.textSec} strokeWidth={1.75} style={styles.settingIconView} />

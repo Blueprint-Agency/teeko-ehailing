@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet, Modal, FlatList,
-  StatusBar, ScrollView, Keyboard, Alert, ActivityIndicator,
+  StatusBar, ScrollView, Keyboard, ActivityIndicator,
 } from 'react-native';
 import { Landmark, CheckCircle2, ChevronDown, Check } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,7 @@ import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { api, type BankAccount } from '../../lib/api';
+import { toast } from '../../store/useFeedbackStore';
 
 // Teeko settles driver earnings by bank transfer from the admin payout sheet,
 // so the driver supplies their bank details here. The server only ever hands
@@ -48,7 +49,7 @@ export default function PayoutsScreen() {
         setHolder(saved.accountHolderName);
       }
     } catch {
-      Alert.alert('Error', 'Could not load your bank details. Please try again.');
+      toast.error(t('driverAlerts.loadBankFailed'));
     } finally {
       setLoading(false);
     }
@@ -100,9 +101,9 @@ export default function PayoutsScreen() {
       setNumber('');
       setConfirmNumber('');
       setEditing(false);
-      Alert.alert('Bank account saved', 'Your trip earnings will be transferred to this account.');
+      toast.success(t('driverAlerts.bankSaved'));
     } catch (err) {
-      Alert.alert('Could not save', err instanceof Error ? err.message : 'Please try again later.');
+      toast.error(err instanceof Error ? err.message : t('driverAlerts.tryAgainLater'));
     } finally {
       setSaving(false);
     }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking, Image,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Linking, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Phone, Check } from 'lucide-react-native';
@@ -13,6 +13,7 @@ import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { api, resolveMediaUrl } from '../../lib/api';
 import { useDriverStore } from '../../store/useDriverStore';
+import { toast, showDialog } from '../../store/useFeedbackStore';
 
 const PHASE_KEYS = ['navigating', 'arrived', 'inprogress', 'completed'] as const;
 
@@ -146,17 +147,20 @@ export default function TripScreen() {
         else if (phaseIndex === 2) await api.driver.completeTrip(activeTripId);
       }
     } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Action failed');
+      toast.error(err instanceof Error ? err.message : t('driverAlerts.actionFailed'));
       return;
     }
     setPhaseIndex((i) => Math.min(i + 1, 3));
   };
 
   const handleSOS = async () => {
-    Alert.alert('SOS', 'Emergency services will be contacted.', [
-      { text: 'Cancel', style: 'cancel' },
+    showDialog({
+      title: t('driverAlerts.sosTitle'),
+      message: t('driverAlerts.sosBody'),
+      actions: [
+      { label: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Confirm SOS',
+        label: t('driverAlerts.confirmSos'),
         style: 'destructive',
         onPress: async () => {
           // Raise the alert before anything else — the record and the contact
@@ -184,24 +188,26 @@ export default function TripScreen() {
           router.replace('/(driver)/(tabs)/home');
 
           if (!alert) {
-            Alert.alert(
-              'SOS not sent',
-              'We could not reach Teeko. Call 999 directly if you are in danger.',
-            );
+            showDialog({
+              title: t('driverAlerts.sosNotSentTitle'),
+              message: t('driverAlerts.sosNotSentBody'),
+            });
           } else if (alert.notifiedContacts.length === 0) {
-            Alert.alert(
-              'SOS raised',
-              'Teeko support has been alerted. You have no emergency contacts saved — add one in the driver portal.',
-            );
+            showDialog({
+              title: t('driverAlerts.sosRaisedTitle'),
+              message:
+                t('driverAlerts.sosRaisedNoContacts'),
+            });
           } else {
-            Alert.alert(
-              'SOS raised',
-              `Teeko support has been alerted and your ${alert.notifiedContacts.length} emergency contact(s) notified.`,
-            );
+            showDialog({
+              title: t('driverAlerts.sosRaisedTitle'),
+              message: t('driverAlerts.sosRaisedContacts', { count: alert.notifiedContacts.length }),
+            });
           }
         },
       },
-    ]);
+      ],
+    });
   };
 
   // Use the live directions polyline when available; fall back to a client-side
@@ -290,7 +296,7 @@ export default function TripScreen() {
             <Text style={styles.riderName}>{activeTrip?.riderName ?? '—'}</Text>
             <Text style={styles.riderMeta}>{activeTrip?.category?.toUpperCase() ?? '—'}</Text>
           </View>
-          <TouchableOpacity style={styles.callBtn} onPress={() => Alert.alert('Call', 'Calling rider...')}>
+          <TouchableOpacity style={styles.callBtn} onPress={() => toast.info(t('driverAlerts.callingRider'))}>
             <Phone size={18} color={colors.text} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>

@@ -6,6 +6,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { useRouter } from 'expo-router';
+import FeedbackHost from '../components/driver/FeedbackHost';
 import { ThemeProvider, useTheme } from '../components/ThemeProvider';
 import { useColors } from '../constants/colors';
 import { LocaleProvider } from '../providers/LocaleProvider';
@@ -155,6 +156,7 @@ function RootLayoutContent() {
       <SocketBridge />
       <StatusBar style={activeTheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+      <FeedbackHost />
     </SafeAreaView>
   );
 }

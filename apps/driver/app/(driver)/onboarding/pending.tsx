@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, ScrollView,
-  ActivityIndicator, AppState, Alert, RefreshControl,
+  ActivityIndicator, AppState, RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth } from '@clerk/clerk-expo';
@@ -10,6 +10,7 @@ import { useTheme } from '../../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { api } from '../../../lib/api';
 import { openPortal, portalPathForApplicationState } from '../../../lib/portal';
+import { showDialog } from '../../../store/useFeedbackStore';
 
 const STEP_LABEL_KEYS = ['stepSubmitted', 'stepUnderReview', 'stepBackground', 'stepApproved'] as const;
 
@@ -91,7 +92,7 @@ export default function PendingReviewScreen() {
 
   const continueInPortal = () => {
     openPortal(portalPathForApplicationState(state)).catch(() =>
-      Alert.alert('Could not open browser', 'Please visit the Teeko driver portal to continue.'),
+      showDialog({ title: t('driverAlerts.browserTitle'), message: t('driverAlerts.browserBody') }),
     );
   };
 

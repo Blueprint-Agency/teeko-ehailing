@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import MapBackground from '../../components/driver/MapBackground';
@@ -9,6 +9,7 @@ import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { api } from '../../lib/api';
 import { useDriverStore } from '../../store/useDriverStore';
+import { toast } from '../../store/useFeedbackStore';
 
 export default function RideRequestScreen() {
   const router = useRouter();
@@ -122,7 +123,7 @@ export default function RideRequestScreen() {
                   setActiveTrip(pendingOffer);
                   setPendingOffer(null);
                 } catch (err: unknown) {
-                  Alert.alert('Error', err instanceof Error ? err.message : 'Failed to accept trip');
+                  toast.error(err instanceof Error ? err.message : t('driverAlerts.acceptTripFailed'));
                   return;
                 }
               }

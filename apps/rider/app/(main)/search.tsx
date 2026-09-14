@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 
-import { PlacesLimitError, useLocationStore, usePlacesStore, useTripStore } from '@teeko/api';
+import {
+  PlacesLimitError,
+  showDialog,
+  useLocationStore,
+  usePlacesStore,
+  useTripStore,
+} from '@teeko/api';
 import type { Place } from '@teeko/shared';
 import { Icon, Input, ListRow, Pressable, ScreenContainer, Spinner, Text } from '@teeko/ui';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -97,10 +103,10 @@ export default function SearchScreen() {
         await saveHomeOrWork('custom', resolved, replaceId);
       } catch (err) {
         if (err instanceof PlacesLimitError) {
-          Alert.alert(
-            'Saved places full',
-            `You can save up to ${err.limit} custom places. Remove one to add another.`,
-          );
+          showDialog({
+            title: 'Saved places full',
+            message: `You can save up to ${err.limit} custom places. Remove one to add another.`,
+          });
           return;
         }
         throw err;

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import ScreenHeader from '../../../components/driver/ScreenHeader';
@@ -23,6 +23,7 @@ import {
   type ProfileChangeField,
   type ProfileFieldState,
 } from '../../../lib/api';
+import { toast, showDialog } from '../../../store/useFeedbackStore';
 
 // Name and phone are the only self-service fields. Everything else on a driver
 // profile (licence, vehicle, approval status) is verified evidence for APAD and
@@ -80,7 +81,7 @@ export default function PersonalInfoScreen() {
       // prefix, so strip it back off whatever E.164 the server stored.
       setPhone(parseE164(pendingPhone ?? p.phone ?? '', 'MY').nationalNumber);
     } catch {
-      Alert.alert('Error', 'Could not load your profile. Please try again.');
+      toast.error(t('driverAlerts.loadProfileFailed'));
     } finally {
       setLoading(false);
     }
@@ -140,7 +141,7 @@ export default function PersonalInfoScreen() {
           setResendIn(Number(body.retryInSeconds) || 60);
           setOtpStep(true);
         } else {
-          Alert.alert('Error', 'Could not send the verification code.');
+          toast.error(t('driverAlerts.sendCodeFailed'));
         }
       } finally {
         setSaving(false);
@@ -195,11 +196,10 @@ export default function PersonalInfoScreen() {
       }
 
       if (submitted > 0) {
-        Alert.alert(
-          'Sent for review',
+        toast.success(
           submitted === 1
-            ? 'Your change was sent to Teeko for review. You’ll be notified once it’s approved.'
-            : 'Your changes were sent to Teeko for review. You’ll be notified once they’re approved.',
+            ? t('driverAlerts.changeSentOne')
+            : t('driverAlerts.changeSentMany'),
         );
         router.back();
       }
@@ -221,7 +221,7 @@ export default function PersonalInfoScreen() {
       } else if (body.error === 'otp_required') {
         setOtpStep(true);
       } else {
-        Alert.alert('Error', 'Could not submit your changes.');
+        toast.error(t('driverAlerts.submitChangesFailed'));
       }
     } finally {
       setSaving(false);
@@ -232,25 +232,29 @@ export default function PersonalInfoScreen() {
   const onWithdraw = (field: ProfileChangeField) => {
     const request = stateOf(field)?.pending;
     if (!request) return;
-    Alert.alert('Withdraw request?', 'Your profile will stay as it is now.', [
-      { text: 'Keep waiting', style: 'cancel' },
-      {
-        text: 'Withdraw',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const { fields: nextFields } = await api.profile.cancelChange(request.id);
-            setFields(nextFields);
-            if (field === 'phone') setPhone(profile?.phone ?? '');
-            else setName(profile?.fullName ?? '');
-          } catch {
-            // Most likely an admin reviewed it in the meantime — re-read rather
-            // than leave the screen showing a request that no longer exists.
-            await load();
-          }
+    showDialog({
+      title: t('driverAlerts.withdrawTitle'),
+      message: t('driverAlerts.withdrawBody'),
+      actions: [
+        { label: t('driverAlerts.keepWaiting'), style: 'cancel' },
+        {
+          label: t('driverAlerts.withdraw'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { fields: nextFields } = await api.profile.cancelChange(request.id);
+              setFields(nextFields);
+              if (field === 'phone') setPhone(profile?.phone ?? '');
+              else setName(profile?.fullName ?? '');
+            } catch {
+              // Most likely an admin reviewed it in the meantime — re-read rather
+              // than leave the screen showing a request that no longer exists.
+              await load();
+            }
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   /** One line under each input explaining why it is (or isn't) editable. */

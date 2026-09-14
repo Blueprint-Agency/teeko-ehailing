@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Image,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, Image,
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Bell } from 'lucide-react-native';
@@ -14,6 +14,7 @@ import { api, resolveMediaUrl, type DriverProfile } from '../../../../lib/api';
 import { getSocket } from '../../../../lib/socket';
 import { useDriverStore } from '../../../../store/useDriverStore';
 import { useNotificationStore } from '../../../../store/useNotificationStore';
+import { toast, showDialog } from '../../../../store/useFeedbackStore';
 
 // Mock surge for v0.1 — replace with the live surge feed when it exists.
 const SURGE = { multiplier: 1.4, area: 'Bukit Bintang' };
@@ -70,19 +71,23 @@ export default function HomeScreen() {
 
   const handleCancelActiveTrip = () => {
     if (!activeTripId) return;
-    Alert.alert('Cancel trip', 'Are you sure you want to cancel this trip?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Yes, cancel',
-        style: 'destructive',
-        onPress: async () => {
-          await api.driver.cancelTrip(activeTripId, 'driver_cancelled').catch(() => null);
-          setActiveTripId(null);
-          setActiveTrip(null);
-          setActiveTripStatus(null);
+    showDialog({
+      title: t('driverAlerts.cancelTripTitle'),
+      message: t('driverAlerts.cancelTripBody'),
+      actions: [
+        { label: t('driverAlerts.no'), style: 'cancel' },
+        {
+          label: t('driverAlerts.yesCancel'),
+          style: 'destructive',
+          onPress: async () => {
+            await api.driver.cancelTrip(activeTripId, 'driver_cancelled').catch(() => null);
+            setActiveTripId(null);
+            setActiveTrip(null);
+            setActiveTripStatus(null);
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   // trip.request is handled by SocketBridge in _layout.tsx
@@ -151,17 +156,17 @@ export default function HomeScreen() {
     // Confirm only when going offline would strand real work — an active trip or
     // a live offer on screen. Routine shift-end stays a single tap.
     if (isOnline && (activeTripId || pendingOffer)) {
-      Alert.alert(
-        'Go offline?',
-        activeTripId
-          ? 'You still have an active trip. Finish or cancel it before going offline.'
-          : 'You have a trip request waiting. Going offline will decline it.',
-        activeTripId
-          ? [{ text: 'OK' }]
+      showDialog({
+        title: t('driverAlerts.goOfflineTitle'),
+        message: activeTripId
+          ? t('driverAlerts.goOfflineActiveTrip')
+          : t('driverAlerts.goOfflinePendingOffer'),
+        actions: activeTripId
+          ? undefined
           : [
-              { text: 'Stay online', style: 'cancel' },
+              { label: t('driverAlerts.stayOnline'), style: 'cancel' },
               {
-                text: 'Go offline',
+                label: t('driverAlerts.goOffline'),
                 style: 'destructive',
                 onPress: async () => {
                   setTogglePending(true);
@@ -170,7 +175,7 @@ export default function HomeScreen() {
                 },
               },
             ],
-      );
+      });
       return;
     }
     setTogglePending(true);
@@ -183,7 +188,7 @@ export default function HomeScreen() {
         setOnline(true);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Could not go online';
-        Alert.alert('Error', msg);
+        toast.error(msg);
       }
     }
     setTogglePending(false);

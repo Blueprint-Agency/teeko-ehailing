@@ -1,9 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
+import { ActivityIndicator, ScrollView, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { useClerk } from '@clerk/clerk-expo';
-import { MAX_CUSTOM_PLACES, useAuthStore, usePlacesStore, useTripStore } from '@teeko/api';
+import {
+  MAX_CUSTOM_PLACES,
+  showDialog,
+  toast,
+  useAuthStore,
+  usePlacesStore,
+  useTripStore,
+} from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import type { Locale, Place } from '@teeko/shared';
 import { type BottomSheetHandle, Icon, ListRow, Pressable, ScreenContainer, Text } from '@teeko/ui';
@@ -48,22 +55,26 @@ export default function AccountTab() {
   } | null>(null);
 
   const onLogout = () => {
-    Alert.alert(t('account.logoutConfirmTitle'), t('account.logoutConfirmBody'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('account.logout'),
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-          } catch {
-            // ignore — best-effort
-          }
-          clearProfile();
-          router.replace('/(main)/(tabs)');
+    showDialog({
+      title: t('account.logoutConfirmTitle'),
+      message: t('account.logoutConfirmBody'),
+      actions: [
+        { label: t('common.cancel'), style: 'cancel' },
+        {
+          label: t('account.logout'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await signOut();
+            } catch {
+              // ignore — best-effort
+            }
+            clearProfile();
+            router.replace('/(main)/(tabs)');
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   useEffect(() => {
@@ -78,8 +89,7 @@ export default function AccountTab() {
         if (!picked) return; // user backed out of the picker
         await uploadAvatar(picked);
       } catch (err) {
-        Alert.alert(
-          t('account.photoFailedTitle'),
+        toast.error(
           err instanceof PermissionDeniedError
             ? t('account.photoPermissionDenied')
             : t('account.photoFailedBody'),
@@ -96,7 +106,7 @@ export default function AccountTab() {
     try {
       await removeAvatar();
     } catch {
-      Alert.alert(t('account.photoFailedTitle'), t('account.photoFailedBody'));
+      toast.error(t('account.photoFailedBody'));
     } finally {
       setAvatarBusy(false);
     }
@@ -106,20 +116,23 @@ export default function AccountTab() {
   // plain long-press target for the demo controls until they sign in.
   const onAvatarPress = useCallback(() => {
     if (!rider || avatarBusy) return;
-    Alert.alert(t('account.profilePhoto'), undefined, [
-      { text: t('account.takePhoto'), onPress: () => void changeAvatar('camera') },
-      { text: t('account.chooseFromLibrary'), onPress: () => void changeAvatar('library') },
-      ...(rider.avatarUrl
-        ? [
-            {
-              text: t('account.removePhoto'),
-              style: 'destructive' as const,
-              onPress: () => void onRemoveAvatar(),
-            },
-          ]
-        : []),
-      { text: t('common.cancel'), style: 'cancel' as const },
-    ]);
+    showDialog({
+      title: t('account.profilePhoto'),
+      actions: [
+        { label: t('account.takePhoto'), onPress: () => void changeAvatar('camera') },
+        { label: t('account.chooseFromLibrary'), onPress: () => void changeAvatar('library') },
+        ...(rider.avatarUrl
+          ? [
+              {
+                label: t('account.removePhoto'),
+                style: 'destructive' as const,
+                onPress: () => void onRemoveAvatar(),
+              },
+            ]
+          : []),
+        { label: t('common.cancel'), style: 'cancel' as const },
+      ],
+    });
   }, [avatarBusy, changeAvatar, onRemoveAvatar, rider, t]);
 
   const home = saved.find((p) => p.category === 'home');
@@ -170,9 +183,7 @@ export default function AccountTab() {
     if (!editingPlace) return;
     const { place } = editingPlace;
     editPlaceSheetRef.current?.dismiss();
-    removeSaved(place.id).catch(() =>
-      Alert.alert(t('account.removePlaceFailed')),
-    );
+    removeSaved(place.id).catch(() => toast.error(t('account.removePlaceFailed')));
   };
 
   return (

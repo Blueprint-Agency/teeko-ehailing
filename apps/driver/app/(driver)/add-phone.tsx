@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { resolveDriverPhone } from '@teeko/shared';
 import { useT } from '@teeko/i18n';
@@ -9,6 +9,7 @@ import { useT } from '@teeko/i18n';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { api } from '../../lib/api';
+import { toast } from '../../store/useFeedbackStore';
 
 // The R6 gate: an account that predates required-phone-at-registration, or one
 // whose sign-up was interrupted between the Clerk step and the number write.
@@ -52,7 +53,7 @@ export default function AddPhoneScreen({ onSaved }: { onSaved?: () => void }) {
       // this screen — there is nothing to navigate to.
       onSaved?.();
     } catch {
-      Alert.alert('Error', 'Could not save your number. Please try again.');
+      toast.error(t('driverAlerts.savePhoneFailed'));
     } finally {
       setSaving(false);
     }

@@ -19,6 +19,7 @@ import * as Localization from 'expo-localization';
 import * as Location from 'expo-location';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { FeedbackHost } from '../components/FeedbackHost';
 import { setTokenGetter, tokenCache } from '../lib/clerk';
 import { connectSocket, disconnectSocket, getSocket } from '../lib/socket';
 
@@ -170,6 +171,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(main)" />
                 <Stack.Screen name="(auth)" />
               </Stack>
+              <FeedbackHost />
             </SafeAreaProvider>
           </StripeProvider>
         </ClerkBridge>

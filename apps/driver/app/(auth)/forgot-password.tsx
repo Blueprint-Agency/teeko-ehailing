@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
@@ -12,6 +12,7 @@ import { useT } from '@teeko/i18n';
 import { cooldownSentence } from '@teeko/shared';
 import { passwordReset } from '../../lib/api';
 import { resolveRouteAfterAuth } from '../../lib/routeAfterAuth';
+import { toast } from '../../store/useFeedbackStore';
 
 type Step = 'request' | 'reset' | 'mfa';
 
@@ -77,9 +78,9 @@ export default function ForgotPasswordScreen() {
         // oracle for anyone with an email list. The code simply never arrives.
         setStep('reset');
       } else if (c === 'too_many_requests') {
-        Alert.alert('Too many attempts', 'Please try again shortly.');
+        toast.error(t('auth.tooManyRequests'));
       } else {
-        Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
+        toast.error(err instanceof Error ? err.message : t('driverAlerts.somethingWentWrong'));
       }
     } finally {
       setLoading(false);
@@ -109,7 +110,7 @@ export default function ForgotPasswordScreen() {
         // Password is already changed here — the factor below gates the session only.
         await prepareSecond(attempt as any);
       } else {
-        Alert.alert('Reset incomplete', 'Please try again.');
+        toast.error(t('driverAlerts.resetIncomplete'));
       }
     } catch (err) {
       const c = errorCode(err);
@@ -124,9 +125,9 @@ export default function ForgotPasswordScreen() {
       } else if (c === 'form_password_validation_failed') {
         setPasswordError('Choose a stronger password.');
       } else if (c === 'too_many_requests') {
-        Alert.alert('Too many attempts', 'Please try again shortly.');
+        toast.error(t('auth.tooManyRequests'));
       } else {
-        Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
+        toast.error(err instanceof Error ? err.message : t('driverAlerts.somethingWentWrong'));
       }
     } finally {
       setLoading(false);
@@ -146,7 +147,7 @@ export default function ForgotPasswordScreen() {
         await setActive({ session: attempt.createdSessionId });
         router.replace(await resolveRouteAfterAuth());
       } else {
-        Alert.alert('Verification incomplete', 'Please try again.');
+        toast.error(t('driverAlerts.verificationIncomplete'));
       }
     } catch (err) {
       const c = errorCode(err);
@@ -155,9 +156,9 @@ export default function ForgotPasswordScreen() {
       } else if (c === 'verification_expired') {
         setOtpError('Code expired. Go back and try again.');
       } else if (c === 'too_many_requests') {
-        Alert.alert('Too many attempts', 'Please try again shortly.');
+        toast.error(t('auth.tooManyRequests'));
       } else {
-        Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
+        toast.error(err instanceof Error ? err.message : t('driverAlerts.somethingWentWrong'));
       }
     } finally {
       setLoading(false);

@@ -41,6 +41,14 @@ export { useTripStore, type TripState } from './stores/trip-store';
 export { useDisputeStore, type DisputeState } from './stores/dispute-store';
 export { useSupportStore, type SupportState } from './stores/support-store';
 export { useNotificationStore, type NotificationState } from './stores/notification-store';
-export { useUIStore, type UIState, type Toast } from './stores/ui-store';
+export {
+  useUIStore,
+  toast,
+  showDialog,
+  type UIState,
+  type Toast,
+  type DialogAction,
+  type DialogOptions,
+} from './stores/ui-store';
 
 export const API_PACKAGE_VERSION = '0.2.0';

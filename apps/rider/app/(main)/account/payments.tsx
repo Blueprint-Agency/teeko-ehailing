@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import type { PaymentMethod } from '@teeko/shared';
-import { usePaymentsStore, useUIStore } from '@teeko/api';
+import { showDialog, usePaymentsStore, useUIStore } from '@teeko/api';
 import { Button, Icon, type IconName, Pressable, ScreenContainer, Spinner, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
@@ -44,23 +44,27 @@ export default function PaymentMethodsScreen() {
   };
 
   const onDelete = (m: PaymentMethod) => {
-    Alert.alert('Remove payment method', `Remove ${m.label}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Remove',
-        style: 'destructive',
-        onPress: async () => {
-          setBusyId(m.id);
-          try {
-            await remove(m.id);
-          } catch {
-            pushToast({ kind: 'error', message: 'Could not remove method.' });
-          } finally {
-            setBusyId(null);
-          }
+    showDialog({
+      title: 'Remove payment method',
+      message: `Remove ${m.label}?`,
+      actions: [
+        { label: 'Cancel', style: 'cancel' },
+        {
+          label: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setBusyId(m.id);
+            try {
+              await remove(m.id);
+            } catch {
+              pushToast({ kind: 'error', message: 'Could not remove method.' });
+            } finally {
+              setBusyId(null);
+            }
+          },
         },
-      },
-    ]);
+      ],
+    });
   };
 
   return (
