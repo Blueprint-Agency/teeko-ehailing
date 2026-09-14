@@ -7,6 +7,7 @@ import { documents, documentReviews, driverApplications } from '../../db/schema/
 import { vehicles } from '../../db/schema/drivers';
 import { notificationInbox } from '../../db/schema/notifications-content';
 import { storage } from '../../lib/storage';
+import { isValidPlate, normalisePlate } from '@teeko/shared/utils/plate';
 
 const stateToStep: Record<string, number> = {
   phone_entered: 0,
@@ -23,6 +24,9 @@ const REQUIRED_PERSONAL = ['nric_front', 'nric_back', 'cdl', 'psv_d', 'insurance
 const REQUIRED_VEHICLE = ['car_grant', 'road_tax', 'puspakom', 'insurance'] as const;
 
 const SUBMITTED_STATES = new Set(['in_review', 'rejected', 'activated']);
+
+// Mirrors the portal's dropzone accept list — the browser is not a trust boundary.
+const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'application/pdf']);
 
 export async function routes(app: FastifyInstance) {
   app.get('/', async (req, reply) => {
@@ -153,33 +157,63 @@ export async function routes(app: FastifyInstance) {
       category?: 'go' | 'comfort' | 'xl' | 'premium' | 'bike';
     } | null = null;
 
+    // Which file part was being read when parsing failed — so a too-large
+    // file can be named back to the driver instead of a bare 'invalid_payload'.
+    let currentField: string | null = null;
     try {
       for await (const part of (req as any).parts()) {
         if (part.type === 'file') {
-          files.set(part.fieldname, {
-            buffer: await part.toBuffer(),
-            mimetype: part.mimetype,
-            filename: part.filename,
-          });
+          currentField = part.fieldname;
+          const buffer = await part.toBuffer();
+          // @fastify/multipart truncates at limits.fileSize and flags it here
+          // rather than throwing — a truncated document is useless, reject it.
+          if (part.file.truncated) {
+            return reply.code(413).send({ error: 'file_too_large', field: part.fieldname });
+          }
+          if (!ALLOWED_MIME.has(part.mimetype)) {
+            return reply.code(415).send({ error: 'file_invalid_type', field: part.fieldname });
+          }
+          files.set(part.fieldname, { buffer, mimetype: part.mimetype, filename: part.filename });
+          currentField = null;
         } else if (part.fieldname === 'vehicle') {
           vehiclePayload = JSON.parse(part.value);
         }
       }
     } catch (err) {
-      req.log.error({ err }, 'failed to parse onboarding multipart');
-      return reply.code(400).send({ error: 'invalid_payload' });
+      const code = (err as { code?: string })?.code;
+      if (code === 'FST_REQ_FILE_TOO_LARGE') {
+        return reply.code(413).send({ error: 'file_too_large', field: currentField });
+      }
+      req.log.error({ err, field: currentField }, 'failed to parse onboarding multipart');
+      return reply.code(400).send({ error: 'invalid_payload', field: currentField });
     }
 
-    // Validate vehicle details.
-    if (
-      !vehiclePayload ||
-      !vehiclePayload.plateNumber ||
-      !vehiclePayload.make ||
-      !vehiclePayload.model ||
-      !vehiclePayload.year
-    ) {
-      return reply.code(400).send({ error: 'invalid_vehicle' });
+    // Validate vehicle details, naming the field so the portal can point at it.
+    const vehicleField = (['plateNumber', 'make', 'model', 'year', 'colour'] as const).find(
+      (f) => !vehiclePayload?.[f],
+    );
+    if (!vehiclePayload || vehicleField) {
+      return reply.code(400).send({ error: 'invalid_vehicle', field: vehicleField ?? null });
     }
+    // Canonical form ('WKK1234') so the unique index actually dedupes.
+    const plateNumber = normalisePlate(vehiclePayload.plateNumber);
+    if (!isValidPlate(plateNumber)) {
+      return reply.code(400).send({ error: 'invalid_vehicle', field: 'plateNumber' });
+    }
+
+    // One vehicle per driver (uq_vehicle_driver) and plates are globally
+    // unique — check up front so the driver gets a reason, not 'submit_failed'.
+    // The insert below still races; its 23505 handler covers that.
+    const existingForDriver = await db.query.vehicles.findFirst({
+      where: eq(vehicles.driverId, userId),
+      columns: { id: true },
+    });
+    if (existingForDriver) return reply.code(409).send({ error: 'vehicle_exists' });
+    const plateOwner = await db.query.vehicles.findFirst({
+      where: eq(vehicles.plateNumber, plateNumber),
+      columns: { id: true },
+    });
+    if (plateOwner) return reply.code(409).send({ error: 'plate_taken', plateNumber });
 
     // Validate document completeness.
     const missingPersonal = REQUIRED_PERSONAL_IDS.filter((id) => !files.has(id));
@@ -219,7 +253,7 @@ export async function routes(app: FastifyInstance) {
         await tx.insert(vehicles).values({
           id: vehicleId,
           driverId: userId,
-          plateNumber: vehiclePayload!.plateNumber!,
+          plateNumber,
           make: vehiclePayload!.make!,
           model: vehiclePayload!.model!,
           year: Number(vehiclePayload!.year),
@@ -258,8 +292,16 @@ export async function routes(app: FastifyInstance) {
         });
       });
     } catch (err) {
-      req.log.error({ err }, 'onboarding submit transaction failed');
-      return reply.code(500).send({ error: 'submit_failed' });
+      // Unique violation that slipped past the pre-checks (concurrent submit).
+      const pg = err as { code?: string; constraint_name?: string; constraint?: string; cause?: { code?: string; constraint_name?: string } };
+      const code = pg.code ?? pg.cause?.code;
+      const constraint = pg.constraint_name ?? pg.constraint ?? pg.cause?.constraint_name ?? '';
+      if (code === '23505') {
+        if (constraint.includes('plate')) return reply.code(409).send({ error: 'plate_taken', plateNumber });
+        if (constraint.includes('driver')) return reply.code(409).send({ error: 'vehicle_exists' });
+      }
+      req.log.error({ err, code, constraint }, 'onboarding submit transaction failed');
+      return reply.code(500).send({ error: 'submit_failed', detail: code ?? null });
     }
 
     return { ok: true, state: 'in_review', submittedAt: now.toISOString() };

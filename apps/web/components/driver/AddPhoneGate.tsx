@@ -1,11 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Phone } from 'lucide-react'
 import { resolveDriverPhone } from '@teeko/shared'
 import { Button } from '@/components/ui/button'
+import { FormError } from '@/components/ui/form-error'
+import { FieldError, fieldStateClasses } from '@/components/ui/input'
 import { api } from '@/lib/api'
+import { cn } from '@/lib/utils'
 import { useWebAuthStore } from '@/stores/authStore'
 
 /**
@@ -24,10 +27,16 @@ import { useWebAuthStore } from '@/stores/authStore'
  */
 export function AddPhoneGate() {
   const { t } = useTranslation()
-  const { hydrate } = useWebAuthStore()
+  const { hydrate, phoneWriteError, setPhoneWriteError } = useWebAuthStore()
   const [phone, setPhone] = useState('')
   const [error, setError] = useState<string | undefined>()
   const [saving, setSaving] = useState(false)
+  // Registration's phone write failed and sent us here. Show why, once — a
+  // later visit to the gate (legacy account, no number) has no reason to give.
+  const [reason] = useState(phoneWriteError)
+  useEffect(() => {
+    if (phoneWriteError) setPhoneWriteError(null)
+  }, [phoneWriteError, setPhoneWriteError])
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -73,6 +82,7 @@ export function AddPhoneGate() {
         <p className="mt-2 text-sm text-[var(--color-muted)]">
           {t('auth.register.addPhoneBody')}
         </p>
+        <FormError message={reason} className="mt-4" />
 
         <label
           htmlFor="add-phone"
@@ -81,8 +91,14 @@ export function AddPhoneGate() {
           {t('auth.register.phoneLabel')}
         </label>
         {/* Static '+60', not a picker: drivers are Malaysian mobiles only. */}
-        <div className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg)] px-3">
-          <span className="shrink-0 font-medium text-[var(--color-text)]">+60</span>
+        <div
+          className={cn(
+            'flex h-11 items-center gap-2 rounded-[var(--radius-md)] border bg-white px-3.5 transition-all duration-150',
+            'focus-within:border-transparent focus-within:ring-2 focus-within:ring-[var(--color-teal)]',
+            fieldStateClasses(error),
+          )}
+        >
+          <span className="shrink-0 text-sm font-medium text-[var(--color-text)]">+60</span>
           <span className="h-5 w-px shrink-0 bg-[var(--color-border)]" aria-hidden />
           <input
             id="add-phone"
@@ -96,13 +112,13 @@ export function AddPhoneGate() {
               setPhone(e.target.value)
               if (error) setError(undefined)
             }}
-            className="w-full bg-transparent py-2.5 text-[var(--color-text)] outline-none"
+            className="w-full bg-transparent text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-placeholder)]"
           />
         </div>
-        <p className="mt-1 text-xs text-[var(--color-muted)]">
-          {t('auth.register.phoneHint')}
-        </p>
-        {error ? <p className="mt-1 text-xs text-[var(--color-danger)]">{error}</p> : null}
+        <FieldError error={error} className="mt-1.5" />
+        {!error && (
+          <p className="mt-1.5 text-xs text-[var(--color-muted)]">{t('auth.register.phoneHint')}</p>
+        )}
 
         <Button type="submit" variant="primary" size="md" className="mt-6 w-full" disabled={saving}>
           {saving ? '…' : t('auth.register.addPhoneCta')}

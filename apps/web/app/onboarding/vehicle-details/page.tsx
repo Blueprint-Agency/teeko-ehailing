@@ -6,11 +6,21 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Car, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { vehicleDetailsSchema, type VehicleDetailsFormData } from '@teeko/shared/schemas/onboarding'
+import { Input, FieldError, fieldStateClasses } from '@/components/ui/input'
+import {
+  vehicleDetailsSchema,
+  VEHICLE_MIN_YEAR,
+  type VehicleDetailsFormData,
+} from '@teeko/shared/schemas/onboarding'
+import { formatPlate } from '@teeko/shared/utils/plate'
 import { useOnboardingStore } from '@/stores/onboardingStore'
+import { cn } from '@/lib/utils'
+import { useFieldError } from '@/lib/useFieldError'
 
 const currentYear = new Date().getFullYear()
+
+const SELECT_CLASS =
+  'h-11 rounded-[var(--radius-md)] border bg-white px-3.5 text-sm text-[var(--color-text)] transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-[var(--color-teal)] focus:border-transparent'
 
 export default function VehicleDetailsPage() {
   const { t } = useTranslation()
@@ -36,10 +46,13 @@ export default function VehicleDetailsPage() {
   // If a saved make isn't one of the listed brands, treat it as a custom "Other" entry.
   const savedMake = vehicleDetails?.make
   const isSavedMakeCustom = !!savedMake && !MAKES.includes(savedMake)
+  // Plate is stored canonical ('WKK1234'); show it spaced the way JPJ prints it.
   const defaultValues = vehicleDetails
-    ? isSavedMakeCustom
-      ? { ...vehicleDetails, make: OTHER, makeOther: savedMake }
-      : vehicleDetails
+    ? {
+        ...vehicleDetails,
+        plateNumber: formatPlate(vehicleDetails.plateNumber),
+        ...(isSavedMakeCustom ? { make: OTHER, makeOther: savedMake } : {}),
+      }
     : undefined
 
   const {
@@ -52,6 +65,11 @@ export default function VehicleDetailsPage() {
     resolver: zodResolver(vehicleDetailsSchema),
     defaultValues,
   })
+  const fieldError = useFieldError()
+  // validation.yearMin interpolates the cutoff; every other key is plain.
+  const yearError = fieldError(errors.year?.message, { year: VEHICLE_MIN_YEAR })
+  const makeError = fieldError(errors.make?.message)
+  const colourError = fieldError(errors.colour?.message)
 
   const isOtherMake = watch('make') === OTHER
 
@@ -61,7 +79,7 @@ export default function VehicleDetailsPage() {
     if (data.make === OTHER) {
       const custom = data.makeOther?.trim()
       if (!custom) {
-        setError('makeOther', { message: t('onboarding.vehicleDetails.makeOther') })
+        setError('makeOther', { message: 'validation.makeOtherRequired' })
         return
       }
       make = custom
@@ -86,7 +104,7 @@ export default function VehicleDetailsPage() {
 
       <div className="mb-6 flex items-center gap-2 rounded-[var(--radius-md)] border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
         <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-        {t('onboarding.vehicleDetails.yearRestriction', { start: currentYear - 15, end: currentYear })}
+        {t('onboarding.vehicleDetails.yearRestriction', { start: VEHICLE_MIN_YEAR, end: currentYear })}
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
@@ -97,17 +115,14 @@ export default function VehicleDetailsPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             {/* Make */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[var(--color-text)]">
-                {t('onboarding.vehicleDetails.make')} <span className="text-[var(--color-error)]">*</span>
+              <label htmlFor="make" className="text-sm font-medium text-[var(--color-text)]">
+                {t('onboarding.vehicleDetails.make')} <span className="ml-1 text-[var(--color-error)]">*</span>
               </label>
-              <select
-                className="h-11 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-teal)]"
-                {...register('make')}
-              >
+              <select id="make" className={cn(SELECT_CLASS, fieldStateClasses(makeError))} {...register('make')}>
                 <option value="">{t('onboarding.vehicleDetails.selectMake')}</option>
                 {MAKES.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
-              {errors.make && <p className="text-xs text-[var(--color-error)]">{errors.make.message}</p>}
+              <FieldError error={makeError} />
             </div>
 
             {isOtherMake && (
@@ -116,7 +131,7 @@ export default function VehicleDetailsPage() {
                   label={t('onboarding.vehicleDetails.makeOther')}
                   placeholder={t('onboarding.vehicleDetails.makeOtherPlaceholder')}
                   required
-                  error={errors.makeOther?.message}
+                  error={fieldError(errors.makeOther?.message)}
                   {...register('makeOther')}
                 />
               </div>
@@ -126,7 +141,7 @@ export default function VehicleDetailsPage() {
               label={t('onboarding.vehicleDetails.model')}
               placeholder="e.g. Myvi, Vios, City"
               required
-              error={errors.model?.message}
+              error={fieldError(errors.model?.message)}
               {...register('model')}
             />
 
@@ -135,9 +150,9 @@ export default function VehicleDetailsPage() {
               type="number"
               placeholder={`e.g. ${currentYear - 2}`}
               required
-              min={currentYear - 15}
+              min={VEHICLE_MIN_YEAR}
               max={currentYear}
-              error={errors.year?.message}
+              error={yearError}
               {...register('year', { valueAsNumber: true })}
             />
 
@@ -145,24 +160,21 @@ export default function VehicleDetailsPage() {
               label={t('onboarding.vehicleDetails.plate')}
               placeholder="e.g. WKK 1234"
               required
-              error={errors.plateNumber?.message}
+              error={fieldError(errors.plateNumber?.message)}
               style={{ textTransform: 'uppercase' }}
               {...register('plateNumber')}
             />
 
             {/* Colour */}
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <label className="text-sm font-medium text-[var(--color-text)]">
-                {t('onboarding.vehicleDetails.colour')} <span className="text-[var(--color-error)]">*</span>
+              <label htmlFor="colour" className="text-sm font-medium text-[var(--color-text)]">
+                {t('onboarding.vehicleDetails.colour')} <span className="ml-1 text-[var(--color-error)]">*</span>
               </label>
-              <select
-                className="h-11 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-white px-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-teal)]"
-                {...register('colour')}
-              >
+              <select id="colour" className={cn(SELECT_CLASS, fieldStateClasses(colourError))} {...register('colour')}>
                 <option value="">{t('onboarding.vehicleDetails.selectColour')}</option>
                 {COLOURS.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-              {errors.colour && <p className="text-xs text-[var(--color-error)]">{errors.colour.message}</p>}
+              <FieldError error={colourError} />
             </div>
           </div>
         </div>

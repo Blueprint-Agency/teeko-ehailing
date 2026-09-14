@@ -1,7 +1,7 @@
 'use client'
 
-import { useCallback } from 'react'
-import { useDropzone } from 'react-dropzone'
+import { useCallback, useState } from 'react'
+import { useDropzone, type FileRejection } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { Upload, CheckCircle2, XCircle, Clock, Eye, RefreshCcw, Camera } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -23,17 +23,34 @@ const ACCEPTED = {
 
 export function DocumentSlot({ doc, onUpload, editable = true }: DocumentSlotProps) {
   const { t, i18n } = useTranslation()
+  // Why the last drop was refused (wrong type / too big). Dropzone rejects
+  // silently otherwise — a 12 MB photo or an iPhone .heic just does nothing.
+  const [dropError, setDropError] = useState<string | undefined>()
+
   const onDrop = useCallback(
-    (accepted: File[]) => {
-      if (accepted[0]) onUpload(doc.id, accepted[0])
+    (accepted: File[], rejections: FileRejection[]) => {
+      if (accepted[0]) {
+        setDropError(undefined)
+        onUpload(doc.id, accepted[0])
+        return
+      }
+      const code = rejections[0]?.errors[0]?.code
+      setDropError(
+        code === 'file-too-large'
+          ? t('documents.sizeError')
+          : code === 'file-invalid-type'
+          ? t('documents.typeError')
+          : t('documents.fileTypes')
+      )
     },
-    [doc.id, onUpload]
+    [doc.id, onUpload, t]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: ACCEPTED,
     maxFiles: 1,
+    multiple: false,
     maxSize: 10 * 1024 * 1024,
     disabled: !editable || doc.status === 'approved',
     useFsAccessApi: false, // enables native camera on mobile
@@ -152,6 +169,14 @@ export function DocumentSlot({ doc, onUpload, editable = true }: DocumentSlotPro
               </Button>
             </div>
           </div>
+        )}
+
+        {/* Rejected drop (type / size). Same treatment as an Input field error. */}
+        {dropError && (
+          <p role="alert" className="mt-2 flex items-center gap-1 text-xs text-[var(--color-error)]">
+            <XCircle className="h-3.5 w-3.5 flex-shrink-0" />
+            {dropError}
+          </p>
         )}
       </div>
     </div>

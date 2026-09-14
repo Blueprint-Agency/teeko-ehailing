@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Bell, User, LogOut, ChevronDown } from 'lucide-react'
-import { useClerk } from '@clerk/nextjs'
+import { useAuth, useClerk } from '@clerk/nextjs'
 import { useWebAuthStore } from '@/stores/authStore'
 import { useApplicationStatusStore } from '@/stores/applicationStatusStore'
 import { useLanguageStore } from '@/stores/languageStore'
@@ -26,8 +26,13 @@ interface HeaderProps {
 export function Header({ variant = 'light', showNav = true }: HeaderProps) {
   const { t } = useTranslation()
   const router = useRouter()
-  const { isAuthenticated, clear } = useWebAuthStore()
+  const { isAuthenticated: storeAuthenticated, clear } = useWebAuthStore()
   const { signOut } = useClerk()
+  // The store only hydrates inside RequireAuth; on the landing page it stays
+  // false and a signed-in driver would be shown "Log in" (which Clerk then
+  // rejects with session_exists). Clerk's own session flag is the truth.
+  const { isSignedIn } = useAuth()
+  const isAuthenticated = storeAuthenticated || !!isSignedIn
 
   // Clerk holds the session, so signing out must end it there — clearing our
   // local cache alone would leave the driver signed in on the next page load.

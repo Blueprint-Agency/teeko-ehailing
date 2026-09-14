@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../../config/db';
 import { vehicles } from '../../db/schema/drivers';
 import { driverApplications } from '../../db/schema/onboarding';
+import { isValidPlate, normalisePlate } from '@teeko/shared/utils/plate';
 
 // A driver has exactly one vehicle (see schema/drivers.ts). These routes still
 // return an array so existing portal callers keep working, but it holds 0 or 1.
@@ -37,7 +38,12 @@ export async function routes(app: FastifyInstance) {
     };
   }>('/', async (req, reply) => {
     const userId = req.user!.id;
-    const { plateNumber, make, model, year, colour, category = 'go' } = req.body;
+    const { make, model, year, colour, category = 'go' } = req.body;
+    // Same canonical form as /application/onboard — the unique index depends on it.
+    const plateNumber = normalisePlate(req.body.plateNumber);
+    if (!isValidPlate(plateNumber)) {
+      return reply.code(400).send({ error: 'invalid_vehicle', field: 'plateNumber' });
+    }
 
     // Re-submitting replaces the driver's vehicle rather than adding a second —
     // this is also how a driver changes car, so the route stays idempotent.

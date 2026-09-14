@@ -4,15 +4,17 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
+import { FormError } from '@/components/ui/form-error'
 import { DocumentSlot } from '@/components/driver/DocumentSlot'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import { useWebAuthStore } from '@/stores/authStore'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
 
 export default function VehicleDocsPage() {
   const { t } = useTranslation()
   const router = useRouter()
   const {
+    personalDocs,
     vehicleDocs,
     uploadVehicleDoc,
     setStep,
@@ -37,7 +39,7 @@ export default function VehicleDocsPage() {
     setError(null)
 
     if (!vehicleDetails) {
-      setError(t('onboarding.vehicleDocs.submitError'))
+      setError(t('onboarding.vehicleDocs.errors.noVehicleDetails'))
       return
     }
 
@@ -58,11 +60,55 @@ export default function VehicleDocsPage() {
       setStep(4)
       router.push('/onboarding/confirmation')
     } catch (err) {
-      setError(
-        err instanceof Error && err.message === 'incomplete_documents'
-          ? t('onboarding.vehicleDocs.incompleteError')
-          : t('onboarding.vehicleDocs.submitError')
-      )
+      if (err instanceof ApiError && err.message === 'incomplete_documents') {
+        // The server names the missing slots by frontend id; show their labels
+        // so the driver knows which card to go back to. The usual cause is a
+        // page refresh: File objects live only in memory, so personal-docs
+        // uploads are gone even though this page still looks complete.
+        const missing = err.body.missing as { personal?: string[]; vehicle?: string[] } | undefined
+        const ids = [...(missing?.personal ?? []), ...(missing?.vehicle ?? [])]
+        const labels = [...personalDocs, ...vehicleDocs]
+          .filter((d) => ids.includes(d.id))
+          .map((d) => d.label)
+        setError(
+          labels.length
+            ? `${t('onboarding.vehicleDocs.incompleteError')} ${t('onboarding.vehicleDocs.missingList', { docs: labels.join(', ') })}`
+            : t('onboarding.vehicleDocs.incompleteError')
+        )
+        return
+      }
+
+      if (err instanceof ApiError) {
+        const labelFor = (id: unknown) =>
+          [...personalDocs, ...vehicleDocs].find((d) => d.id === id)?.label ?? String(id ?? '')
+        switch (err.message) {
+          case 'vehicle_exists':
+            setError(t('onboarding.vehicleDocs.errors.vehicleExists'))
+            return
+          case 'plate_taken':
+            setError(t('onboarding.vehicleDocs.errors.plateTaken', { plate: String(err.body.plateNumber ?? '') }))
+            return
+          case 'invalid_vehicle':
+            setError(t('onboarding.vehicleDocs.errors.invalidVehicle', { field: String(err.body.field ?? '') }))
+            return
+          case 'file_too_large':
+            setError(t('onboarding.vehicleDocs.errors.fileTooLarge', { doc: labelFor(err.body.field) }))
+            return
+          case 'file_invalid_type':
+            setError(t('onboarding.vehicleDocs.errors.fileInvalidType', { doc: labelFor(err.body.field) }))
+            return
+          case 'application_not_found':
+            setError(t('onboarding.vehicleDocs.errors.applicationNotFound'))
+            return
+        }
+        // Unknown code (upload_failed, submit_failed, 401/413 from the proxy…):
+        // keep the generic copy but append the code so support can act on it.
+        setError(`${t('onboarding.vehicleDocs.submitError')} (${err.message}${err.status ? `, HTTP ${err.status}` : ''})`)
+        return
+      }
+
+      // Not an HTTP error at all — fetch itself failed (offline, CORS, timeout).
+      setError(t('onboarding.vehicleDocs.errors.network'))
     } finally {
       setSubmitting(false)
     }
@@ -87,11 +133,7 @@ export default function VehicleDocsPage() {
         ))}
       </div>
 
-      {error && (
-        <p className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-error)]/30 bg-[var(--color-error-light)] px-4 py-3 text-sm text-[var(--color-error)]">
-          {error}
-        </p>
-      )}
+      <FormError message={error} className="mt-6" />
 
       <div className="mt-8 flex items-center justify-between">
         <Button variant="outline" onClick={() => router.push('/onboarding/vehicle-details')}>

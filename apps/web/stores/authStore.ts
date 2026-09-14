@@ -21,6 +21,13 @@ interface WebAuthStore {
    * operator record, so a NULL silently degrades a trip.
    */
   needsPhone: boolean
+  /**
+   * Why the register form's phone write failed, if it did. The add-phone gate
+   * fires straight after (needsPhone), and without this it asks for a number
+   * the driver just typed with no explanation. Cleared once the gate shows it.
+   */
+  phoneWriteError: string | null
+  setPhoneWriteError: (error: string | null) => void
   hydrating: boolean
   hydrate: () => Promise<void>
   clear: () => void
@@ -36,6 +43,8 @@ export const useWebAuthStore = create<WebAuthStore>()((set) => ({
   approvalStatus: null,
   emailVerified: false,
   needsPhone: false,
+  phoneWriteError: null,
+  setPhoneWriteError: (error) => set({ phoneWriteError: error }),
   hydrating: false,
   devRole: 'new',
 
@@ -77,6 +86,8 @@ export const useWebAuthStore = create<WebAuthStore>()((set) => ({
       applicationState: null,
       approvalStatus: null,
       emailVerified: false,
+      needsPhone: false,
+      phoneWriteError: null,
     }),
 
   setDevRole: async (role) => {

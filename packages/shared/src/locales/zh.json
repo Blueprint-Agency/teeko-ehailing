@@ -1,5 +1,6 @@
 {
   "common": {
+    "dismiss": "关闭",
     "appName": "Teeko",
     "tagline": "与 Teeko 一起驾驶",
     "next": "下一步",
@@ -30,7 +31,8 @@
       "subtitle": "赚得更多，支付更少。",
       "description": "马来西亚最新的电子召车平台，提供最低的佣金率并完全符合 APAD/JPJ 规定。在线注册 — 几天内即可开始驾驶。",
       "ctaRegister": "注册成为司机",
-      "ctaLogin": "登录"
+      "ctaLogin": "登录",
+      "ctaContinue": "继续您的申请"
     },
     "stats": {
       "commission": "佣金率",
@@ -92,10 +94,16 @@
       "phoneSaveFailed": "无法保存您的号码，请重试。",
       "addPhoneTitle": "添加您的手机号码",
       "addPhoneBody": "我们需要一个号码，以便乘客在行程中与您联系；它也是您 APAD 运营记录的一部分。",
-      "addPhoneCta": "保存并继续"
+      "addPhoneCta": "保存并继续",
+      "phoneWriteRejected": "您输入的手机号码被服务器拒绝。请输入有效的马来西亚手机号码。",
+      "phoneWriteFailed": "我们无法保存您输入的手机号码。请重新输入。"
     }
   },
   "onboarding": {
+    "uploadsCleared": {
+      "title": "页面刷新后，您上传的文件已被清除",
+      "body": "为保护您的隐私，文件在提交前仅保存在本设备上。请重新选择您的文件以继续。"
+    },
     "stepOf": "第 {{current}} 步，共 {{total}} 步",
     "agreement": {
       "title": "司机协议",
@@ -140,6 +148,17 @@
       "title": "车辆文件",
       "subtitle": "为您注册的车辆上传有效文件。",
       "incompleteError": "部分必需文件仍未上传。请在提交前上传所有文件。",
+      "missingList": "缺少：{{docs}}。",
+      "errors": {
+        "noVehicleDetails": "缺少车辆信息。请返回填写后再提交。",
+        "vehicleExists": "您的账户已登记了一辆车。如需更换，请联系客服。",
+        "plateTaken": "车牌号 {{plate}} 已被其他司机登记。请核对车牌后重试。",
+        "invalidVehicle": "车辆信息不完整（{{field}}）。请返回检查表单。",
+        "fileTooLarge": "{{doc}} 超过 10 MB 限制。请重新上传较小的文件。",
+        "fileInvalidType": "{{doc}} 必须是 JPG、PNG 或 PDF 格式。请重新上传。",
+        "applicationNotFound": "找不到您的申请。请退出后重新登录。",
+        "network": "无法连接服务器。请检查网络后重试。"
+      },
       "submitError": "提交申请时出现问题。请重试。"
     },
     "confirmation": {
@@ -218,5 +237,29 @@
     "blurWarning": "图像模糊 — 请重新拍摄",
     "sizeError": "文件超过 10 MB 限制",
     "typeError": "仅支持 JPG, PNG 或 PDF 文件"
+  },
+  "validation": {
+    "emailRequired": "请输入电子邮箱",
+    "emailInvalid": "请输入有效的电子邮箱地址",
+    "passwordRequired": "请输入密码",
+    "passwordMin": "密码至少需要 8 个字符",
+    "passwordMax": "密码过长",
+    "phoneRequired": "请输入手机号码",
+    "phoneInvalid": "请输入马来西亚手机号码",
+    "phoneCountry": "司机必须使用马来西亚（+60）号码注册",
+    "fullNameMin": "姓名至少需要 2 个字符",
+    "fullNameMax": "姓名过长",
+    "pdpaRequired": "您必须同意数据收集",
+    "makeRequired": "请选择车辆品牌",
+    "makeOtherRequired": "请输入车辆品牌",
+    "modelRequired": "请输入车辆型号",
+    "yearInvalid": "请输入有效年份",
+    "yearMin": "车辆须为 {{year}} 年或更新",
+    "yearFuture": "年份不能是未来",
+    "plateRequired": "请输入车牌号",
+    "plateInvalid": "请输入有效的马来西亚车牌号（如 WKK 1234）",
+    "colourRequired": "请选择车辆颜色",
+    "tooLong": "过长",
+    "fileRequired": "请上传文件"
   }
 }

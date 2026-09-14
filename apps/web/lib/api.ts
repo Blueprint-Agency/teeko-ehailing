@@ -29,6 +29,22 @@ export async function authHeaders(driverId?: string): Promise<HeadersInit> {
   return headers
 }
 
+/**
+ * Non-2xx response. `message` is the backend's `error` code (so existing
+ * `err.message === 'incomplete_documents'` checks keep working); `body` is the
+ * full JSON payload for callers that need the detail beside the code.
+ */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly body: Record<string, unknown>,
+  ) {
+    super(message)
+    this.name = 'ApiError'
+  }
+}
+
 async function request<T>(
   path: string,
   init: RequestInit & { driverId?: string } = {},
@@ -40,7 +56,11 @@ async function request<T>(
   })
   if (!res.ok) {
     const error = await res.json().catch(() => ({}))
-    throw new Error(error.error || `${rest.method ?? 'GET'} ${path} → ${res.status}`)
+    throw new ApiError(
+      error.error || `${rest.method ?? 'GET'} ${path} → ${res.status}`,
+      res.status,
+      error,
+    )
   }
   return res.json() as Promise<T>
 }

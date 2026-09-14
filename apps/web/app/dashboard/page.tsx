@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Bell, Download, RefreshCcw, AlertCircle, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Header } from '@/components/driver/Header'
@@ -10,6 +11,7 @@ import { Badge, statusVariant, statusLabel } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useApplicationStatusStore } from '@/stores/applicationStatusStore'
 import { useWebAuthStore } from '@/stores/authStore'
+import { hasSubmittedApplication, routeForApplicationState } from '@/lib/routeForApplicationState'
 import type { DocumentState } from '@teeko/shared/types'
 
 function DocRow({ doc }: { doc: DocumentState }) {
@@ -42,11 +44,20 @@ export default function DashboardPage() {
   const { t, i18n } = useTranslation()
   const { status, personalDocs, vehicleDocs, notifications, unreadCount, fetchAll, markAllRead } =
     useApplicationStatusStore()
-  const { profile } = useWebAuthStore()
+  const { profile, applicationState } = useWebAuthStore()
+  const router = useRouter()
+
+  // The dashboard is the post-submission tracker. A driver who hasn't
+  // submitted yet (landed here from the homepage / header) belongs in the
+  // wizard at whatever step the server says they reached.
+  const inWizard = applicationState !== null && !hasSubmittedApplication(applicationState)
+  useEffect(() => {
+    if (inWizard) router.replace(routeForApplicationState(applicationState))
+  }, [inWizard, applicationState, router])
 
   useEffect(() => {
-    if (profile?.id) fetchAll(profile.id)
-  }, [profile?.id])
+    if (profile?.id && !inWizard) fetchAll(profile.id)
+  }, [profile?.id, inWizard])
 
   const hasRejected = [...personalDocs, ...vehicleDocs].some((d) => d.status === 'rejected')
 

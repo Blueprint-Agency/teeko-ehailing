@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { ArrowRight, CheckCircle2, Shield, Star, Zap, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Header } from '@/components/driver/Header'
 import { useWebAuthStore } from '@/stores/authStore'
@@ -10,6 +11,11 @@ import { useWebAuthStore } from '@/stores/authStore'
 export default function LandingPage() {
   const { t } = useTranslation()
   const { isAuthenticated, devRole, setDevRole } = useWebAuthStore()
+  // Clerk, not our store: the landing page sits outside RequireAuth, so the
+  // store is never hydrated here and isAuthenticated stays false. A driver
+  // sent back to '/' mid-onboarding needs a way into the wizard; /dashboard
+  // resolves their server state and routes to the right step.
+  const { isSignedIn } = useAuth()
 
   const BENEFITS = [
     {
@@ -71,17 +77,28 @@ export default function LandingPage() {
               </p>
 
               <div className="animate-fade-up animate-delay-300 flex flex-wrap items-center gap-3">
-                <Link href="/auth/register">
-                  <Button size="xl" variant="primary">
-                    {t('landing.hero.ctaRegister')}
-                    <ArrowRight className="h-5 w-5" />
-                  </Button>
-                </Link>
-                <Link href="/auth/login">
-                  <Button size="xl" variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:border-white/40">
-                    {t('landing.hero.ctaLogin')}
-                  </Button>
-                </Link>
+                {isSignedIn ? (
+                  <Link href="/dashboard">
+                    <Button size="xl" variant="primary">
+                      {t('landing.hero.ctaContinue')}
+                      <ArrowRight className="h-5 w-5" />
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/auth/register">
+                      <Button size="xl" variant="primary">
+                        {t('landing.hero.ctaRegister')}
+                        <ArrowRight className="h-5 w-5" />
+                      </Button>
+                    </Link>
+                    <Link href="/auth/login">
+                      <Button size="xl" variant="outline" className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:border-white/40">
+                        {t('landing.hero.ctaLogin')}
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
 
@@ -180,9 +197,9 @@ export default function LandingPage() {
           <p className="mb-8 text-[var(--color-muted)]">
             {t('landing.cta.subtitle')}
           </p>
-          <Link href="/auth/register">
+          <Link href={isSignedIn ? '/dashboard' : '/auth/register'}>
             <Button size="xl" variant="navy">
-              {t('landing.cta.button')}
+              {isSignedIn ? t('landing.hero.ctaContinue') : t('landing.cta.button')}
               <ArrowRight className="h-5 w-5" />
             </Button>
           </Link>

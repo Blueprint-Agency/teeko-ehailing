@@ -9,10 +9,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { ArrowRight, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { FormError } from '@/components/ui/form-error'
 import { useSignIn } from '@clerk/nextjs'
 import { loginSchema, type LoginFormData } from '@teeko/shared/schemas/auth'
 import { useWebAuthStore } from '@/stores/authStore'
 import { api } from '@/lib/api'
+import { useFieldError } from '@/lib/useFieldError'
 import { routeForApplicationState } from '@/lib/routeForApplicationState'
 
 // Falls back to a plain Error's message so failures from OUR api (e.g. a 500
@@ -37,9 +39,12 @@ export default function LoginPage() {
   const [needsCode, setNeedsCode] = useState(false)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | undefined>()
+  // Form-level failure (bad credentials, backend error). Inline, not alert().
+  const [formError, setFormError] = useState<string | undefined>()
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   })
+  const fieldError = useFieldError()
 
   // Resolve (or provision, if this driver's first login happened in the Expo
   // app) our row, then route on the application state rather than assuming an
@@ -56,6 +61,7 @@ export default function LoginPage() {
     if (!isLoaded || !signIn) return
     setLoading(true)
     setCodeError(undefined)
+    setFormError(undefined)
     try {
       const attempt = await signIn.create({ identifier: data.email, password: data.password })
 
@@ -76,7 +82,7 @@ export default function LoginPage() {
 
       throw new Error(`Sign-in incomplete (${attempt.status ?? 'unknown'})`)
     } catch (error: unknown) {
-      alert(clerkError(error))
+      setFormError(clerkError(error))
     } finally {
       setLoading(false)
     }
@@ -181,7 +187,7 @@ export default function LoginPage() {
               type="email"
               autoComplete="email"
               required
-              error={errors.email?.message}
+              error={fieldError(errors.email?.message)}
               {...register('email')}
             />
             <Input
@@ -190,9 +196,11 @@ export default function LoginPage() {
               type="password"
               autoComplete="current-password"
               required
-              error={errors.password?.message}
+              error={fieldError(errors.password?.message)}
               {...register('password')}
             />
+
+            <FormError message={formError} />
 
             <Button type="submit" size="lg" className="w-full" loading={loading} disabled={!isLoaded}>
               {t('auth.login.loginButton')}
