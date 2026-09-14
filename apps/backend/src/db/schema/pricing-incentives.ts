@@ -119,16 +119,6 @@ export const driverIncentiveProgress = pgTable(
   (t) => [primaryKey({ columns: [t.campaignId, t.driverId] })],
 );
 
-export const ratings = pgTable('ratings', {
-  id: uuid().primaryKey().defaultRandom(),
-  tripId: uuid().notNull().references(() => trips.id, { onDelete: 'cascade' }),
-  raterId: uuid().notNull().references(() => users.id),
-  rateeId: uuid().notNull().references(() => users.id),
-  score: smallint().notNull(),
-  comment: text(),
-  createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
-});
-
 /**
  * Tiered commission configuration.
  *

@@ -274,7 +274,8 @@
     "tripCancelledToast": "您的行程已取消。",
     "driverMatchedToast": "已匹配司机。正在前往您的位置。",
     "driverArrivedToast": "司机已到达。",
-    "tripStartedToast": "您的行程已开始。"
+    "tripStartedToast": "您的行程已开始。",
+    "newDriver": "新司机"
   },
   "driver": {
     "online": "您已上线",
@@ -469,7 +470,11 @@
     "tabEarnings": "收入",
     "tabBonus": "奖励",
     "tabVehicle": "车辆",
-    "tabProfile": "我的"
+    "tabProfile": "我的",
+    "rateRider": "您对乘客的评价如何？",
+    "rateRiderHint": "有什么需要我们知道的吗？（可选）",
+    "submitAndFinish": "提交并完成",
+    "skipRating": "跳过评分"
   },
   "demo": {
     "title": "演示控制",

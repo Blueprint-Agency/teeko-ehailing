@@ -2,6 +2,7 @@ import type { Server as HttpServer } from 'node:http';
 import { Server, type Socket } from 'socket.io';
 import { verifyRiderClerkToken, verifyDriverClerkToken } from '../../external/clerk';
 import { findUserByExternalId } from '../../modules/identity/repo';
+import { getOrProvisionRiderMe } from '../../modules/identity/service';
 import { trackingService } from '../../modules/tracking/service';
 import { db } from '../../db';
 import { trips, driverProfiles, users, vehicles } from '../../db/schema';
@@ -36,8 +37,10 @@ export function mountSocketIO(httpServer: HttpServer): Server {
       console.log(`[WS] auth received sid=${socket.id} tokenLen=${token?.length ?? 0}`);
       try {
         let claims;
+        let verifiedAsRider = false;
         try {
           claims = await verifyRiderClerkToken(token);
+          verifiedAsRider = true;
           console.log(`[WS] auth verified via RIDER clerk sub=${claims.sub}`);
         } catch (riderErr) {
           console.log(`[WS] rider clerk verify failed (${riderErr instanceof Error ? riderErr.message : riderErr}), trying driver clerk`);
@@ -49,8 +52,23 @@ export function mountSocketIO(httpServer: HttpServer): Server {
             throw driverErr;
           }
         }
-        const user = await findUserByExternalId('clerk', claims.sub);
+        let user = await findUserByExternalId('clerk', claims.sub);
         console.log(`[WS] auth lookup clerkSub=${claims.sub} → dbUserId=${user?.id ?? 'NOT FOUND'} role=${user?.role}`);
+        // The rider app opens the socket and fires GET /auth/me on the same
+        // isSignedIn tick, so on a fresh DB the WS auth can land before /me has
+        // JIT-provisioned the users row. Provision here the same way /me does —
+        // getOrProvisionRiderMe already dedupes a concurrent first-/me race — so
+        // the socket doesn't get a server disconnect (which socket.io-client
+        // never auto-recovers from) and leave the rider unregistered until relaunch.
+        if (!user && verifiedAsRider) {
+          try {
+            await getOrProvisionRiderMe(claims);
+            user = await findUserByExternalId('clerk', claims.sub);
+            console.log(`[WS] auth JIT-provisioned rider clerkSub=${claims.sub} → dbUserId=${user?.id ?? 'NOT FOUND'}`);
+          } catch (provisionErr) {
+            console.log(`[WS] auth JIT provision failed: ${provisionErr instanceof Error ? provisionErr.message : provisionErr}`);
+          }
+        }
         // Emit auth.error before disconnecting: a bare disconnect is
         // indistinguishable from a network drop, so the client retries it on the
         // 1s reconnect loop forever. auth.error tells it to back off instead.
@@ -116,7 +134,7 @@ export function mountSocketIO(httpServer: HttpServer): Server {
                 // placeholder keeps the card from showing a blank circle.
                 photoUrl:
                   driverUser?.avatarUrl ?? `https://i.pravatar.cc/150?u=${activeTrip.driverId}`,
-                rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+                rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : null,
                 vehicle: vehicle ? {
                   plate: vehicle.plateNumber,
                   model: `${vehicle.make} ${vehicle.model}`,

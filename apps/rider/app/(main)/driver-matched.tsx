@@ -46,9 +46,11 @@ export default function DriverMatchedScreen() {
     return () => clearInterval(iv);
   }, [pollStatus]);
 
-  // Recover missing store data (cold-start race: socket sets driver before REST restore completes)
+  // Recover missing store data: cold-start race (socket sets driver before REST
+  // restore completes), or the reverse — the poll advanced status to 'matched'
+  // because the socket missed trip.status_update, so driver was never set.
   useEffect(() => {
-    if (!pickup || !destination) {
+    if (!pickup || !destination || !driver) {
       restoreActiveTrip().catch(() => null);
     }
   }, []);

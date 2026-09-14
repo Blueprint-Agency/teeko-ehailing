@@ -275,7 +275,8 @@
     "tripCancelledToast": "Your ride has been cancelled.",
     "driverMatchedToast": "Driver matched. On the way to you.",
     "driverArrivedToast": "Your driver has arrived.",
-    "tripStartedToast": "Your trip has started."
+    "tripStartedToast": "Your trip has started.",
+    "newDriver": "New driver"
   },
   "driver": {
     "online": "YOU ARE ONLINE",
@@ -470,7 +471,11 @@
     "tabEarnings": "Earnings",
     "tabBonus": "Bonus",
     "tabVehicle": "Vehicle",
-    "tabProfile": "Profile"
+    "tabProfile": "Profile",
+    "rateRider": "How was your rider?",
+    "rateRiderHint": "Anything we should know? (optional)",
+    "submitAndFinish": "Submit & finish",
+    "skipRating": "Skip rating"
   },
   "demo": {
     "title": "Demo controls",

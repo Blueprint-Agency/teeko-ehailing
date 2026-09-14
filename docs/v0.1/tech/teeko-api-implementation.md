@@ -1203,15 +1203,16 @@ CREATE TABLE cashouts (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Ratings
-CREATE TABLE ratings (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  trip_id        UUID REFERENCES trips(id),
-  rated_user_id  UUID REFERENCES users(id),
-  stars          SMALLINT CHECK (stars BETWEEN 1 AND 5),
-  comment        TEXT,
-  created_at     TIMESTAMPTZ DEFAULT now()
-);
+-- Ratings: one per direction, stored on the trip row (no separate table).
+-- Profile aggregates (driver_profiles / rider_profiles .rating_avg, .rating_count)
+-- are recomputed by the trips service on every rating write.
+ALTER TABLE trips
+  ADD COLUMN rider_rating    SMALLINT CHECK (rider_rating BETWEEN 1 AND 5),  -- rider → driver
+  ADD COLUMN rider_comment   TEXT,
+  ADD COLUMN rated_at        TIMESTAMPTZ,
+  ADD COLUMN driver_rating   SMALLINT CHECK (driver_rating BETWEEN 1 AND 5), -- driver → rider
+  ADD COLUMN driver_comment  TEXT,
+  ADD COLUMN driver_rated_at TIMESTAMPTZ;
 
 -- Device tokens (FCM)
 CREATE TABLE device_tokens (

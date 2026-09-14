@@ -456,6 +456,12 @@ export const api = {
     arrivedAtPickup: (tripId: string) => req(`/driver/trips/${tripId}/arrived`, { method: 'POST' }),
     startTrip: (tripId: string) => req(`/driver/trips/${tripId}/start`, { method: 'POST' }),
     completeTrip: (tripId: string) => req(`/driver/trips/${tripId}/complete`, { method: 'POST' }),
+    // Driver rates the rider once per completed trip (1–5 + optional comment).
+    rateRider: (tripId: string, rating: number, comment?: string) =>
+      req<{ rating: number | null; comment: string | null }>('/driver/ratings', {
+        method: 'POST',
+        body: JSON.stringify({ tripId, rating, comment }),
+      }),
     cancelTrip: (tripId: string, reasonCode = 'driver_cancelled') =>
       req(`/driver/trips/${tripId}/cancel`, { method: 'POST', body: JSON.stringify({ reasonCode }) }),
     // Finished trips only — the set a dispute may be raised against.

@@ -110,6 +110,10 @@ export const trips = pgTable('trips', {
   riderRating: integer(),
   riderComment: text(),
   ratedAt: timestamp({ withTimezone: true }),
+  // Driver's post-trip rating of the rider (1–5) + optional comment.
+  driverRating: integer(),
+  driverComment: text(),
+  driverRatedAt: timestamp({ withTimezone: true }),
   createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
 });

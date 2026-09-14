@@ -51,7 +51,8 @@ export type TripState = {
   book: (riderId: string) => Promise<void>;
   cancel: (reason?: string) => Promise<void>;
   completeRide: () => void;
-  rateTrip: (rating: number, comment?: string) => void;
+  /** `rating` null = skipped: the trip is still filed to history, nothing is sent. */
+  rateTrip: (rating: number | null, comment?: string) => void;
   loadHistory: () => Promise<void>;
   loadMoreHistory: () => Promise<void>;
   setHistoryFilters: (next: Partial<TripHistoryQuery>) => void;
@@ -242,10 +243,10 @@ export const useTripStore = create<TripState>((set, get) => ({
     }
     // Persist the rating to the backend (best-effort — the local history update
     // below keeps the UI responsive even if the network call fails).
-    if (trip.id) {
+    if (trip.id && rating != null) {
       tripsApi.rate(trip.id, rating, comment).catch(() => null);
     }
-    const rated: Trip = { ...trip, status: 'completed', rating, comment };
+    const rated: Trip = { ...trip, status: 'completed', rating: rating ?? undefined, comment };
     set((s) => ({
       status: 'idle',
       trip: null,
@@ -364,8 +365,18 @@ export const useTripStore = create<TripState>((set, get) => ({
       }
       // backend now returns clientStatus (already mapped to TripStatus names)
       const mapped = active.clientStatus as TripStatus;
-      if (mapped && mapped !== get().status) {
-        set({ status: mapped });
+      const { status: current, driver: currentDriver, trip: existing } = get();
+      // When the socket missed trip.status_update the poll is the only path that
+      // learns about the match, and driver-matched spins forever on a null
+      // driver. /active already carries the driver, so hydrate it here too.
+      const driver = !currentDriver && active.driver ? active.driver : null;
+      if ((mapped && mapped !== current) || driver) {
+        set({
+          ...(mapped && mapped !== current ? { status: mapped } : {}),
+          ...(driver
+            ? { driver, trip: existing ? { ...existing, driver, status: mapped } : existing }
+            : {}),
+        });
       }
     } catch {
       // ignore — socket is the primary channel, polling is best-effort

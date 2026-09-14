@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking, Image,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Phone, Check } from 'lucide-react-native';
@@ -34,6 +34,10 @@ export default function TripScreen() {
   const { activeTripId, setActiveTripId, activeTrip, setActiveTrip } = useDriverStore();
 
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Driver → rider rating, captured on the completed phase.
+  const [riderStars, setRiderStars] = useState(0);
+  const [riderComment, setRiderComment] = useState('');
 
   // The server sends a stored path (or null); it needs the API origin glued on.
   const [riderPhotoFailed, setRiderPhotoFailed] = useState(false);
@@ -125,6 +129,11 @@ export default function TripScreen() {
 
   const advancePhase = async () => {
     if (isCompleted) {
+      // Rating is best-effort — the driver is never blocked from leaving the
+      // screen by a failed submit; skipping sends nothing.
+      if (activeTripId && riderStars > 0) {
+        await api.driver.rateRider(activeTripId, riderStars, riderComment.trim() || undefined).catch(() => null);
+      }
       setActiveTripId(null);
       setActiveTrip(null);
       router.replace('/(driver)/(tabs)/home');
@@ -225,7 +234,7 @@ export default function TripScreen() {
     if (phaseIndex === 0) return t('driver.iveArrived');
     if (phaseIndex === 1) return t('driver.startTrip');
     if (phaseIndex === 2) return t('driver.endTrip');
-    return t('driver.backToHome');
+    return riderStars > 0 ? t('driver.submitAndFinish') : t('driver.skipRating');
   };
 
   return (
@@ -310,6 +319,37 @@ export default function TripScreen() {
           </View>
           <Text style={styles.fareValue}>RM {activeTrip ? (activeTrip.fareCents / 100).toFixed(2) : '—'}</Text>
         </View>
+
+        {/* Rate the rider — only once the trip is completed */}
+        {isCompleted && (
+          <View style={styles.rateBlock}>
+            <Text style={styles.rateTitle}>{t('driver.rateRider')}</Text>
+            <View style={styles.rateStars}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  onPress={() => setRiderStars(n)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${n} star`}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.rateStar, n <= riderStars && styles.rateStarOn]}>★</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {riderStars > 0 && riderStars <= 3 && (
+              <TextInput
+                style={styles.rateInput}
+                placeholder={t('driver.rateRiderHint')}
+                placeholderTextColor={colors.textSec}
+                value={riderComment}
+                onChangeText={setRiderComment}
+                multiline
+                maxLength={1000}
+              />
+            )}
+          </View>
+        )}
 
         {/* Navigation buttons */}
         {!isCompleted && (
@@ -430,6 +470,16 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   navBtnText: { color: colors.text, fontSize: 13, fontWeight: '600' },
 
+  rateBlock: { alignItems: 'center', gap: 10, marginBottom: 16 },
+  rateTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  rateStars: { flexDirection: 'row', gap: 10 },
+  rateStar: { color: colors.border, fontSize: 34 },
+  rateStarOn: { color: colors.warning },
+  rateInput: {
+    alignSelf: 'stretch', minHeight: 64, textAlignVertical: 'top',
+    borderWidth: 1, borderColor: colors.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 14,
+  },
   actionRow: { flexDirection: 'row', gap: 12 },
   sosBtn: {
     width: 56, height: 56, borderRadius: 14,

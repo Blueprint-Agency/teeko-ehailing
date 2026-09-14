@@ -1,6 +1,6 @@
-import { and, count, eq, gte, inArray, not } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNotNull, not, sql } from 'drizzle-orm';
 import { db } from '../../db';
-import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, vehicles, users } from '../../db/schema';
+import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, riderProfiles, vehicles, users } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
 import type { RedeemedQuote } from '../pricing/service';
 import { trackingService } from '../tracking/service';
@@ -227,7 +227,7 @@ export const tripsService = {
         id: driverId,
         name: driverUser?.fullName ?? 'Driver',
         photoUrl: driverPhotoUrl(driverUser?.avatarUrl, driverId),
-        rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+        rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : null,
         vehicle: vehicle
           ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
           : { model: 'Unknown', colour: '', seats: 4, category: 'go' },
@@ -465,7 +465,7 @@ export const tripsService = {
             id: trip.driverId,
             name: driverUser.fullName ?? 'Driver',
             photoUrl: driverPhotoUrl(driverUser.avatarUrl, trip.driverId),
-            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : null,
             vehicle: vehicle
               ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
               : { model: 'Vehicle', colour: '', seats: 4, category: trip.category },
@@ -666,7 +666,7 @@ export const tripsService = {
             id: trip.driverId,
             name: driverUser.fullName ?? 'Driver',
             photoUrl: driverPhotoUrl(driverUser.avatarUrl, trip.driverId),
-            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : null,
             vehicle: vehicle
               ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
               : { model: 'Vehicle', colour: '', seats: 4, category: trip.category },
@@ -685,6 +685,9 @@ export const tripsService = {
   },
 
   // ---- rider: rate a completed trip ----
+  // Writes the per-trip score, then recomputes the driver's profile aggregate
+  // from all rated trips in the same transaction. A trip can only be rated
+  // once per direction — re-rating is rejected rather than silently overwritten.
   async rateTrip(riderId: string, tripId: string, rating: number, comment?: string) {
     const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
     if (!trip) throw new DomainError('TRIP_NOT_FOUND', 'Trip not found.', 404);
@@ -694,14 +697,68 @@ export const tripsService = {
     if (trip.status !== 'completed') {
       throw new DomainError('TRIP_NOT_COMPLETED', 'You can only rate a completed trip.', 422);
     }
+    if (trip.riderRating != null) {
+      throw new DomainError('TRIP_ALREADY_RATED', 'This trip has already been rated.', 409);
+    }
+    if (!trip.driverId) {
+      throw new DomainError('TRIP_NO_DRIVER', 'This trip has no driver to rate.', 422);
+    }
+    const driverId = trip.driverId;
 
-    const [updated] = await db
-      .update(trips)
-      .set({ riderRating: rating, riderComment: comment ?? null, ratedAt: new Date(), updatedAt: new Date() })
-      .where(eq(trips.id, tripId))
-      .returning();
+    return db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(trips)
+        .set({ riderRating: rating, riderComment: comment ?? null, ratedAt: new Date(), updatedAt: new Date() })
+        .where(eq(trips.id, tripId))
+        .returning();
 
-    return { rating: updated!.riderRating, comment: updated!.riderComment };
+      const [agg] = await tx
+        .select({ avg: sql<string | null>`avg(${trips.riderRating})`, n: count(trips.riderRating) })
+        .from(trips)
+        .where(and(eq(trips.driverId, driverId), isNotNull(trips.riderRating)));
+      await tx
+        .update(driverProfiles)
+        .set({ ratingAvg: agg?.avg ? Number(agg.avg).toFixed(2) : null, ratingCount: agg?.n ?? 0 })
+        .where(eq(driverProfiles.userId, driverId));
+
+      return { rating: updated!.riderRating, comment: updated!.riderComment };
+    });
+  },
+
+  // ---- driver: rate the rider on a completed trip ----
+  // Mirror of `rateTrip`; recomputes the rider's profile aggregate.
+  async driverRateTrip(driverId: string, tripId: string, rating: number, comment?: string) {
+    const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
+    if (!trip) throw new DomainError('TRIP_NOT_FOUND', 'Trip not found.', 404);
+    if (trip.driverId !== driverId) {
+      throw new DomainError('FORBIDDEN', 'You do not have access to this trip.', 403);
+    }
+    if (trip.status !== 'completed') {
+      throw new DomainError('TRIP_NOT_COMPLETED', 'You can only rate a completed trip.', 422);
+    }
+    if (trip.driverRating != null) {
+      throw new DomainError('TRIP_ALREADY_RATED', 'This trip has already been rated.', 409);
+    }
+    const riderId = trip.riderId;
+
+    return db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(trips)
+        .set({ driverRating: rating, driverComment: comment ?? null, driverRatedAt: new Date(), updatedAt: new Date() })
+        .where(eq(trips.id, tripId))
+        .returning();
+
+      const [agg] = await tx
+        .select({ avg: sql<string | null>`avg(${trips.driverRating})`, n: count(trips.driverRating) })
+        .from(trips)
+        .where(and(eq(trips.riderId, riderId), isNotNull(trips.driverRating)));
+      await tx
+        .update(riderProfiles)
+        .set({ ratingAvg: agg?.avg ? Number(agg.avg).toFixed(2) : null, ratingCount: agg?.n ?? 0 })
+        .where(eq(riderProfiles.userId, riderId));
+
+      return { rating: updated!.driverRating, comment: updated!.driverComment };
+    });
   },
 
   // ---- trip route (recorded breadcrumbs) ----

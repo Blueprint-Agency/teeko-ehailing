@@ -274,7 +274,8 @@
     "tripCancelledToast": "Perjalanan anda telah dibatalkan.",
     "driverMatchedToast": "Pemandu dipadankan. Dalam perjalanan ke anda.",
     "driverArrivedToast": "Pemandu anda telah tiba.",
-    "tripStartedToast": "Perjalanan anda telah bermula."
+    "tripStartedToast": "Perjalanan anda telah bermula.",
+    "newDriver": "Pemandu baharu"
   },
   "driver": {
     "online": "ANDA DALAM TALIAN",
@@ -469,7 +470,11 @@
     "tabEarnings": "Wang",
     "tabBonus": "Bonus",
     "tabVehicle": "Kereta",
-    "tabProfile": "Profil"
+    "tabProfile": "Profil",
+    "rateRider": "Bagaimana penumpang anda?",
+    "rateRiderHint": "Ada apa-apa yang perlu kami tahu? (pilihan)",
+    "submitAndFinish": "Hantar & selesai",
+    "skipRating": "Langkau penilaian"
   },
   "demo": {
     "title": "Kawalan demo",

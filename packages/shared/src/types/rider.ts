@@ -48,7 +48,8 @@ export interface Driver {
   id: string;
   name: string;
   photoUrl: string;
-  rating: number;
+  /** Profile average; null until the driver has received a rating. */
+  rating: number | null;
   vehicle: Vehicle;
   plate: string;
   languages: Locale[];

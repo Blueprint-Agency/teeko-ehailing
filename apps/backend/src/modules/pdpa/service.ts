@@ -23,7 +23,6 @@ import {
   otpCodes,
   paymentMethods,
   payments,
-  ratings,
   recentPlaces,
   savedPlaces,
   supportTickets,
@@ -139,7 +138,6 @@ export const pdpaService = {
       methods,
       charges,
       rideRows,
-      ratingRows,
       disputeRows,
       tickets,
       devices,
@@ -153,7 +151,6 @@ export const pdpaService = {
       db.select().from(paymentMethods).where(eq(paymentMethods.userId, userId)),
       db.select().from(payments).where(or(eq(payments.riderId, userId), eq(payments.driverId, userId))),
       db.select().from(trips).where(or(eq(trips.riderId, userId), eq(trips.driverId, userId))),
-      db.select().from(ratings).where(or(eq(ratings.raterId, userId), eq(ratings.rateeId, userId))),
       db.select().from(disputes).where(or(eq(disputes.riderId, userId), eq(disputes.driverId, userId))),
       db.select().from(supportTickets).where(eq(supportTickets.userId, userId)),
       db.select().from(deviceTokens).where(eq(deviceTokens.userId, userId)),
@@ -187,7 +184,7 @@ export const pdpaService = {
       })),
       payments: charges,
       trips: rideRows,
-      ratings: ratingRows,
+      // Ratings (both directions) ride along on the trip rows above.
       disputes: disputeRows,
       supportTickets: tickets,
       // Raw push tokens are credentials, not exported; list device presence only.
@@ -272,15 +269,17 @@ export const pdpaService = {
         .set({ label: 'REDACTED', externalId: null, deletedAt: new Date() })
         .where(eq(paymentMethods.userId, userId));
 
-      // Scrub free-text the subject authored in ratings (aggregate score kept).
-      await tx.update(ratings).set({ comment: null }).where(eq(ratings.raterId, userId));
+      // Scrub free-text the subject authored in ratings (scores kept — they feed
+      // the retained profile aggregates). Ratings live per-direction on `trips`.
+      await tx.update(trips).set({ riderComment: null }).where(eq(trips.riderId, userId));
+      await tx.update(trips).set({ driverComment: null }).where(eq(trips.driverId, userId));
     });
 
     return {
       userId,
       anonymised: true,
       purged,
-      retained: ['trips', 'payments', 'disputes', 'ratings (scores)', 'support_tickets', 'insurance_certificates'],
+      retained: ['trips', 'payments', 'disputes', 'trip ratings (scores)', 'support_tickets', 'insurance_certificates'],
       retainedUntil: retainedUntil?.toISOString() ?? null,
       note:
         'PII anonymised on the profile; transactional records retained (de-identified) to meet tax/APAD/insurance retention duties.',
