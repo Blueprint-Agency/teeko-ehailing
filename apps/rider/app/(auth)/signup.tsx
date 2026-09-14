@@ -3,34 +3,16 @@ import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutF
 
 import { useAuthStore, useUIStore } from '@teeko/api';
 import { useT } from '@teeko/i18n';
-import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
+import { resolveRiderPhone } from '@teeko/shared';
+import { Button, Input, PhoneInput, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useSignUp } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 
 import { GoogleButton } from '../../components/GoogleButton';
+import { PasswordToggle } from '../../components/PasswordToggle';
 import { useGoogleAuth } from '../../lib/useGoogleAuth';
 
 const PASSWORD_MIN = 8;
-
-function PasswordToggle({
-  visible,
-  onToggle,
-}: {
-  visible: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onToggle}
-      haptic="selection"
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={visible ? 'Hide password' : 'Show password'}
-    >
-      <Icon name={visible ? 'visibility-off' : 'visibility'} size={20} color="#4B5563" />
-    </Pressable>
-  );
-}
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -38,10 +20,17 @@ export default function SignupScreen() {
   const { signUp, setActive, isLoaded } = useSignUp();
   const pushToast = useUIStore((s) => s.pushToast);
   const fetchProfile = useAuthStore((s) => s.fetchProfile);
+  const setInitialPhone = useAuthStore((s) => s.setInitialPhone);
+  const recentCountries = useAuthStore((s) => s.recentCountries);
+  const rememberCountry = useAuthStore((s) => s.rememberCountry);
   const { signInWithGoogle, loading: googleLoading } = useGoogleAuth();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  // Malaysia by default — where nearly every rider is — but any country is fine.
+  const [countryCode, setCountryCode] = useState('MY');
+  const [phone, setPhone] = useState('');
+  const [phoneError, setPhoneError] = useState<string | undefined>();
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -66,6 +55,7 @@ export default function SignupScreen() {
     setEmailError(undefined);
     setPasswordError(undefined);
     setConfirmError(undefined);
+    setPhoneError(undefined);
 
     if (!name.trim()) {
       pushToast({ kind: 'error', message: 'Name is required' });
@@ -73,6 +63,15 @@ export default function SignupScreen() {
     }
     if (!email.trim()) {
       setEmailError('Email is required');
+      return;
+    }
+    // Validated with the same function the server uses, so the inline message
+    // and the API's verdict can never disagree.
+    const resolvedPhone = resolveRiderPhone({ countryCode, nationalNumber: phone });
+    if (!resolvedPhone.ok) {
+      setPhoneError(
+        t(resolvedPhone.error === 'phone_required' ? 'phone.required' : 'phone.invalid'),
+      );
       return;
     }
     if (password.length < PASSWORD_MIN) {
@@ -111,7 +110,22 @@ export default function SignupScreen() {
       // backend OTP (Gmail SMTP) for email verification, not Clerk's.
       if (attempt.status === 'complete' && attempt.createdSessionId) {
         await setActive({ session: attempt.createdSessionId });
+        // fetchProfile is what JIT-provisions our users row, so it has to land
+        // before the number can be attached to it.
         await fetchProfile().catch(() => {});
+        // Clerk owns sign-up, so there is no register endpoint to carry the
+        // number in. If this write is lost (offline, app killed mid-flow) the
+        // account simply has no phone, and the blocking add-phone gate in
+        // (main)/_layout.tsx catches it at next launch — so a failure here is
+        // never worth blocking a completed sign-up over.
+        try {
+          await setInitialPhone({
+            countryCode,
+            nationalNumber: phone.trim(),
+          });
+        } catch (err) {
+          console.warn('[signup] initial phone write failed; add-phone gate will catch it', err);
+        }
         router.replace('/(auth)/verify-email');
       } else {
         const missing = attempt.missingFields ?? [];
@@ -193,6 +207,24 @@ export default function SignupScreen() {
                   if (emailError) setEmailError(undefined);
                 }}
                 error={emailError}
+              />
+              <PhoneInput
+                country="picker"
+                label={t('phone.label')}
+                countryCode={countryCode}
+                onCountryCodeChange={setCountryCode}
+                onCountryUsed={rememberCountry}
+                recentCountries={recentCountries}
+                value={phone}
+                onChangeText={(v) => {
+                  setPhone(v);
+                  if (phoneError) setPhoneError(undefined);
+                }}
+                error={phoneError}
+                searchPlaceholder={t('phone.searchCountry')}
+                recentLabel={t('phone.recent')}
+                allCountriesLabel={t('phone.allCountries')}
+                noResultsLabel={t('phone.noCountryResults')}
               />
               <Input
                 label={t('auth.passwordLabel')}

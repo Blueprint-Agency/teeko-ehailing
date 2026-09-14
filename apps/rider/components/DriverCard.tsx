@@ -1,5 +1,7 @@
 import { Image, View } from 'react-native';
 
+import { resolveMediaUrl } from '@teeko/api';
+import { useT } from '@teeko/i18n';
 import type { Driver } from '@teeko/shared';
 import { Icon, Text } from '@teeko/ui';
 
@@ -9,13 +11,16 @@ export interface DriverCardProps {
 }
 
 export function DriverCard({ driver, compact }: DriverCardProps) {
+  const t = useT();
   const vehicleLine = [driver.vehicle?.colour, driver.vehicle?.model].filter(Boolean).join(' ');
   const photoSize = compact ? 40 : 48;
 
   return (
     <View className="flex-row items-center">
       <Image
-        source={{ uri: driver.photoUrl }}
+        // A driver who uploaded a picture sends back a storage path, not a URL,
+        // so it needs the API origin before <Image> can load it.
+        source={{ uri: resolveMediaUrl(driver.photoUrl) }}
         style={{ width: photoSize, height: photoSize, borderRadius: photoSize / 2 }}
       />
       <View className="ml-3 flex-1">
@@ -27,12 +32,19 @@ export function DriverCard({ driver, compact }: DriverCardProps) {
           >
             {driver.name}
           </Text>
-          <View className="ml-2 flex-row items-center">
-            <Icon name="star" size={13} color="#F5A524" />
-            <Text className="ml-0.5 text-xs text-ink-secondary">
-              {driver.rating.toFixed(2)}
-            </Text>
-          </View>
+          {/* No score until the first rating lands — a made-up number would mislead. */}
+          {driver.rating != null ? (
+            <View className="ml-2 flex-row items-center">
+              <Icon name="star" size={13} color="#F5A524" />
+              <Text className="ml-0.5 text-xs text-ink-secondary">
+                {driver.rating.toFixed(2)}
+              </Text>
+            </View>
+          ) : (
+            <View className="ml-2 rounded-full bg-primary-50 px-2 py-0.5">
+              <Text className="text-xs text-primary">{t('trip.newDriver')}</Text>
+            </View>
+          )}
         </View>
         <View className="mt-0.5 flex-row items-center">
           <Text

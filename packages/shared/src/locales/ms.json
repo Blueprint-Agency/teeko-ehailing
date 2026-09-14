@@ -1,5 +1,6 @@
 {
   "common": {
+    "dismiss": "Tutup",
     "appName": "Teeko",
     "tagline": "Pandu dengan Teeko",
     "next": "Seterusnya",
@@ -30,7 +31,8 @@
       "subtitle": "Jana lebih, bayar kurang.",
       "description": "Platform e-hailing terbaharu Malaysia menawarkan kadar komisyen terendah dan pematuhan penuh APAD/JPJ. Daftar dalam talian — pandu dalam beberapa hari.",
       "ctaRegister": "Daftar sebagai Pemandu",
-      "ctaLogin": "Log masuk"
+      "ctaLogin": "Log masuk",
+      "ctaContinue": "Teruskan permohonan anda"
     },
     "stats": {
       "commission": "Kadar komisyen",
@@ -85,10 +87,23 @@
       "passwordHint": "Min. 8 aksara",
       "pdpaConsent": "Saya bersetuju dengan pengumpulan dan penggunaan data peribadi saya mengikut PDPA 2010 Malaysia untuk tujuan pendaftaran pemandu dan pematuhan kawal selia.",
       "hasAccount": "Sudah mendaftar?",
-      "loginLink": "Log masuk"
+      "loginLink": "Log masuk",
+      "phoneHint": "Nombor mudah alih Malaysia sahaja",
+      "phoneCountryNotAllowed": "Pemandu mesti mendaftar nombor Malaysia (+60)",
+      "phoneInvalid": "Masukkan nombor mudah alih Malaysia",
+      "phoneSaveFailed": "Tidak dapat menyimpan nombor anda. Sila cuba lagi.",
+      "addPhoneTitle": "Tambah nombor telefon anda",
+      "addPhoneBody": "Kami perlukan nombor supaya penumpang boleh menghubungi anda semasa perjalanan, dan ia sebahagian daripada rekod pengendali APAD anda.",
+      "addPhoneCta": "Simpan dan teruskan",
+      "phoneWriteRejected": "Nombor telefon yang anda masukkan ditolak oleh pelayan. Sila masukkan nombor telefon bimbit Malaysia yang sah.",
+      "phoneWriteFailed": "Kami tidak dapat menyimpan nombor telefon yang anda masukkan. Sila masukkan semula."
     }
   },
   "onboarding": {
+    "uploadsCleared": {
+      "title": "Muat naik anda telah dipadam apabila halaman dimuat semula",
+      "body": "Demi privasi anda, fail kekal di peranti ini sehingga anda menghantar. Sila pilih dokumen anda semula untuk meneruskan."
+    },
     "stepOf": "Langkah {{current}} daripada {{total}}",
     "agreement": {
       "title": "Perjanjian Pemandu",
@@ -133,6 +148,17 @@
       "title": "Dokumen Kenderaan",
       "subtitle": "Muat naik dokumen sah untuk kenderaan berdaftar anda.",
       "incompleteError": "Sesetengah dokumen yang diperlukan masih tiada. Sila muat naik semua dokumen sebelum menghantar.",
+      "missingList": "Tiada: {{docs}}.",
+      "errors": {
+        "noVehicleDetails": "Butiran kenderaan anda tiada. Kembali dan lengkapkan sebelum menghantar.",
+        "vehicleExists": "Sebuah kenderaan sudah didaftarkan pada akaun anda. Hubungi sokongan jika perlu menukarnya.",
+        "plateTaken": "Nombor plat {{plate}} sudah didaftarkan kepada pemandu lain. Semak nombor plat dan cuba lagi.",
+        "invalidVehicle": "Butiran kenderaan tidak lengkap ({{field}}). Kembali dan semak borang.",
+        "fileTooLarge": "{{doc}} melebihi had 10 MB. Sila muat naik semula fail yang lebih kecil.",
+        "fileInvalidType": "{{doc}} mesti dalam format JPG, PNG atau PDF. Sila muat naik semula.",
+        "applicationNotFound": "Kami tidak menemui permohonan anda. Sila log keluar dan log masuk semula.",
+        "network": "Tidak dapat menghubungi pelayan. Semak sambungan anda dan cuba lagi."
+      },
       "submitError": "Berlaku masalah semasa menghantar permohonan anda. Sila cuba lagi."
     },
     "confirmation": {
@@ -192,7 +218,10 @@
       "ms": "Bahasa Malaysia",
       "zh": "Mandarin (Simplified)",
       "ta": "Tamil"
-    }
+    },
+    "phonePending": "“{{value}}” sedang menunggu semakan Teeko.",
+    "phoneEarly": "Ditanda sebagai pertukaran awal — pentadbir akan menyemak.",
+    "phoneNextChange": "Anda boleh menukarnya semula pada {{date}}."
   },
   "documents": {
     "upload": "Muat naik dokumen",
@@ -208,5 +237,29 @@
     "blurWarning": "Imej kelihatan kabur — sila ambil semula",
     "sizeError": "Fail melebihi had 10 MB",
     "typeError": "Hanya fail JPG, PNG, atau PDF diterima"
+  },
+  "validation": {
+    "emailRequired": "E-mel diperlukan",
+    "emailInvalid": "Masukkan alamat e-mel yang sah",
+    "passwordRequired": "Masukkan kata laluan anda",
+    "passwordMin": "Kata laluan mesti sekurang-kurangnya 8 aksara",
+    "passwordMax": "Kata laluan terlalu panjang",
+    "phoneRequired": "Masukkan nombor telefon anda",
+    "phoneInvalid": "Masukkan nombor telefon bimbit Malaysia",
+    "phoneCountry": "Pemandu mesti mendaftar dengan nombor Malaysia (+60)",
+    "fullNameMin": "Nama penuh mesti sekurang-kurangnya 2 aksara",
+    "fullNameMax": "Nama penuh terlalu panjang",
+    "pdpaRequired": "Anda mesti bersetuju dengan pengumpulan data",
+    "makeRequired": "Jenama kenderaan diperlukan",
+    "makeOtherRequired": "Masukkan jenama kenderaan anda",
+    "modelRequired": "Model kenderaan diperlukan",
+    "yearInvalid": "Masukkan tahun yang sah",
+    "yearMin": "Kenderaan mesti tahun {{year}} atau lebih baharu",
+    "yearFuture": "Tahun tidak boleh pada masa hadapan",
+    "plateRequired": "Nombor plat diperlukan",
+    "plateInvalid": "Masukkan nombor plat Malaysia yang sah (cth. WKK 1234)",
+    "colourRequired": "Warna kenderaan diperlukan",
+    "tooLong": "Terlalu panjang",
+    "fileRequired": "Sila muat naik fail"
   }
 }

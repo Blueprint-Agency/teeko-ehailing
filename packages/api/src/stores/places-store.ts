@@ -3,6 +3,21 @@ import { create } from 'zustand';
 
 import * as placesApi from '../client/places';
 
+// Max custom ("saved") places a rider may keep, on top of the one-each home and
+// work. Home/work are naturally single by category; custom places are not, so
+// this cap is enforced here in the store — the single source of truth — rather
+// than only in the screens that add them.
+export const MAX_CUSTOM_PLACES = 3;
+
+// Thrown by saveHomeOrWork when adding another custom place would exceed
+// MAX_CUSTOM_PLACES. Callers can catch this to show a friendly message.
+export class PlacesLimitError extends Error {
+  constructor(public readonly limit: number = MAX_CUSTOM_PLACES) {
+    super(`Custom saved places limit reached (${limit})`);
+    this.name = 'PlacesLimitError';
+  }
+}
+
 export type PlacesState = {
   recent: Place[];
   saved: Place[];
@@ -16,6 +31,9 @@ export type PlacesState = {
   saveHomeOrWork: (
     category: 'home' | 'work' | 'custom',
     place: Place,
+    // When editing an existing custom place, its id — excluded from the cap
+    // count so a replace at the limit isn't wrongly blocked.
+    replaceId?: string,
   ) => Promise<void>;
   removeSaved: (id: string) => Promise<void>;
   clearResults: () => void;
@@ -70,7 +88,17 @@ export const usePlacesStore = create<PlacesState>((set, get) => ({
       .catch((err) => console.warn('[places] pushRecent server failed', err));
   },
 
-  async saveHomeOrWork(category, place) {
+  async saveHomeOrWork(category, place, replaceId) {
+    // Enforce the custom-place cap before hitting the server. Custom places come
+    // back with category 'saved'; exclude the row being replaced during an edit.
+    if (category === 'custom') {
+      const existingCustom = get().saved.filter(
+        (p) => p.category === 'saved' && p.id !== replaceId,
+      );
+      if (existingCustom.length >= MAX_CUSTOM_PLACES) {
+        throw new PlacesLimitError();
+      }
+    }
     const saved = await placesApi.upsertSavedPlace({
       label: category,
       address: place.address,

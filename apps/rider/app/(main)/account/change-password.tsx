@@ -3,36 +3,19 @@ import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TouchableWithoutF
 
 import { useUser } from '@clerk/clerk-expo';
 import { ApiError, authApi, useAuthStore, useUIStore } from '@teeko/api';
+import { cooldownSentence } from '@teeko/shared';
 import { Button, Icon, Input, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
+
+import { PasswordToggle } from '../../../components/PasswordToggle';
 
 const PASSWORD_MIN = 8;
 
 type Step = 'send' | 'verify';
 
-function PasswordToggle({
-  visible,
-  onToggle,
-}: {
-  visible: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onToggle}
-      haptic="selection"
-      hitSlop={8}
-      accessibilityRole="button"
-      accessibilityLabel={visible ? 'Hide password' : 'Show password'}
-    >
-      <Icon name={visible ? 'visibility-off' : 'visibility'} size={20} color="#4B5563" />
-    </Pressable>
-  );
-}
-
 export default function ChangePasswordScreen() {
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const { user } = useUser();
   const rider = useAuthStore((s) => s.rider);
   const pushToast = useUIStore((s) => s.pushToast);
 
@@ -47,6 +30,9 @@ export default function ChangePasswordScreen() {
   const [busy, setBusy] = useState(false);
   const [codeError, setCodeError] = useState<string | undefined>();
   const [passwordError, setPasswordError] = useState<string | undefined>();
+  // Set when the account has already changed its password in the last 7 days.
+  // Locks the screen rather than letting the rider fill a form that cannot post.
+  const [cooldown, setCooldown] = useState<string | undefined>();
 
   const sendCode = async () => {
     if (!email) {
@@ -55,7 +41,9 @@ export default function ChangePasswordScreen() {
     }
     setBusy(true);
     try {
-      await authApi.sendOtp();
+      // Declaring the purpose lets the server refuse *before* emailing a code
+      // the rider could never spend — a password changes once a week.
+      await authApi.sendOtp('password_change');
       setStep('verify');
       pushToast({ kind: 'info', message: `Code sent to ${email}` });
     } catch (err) {
@@ -64,9 +52,16 @@ export default function ChangePasswordScreen() {
           const body = JSON.parse(err.body) as {
             error: string;
             retryInSeconds?: number;
+            nextAllowedAt?: string;
             providerMessage?: string;
           };
-          if (body.error === 'rate_limited') {
+          if (body.error === 'password_change_cooldown') {
+            const message = body.nextAllowedAt
+              ? cooldownSentence('change your password', body.nextAllowedAt)
+              : 'You can only change your password once a week.';
+            setCooldown(message);
+            pushToast({ kind: 'info', message });
+          } else if (body.error === 'rate_limited') {
             pushToast({ kind: 'info', message: `Try again in ${body.retryInSeconds ?? 60}s` });
           } else if (body.error === 'email_delivery_failed') {
             pushToast({
@@ -103,51 +98,53 @@ export default function ChangePasswordScreen() {
       setPasswordError("Passwords don't match");
       return;
     }
-    if (!isLoaded || !user) return;
-
     setBusy(true);
     try {
-      // 1) Verify identity with our backend OTP (Gmail SMTP).
-      try {
-        await authApi.verifyOtp(code.trim());
-      } catch (err) {
-        if (err instanceof ApiError) {
-          try {
-            const body = JSON.parse(err.body) as { error: string };
-            if (body.error === 'incorrect' || body.error === 'no_active_code') {
-              setCodeError('Invalid or expired code');
-            } else if (body.error === 'expired') {
-              setCodeError('Code expired — tap resend');
-            } else if (body.error === 'too_many_attempts') {
-              setCodeError('Too many attempts — tap resend');
-            } else {
-              setCodeError('Verification failed');
-            }
-          } catch {
-            setCodeError('Verification failed');
-          }
-        } else {
-          setCodeError('Verification failed');
-        }
-        return;
-      }
-
-      // 2) Apply the new password via Clerk (still owns the credential).
-      await user.updatePassword({ newPassword, signOutOfOtherSessions: true });
+      // One call: the backend verifies the OTP and writes the password through
+      // Clerk's admin API. Clerk's client-side user.updatePassword() would
+      // demand the current password, which this screen doesn't ask for.
+      await authApi.changePassword(code.trim(), newPassword);
       pushToast({ kind: 'info', message: 'Password updated.' });
       router.back();
     } catch (err) {
-      const errCode = (err as { errors?: Array<{ code?: string }> }).errors?.[0]?.code;
-      const message = (err as { errors?: Array<{ message?: string }> })
-        .errors?.[0]?.message;
-      if (
-        errCode === 'form_password_pwned' ||
-        errCode === 'form_password_length_too_short' ||
-        errCode === 'form_password_validation_failed'
-      ) {
-        setPasswordError(message ?? 'Password rejected');
+      if (err instanceof ApiError) {
+        let body: {
+          error?: string;
+          code?: string;
+          message?: string;
+          nextAllowedAt?: string;
+        } = {};
+        try {
+          body = JSON.parse(err.body);
+        } catch {
+          // Non-JSON body — fall through to the generic toast.
+        }
+        if (body.error === 'password_change_cooldown') {
+          // Re-checked server-side: a code minted just before another change
+          // landed is still refused here.
+          const message = body.nextAllowedAt
+            ? cooldownSentence('change your password', body.nextAllowedAt)
+            : 'You can only change your password once a week.';
+          setCooldown(message);
+          pushToast({ kind: 'info', message });
+        } else if (body.error === 'incorrect' || body.error === 'no_active_code') {
+          setCodeError('Invalid or expired code');
+        } else if (body.error === 'expired') {
+          setCodeError('Code expired — tap resend');
+        } else if (body.error === 'too_many_attempts') {
+          setCodeError('Too many attempts — tap resend');
+        } else if (body.error === 'password_rejected') {
+          // The code is still valid — only the password was refused.
+          setPasswordError(
+            body.code === 'form_password_pwned'
+              ? 'That password has appeared in a data breach'
+              : (body.message ?? 'Choose a stronger password'),
+          );
+        } else {
+          pushToast({ kind: 'error', message: 'Could not update password.' });
+        }
       } else {
-        pushToast({ kind: 'error', message: message ?? 'Could not update password.' });
+        pushToast({ kind: 'error', message: 'Could not update password.' });
       }
     } finally {
       setBusy(false);
@@ -182,10 +179,21 @@ export default function ChangePasswordScreen() {
               </View>
             </View>
 
+            {cooldown ? (
+              <View className="rounded-lg border border-border bg-muted px-4 py-3">
+                <Text weight="bold" className="mb-1 text-sm">
+                  Password recently changed
+                </Text>
+                <Text tone="secondary" className="text-sm">
+                  {cooldown}
+                </Text>
+              </View>
+            ) : null}
+
             {step === 'send' ? (
               <Text tone="secondary" className="text-sm">
                 We'll send a verification code to your email. Enter it along with your new
-                password to confirm the change.
+                password to confirm the change. A password can be changed once a week.
               </Text>
             ) : (
               <>
@@ -246,9 +254,19 @@ export default function ChangePasswordScreen() {
 
       <View className="pb-safe pt-2">
         {step === 'send' ? (
-          <Button label="Send verification code" onPress={sendCode} loading={busy} disabled={busy} />
+          <Button
+            label="Send verification code"
+            onPress={sendCode}
+            loading={busy}
+            disabled={busy || !!cooldown}
+          />
         ) : (
-          <Button label="Update password" onPress={submit} loading={busy} disabled={busy} />
+          <Button
+            label="Update password"
+            onPress={submit}
+            loading={busy}
+            disabled={busy || !!cooldown}
+          />
         )}
       </View>
       </KeyboardAvoidingView>

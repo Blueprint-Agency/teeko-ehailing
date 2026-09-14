@@ -26,6 +26,15 @@ interface OnboardingStore {
   personalFiles: Record<string, File>
   vehicleFiles: Record<string, File>
 
+  // Ids of slots that had a File the last time the page was alive. Persisted
+  // so that on rehydrate we can tell "fresh start" apart from "the reload just
+  // wiped their uploads" — the Files themselves cannot survive a reload.
+  uploadedDocIds: string[]
+  // Set on rehydrate when uploadedDocIds was non-empty. Drives the "your
+  // uploads were cleared" notice; cleared on dismiss or the next upload.
+  uploadsCleared: boolean
+  dismissUploadsCleared: () => void
+
   setStep: (step: OnboardingStep) => void
   acceptAgreement: () => void
   updatePersonalDoc: (id: string, updates: Partial<DocumentState>) => void
@@ -65,6 +74,10 @@ export const useOnboardingStore = create<OnboardingStore>()(
       vehicleDocs: initialVehicleDocs,
       personalFiles: {},
       vehicleFiles: {},
+      uploadedDocIds: [],
+      uploadsCleared: false,
+
+      dismissUploadsCleared: () => set({ uploadsCleared: false }),
 
       setStep: (step) => set({ currentStep: step }),
 
@@ -82,6 +95,8 @@ export const useOnboardingStore = create<OnboardingStore>()(
       // network call — everything is sent at the final submit step.
       uploadPersonalDoc: (id, file) =>
         set((state) => ({
+          uploadsCleared: false,
+          uploadedDocIds: Array.from(new Set([...state.uploadedDocIds, id])),
           personalFiles: { ...state.personalFiles, [id]: file },
           personalDocs: state.personalDocs.map((d) =>
             d.id === id
@@ -101,6 +116,8 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
       uploadVehicleDoc: (id, file) =>
         set((state) => ({
+          uploadsCleared: false,
+          uploadedDocIds: Array.from(new Set([...state.uploadedDocIds, id])),
           vehicleFiles: { ...state.vehicleFiles, [id]: file },
           vehicleDocs: state.vehicleDocs.map((d) =>
             d.id === id
@@ -109,7 +126,8 @@ export const useOnboardingStore = create<OnboardingStore>()(
           ),
         })),
 
-      markSubmitted: () => set({ submitted: true }),
+      // Files are on the server now; nothing left to lose on a reload.
+      markSubmitted: () => set({ submitted: true, uploadedDocIds: [], uploadsCleared: false }),
 
       reset: () =>
         set({
@@ -122,6 +140,8 @@ export const useOnboardingStore = create<OnboardingStore>()(
           vehicleDocs: initialVehicleDocs,
           personalFiles: {},
           vehicleFiles: {},
+          uploadedDocIds: [],
+          uploadsCleared: false,
         }),
     }),
     {
@@ -131,7 +151,16 @@ export const useOnboardingStore = create<OnboardingStore>()(
         agreementTimestamp: state.agreementTimestamp,
         vehicleDetails: state.vehicleDetails,
         submitted: state.submitted,
+        uploadedDocIds: state.uploadedDocIds,
       }),
+      // A non-empty uploadedDocIds coming back from storage means the Files it
+      // referred to died with the previous page. Flag it once, then forget the
+      // ids so the notice doesn't reappear on every subsequent reload.
+      onRehydrateStorage: () => (state) => {
+        if (state && state.uploadedDocIds.length > 0 && !state.submitted) {
+          useOnboardingStore.setState({ uploadsCleared: true, uploadedDocIds: [] })
+        }
+      },
     }
   )
 )

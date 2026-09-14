@@ -10,6 +10,7 @@ import { useDriverStore, type DriverStatus } from '@/stores/driver';
 import { useTripStore } from '@/stores/trip';
 import { useRbac } from '@/hooks/useRbac';
 import { StatusChip } from '@/components/data/StatusChip';
+import { ProfileChangeReview } from '@/components/data/ProfileChangeReview';
 import { useEffect, useState } from 'react';
 import { ArrowBack } from '@mui/icons-material';
 
@@ -123,6 +124,13 @@ export default function DriverProfilePage() {
             </Card>
           </Grid>
         ))}
+
+        {/* Name / phone changes waiting on review, plus the full trail */}
+        {can('approve_driver') && (
+          <Grid item xs={12}>
+            <ProfileChangeReview driverId={driver.id} />
+          </Grid>
+        )}
 
         {/* Recent trips */}
         <Grid item xs={12}>

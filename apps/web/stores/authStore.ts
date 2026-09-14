@@ -14,6 +14,20 @@ interface WebAuthStore {
   applicationState: string | null
   approvalStatus: string | null
   emailVerified: boolean
+  /**
+   * True when our users row has no phone — a legacy account, or a sign-up
+   * interrupted between the Clerk step and the number write. Gates the
+   * dashboard: riders dial this number mid-trip and it sits on the APAD/JPJ
+   * operator record, so a NULL silently degrades a trip.
+   */
+  needsPhone: boolean
+  /**
+   * Why the register form's phone write failed, if it did. The add-phone gate
+   * fires straight after (needsPhone), and without this it asks for a number
+   * the driver just typed with no explanation. Cleared once the gate shows it.
+   */
+  phoneWriteError: string | null
+  setPhoneWriteError: (error: string | null) => void
   hydrating: boolean
   hydrate: () => Promise<void>
   clear: () => void
@@ -28,6 +42,9 @@ export const useWebAuthStore = create<WebAuthStore>()((set) => ({
   applicationState: null,
   approvalStatus: null,
   emailVerified: false,
+  needsPhone: false,
+  phoneWriteError: null,
+  setPhoneWriteError: (error) => set({ phoneWriteError: error }),
   hydrating: false,
   devRole: 'new',
 
@@ -45,7 +62,7 @@ export const useWebAuthStore = create<WebAuthStore>()((set) => ({
           ({
             id: me.user.id,
             fullName: me.user.fullName ?? '',
-            phone: '',
+            phone: me.user.phone ?? '',
             email: me.user.email ?? '',
             onboardingStep: 0,
             agreementAccepted: false,
@@ -53,6 +70,7 @@ export const useWebAuthStore = create<WebAuthStore>()((set) => ({
         applicationState: me.application?.state ?? null,
         approvalStatus: me.driverProfile.approvalStatus,
         emailVerified: me.user.emailVerified,
+        needsPhone: !me.user.phone,
       })
     } catch {
       set({ isAuthenticated: false, profile: null, applicationState: null })
@@ -68,6 +86,8 @@ export const useWebAuthStore = create<WebAuthStore>()((set) => ({
       applicationState: null,
       approvalStatus: null,
       emailVerified: false,
+      needsPhone: false,
+      phoneWriteError: null,
     }),
 
   setDevRole: async (role) => {

@@ -7,6 +7,26 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
   hint?: string
 }
 
+/** Border/background classes for any control (input, select, wrapper) in error vs. normal state. */
+export function fieldStateClasses(error?: string): string {
+  return error
+    ? 'border-[var(--color-error)] bg-[var(--color-error-light)]'
+    : 'border-[var(--color-border)] hover:border-[var(--color-border-dark)]'
+}
+
+/** The red message line under a field. Shared so hand-rolled controls match `Input`. */
+export function FieldError({ error, className }: { error?: string; className?: string }) {
+  if (!error) return null
+  return (
+    <p className={cn('flex items-center gap-1 text-xs text-[var(--color-error)]', className)}>
+      <svg className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm7.25-3.25a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0v-3.5zm.75 6a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+      </svg>
+      {error}
+    </p>
+  )
+}
+
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, error, label, hint, id, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, '-')
@@ -29,21 +49,12 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             'placeholder:text-[var(--color-placeholder)]',
             'transition-all duration-150',
             'focus:outline-none focus:ring-2 focus:ring-[var(--color-teal)] focus:ring-offset-0 focus:border-transparent',
-            error
-              ? 'border-[var(--color-error)] bg-[var(--color-error-light)]'
-              : 'border-[var(--color-border)] hover:border-[var(--color-border-dark)]',
+            fieldStateClasses(error),
             className
           )}
           {...props}
         />
-        {error && (
-          <p className="flex items-center gap-1 text-xs text-[var(--color-error)]">
-            <svg className="h-3.5 w-3.5 flex-shrink-0" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm7.25-3.25a.75.75 0 011.5 0v3.5a.75.75 0 01-1.5 0v-3.5zm.75 6a.75.75 0 110-1.5.75.75 0 010 1.5z" />
-            </svg>
-            {error}
-          </p>
-        )}
+        <FieldError error={error} />
         {hint && !error && (
           <p className="text-xs text-[var(--color-muted)]">{hint}</p>
         )}

@@ -1,7 +1,7 @@
-import { Alert, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 
 import { useUser } from '@clerk/clerk-expo';
-import { useUIStore } from '@teeko/api';
+import { showDialog, useUIStore } from '@teeko/api';
 import { Icon, ListRow, Pressable, ScreenContainer, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
@@ -19,19 +19,20 @@ export default function SecurityScreen() {
   const onUnlinkGoogle = () => {
     if (!googleAccount) return;
     if (!otherStrategyAvailable) {
-      Alert.alert(
-        'Cannot unlink',
-        'Set a password before unlinking Google — otherwise you would lose access to your account.',
-      );
+      showDialog({
+        title: 'Cannot unlink',
+        message:
+          'Set a password before unlinking Google — otherwise you would lose access to your account.',
+      });
       return;
     }
-    Alert.alert(
-      'Unlink Google?',
-      'You will need another way to sign in. This cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showDialog({
+      title: 'Unlink Google?',
+      message: 'You will need another way to sign in. This cannot be undone.',
+      actions: [
+        { label: 'Cancel', style: 'cancel' },
         {
-          text: 'Unlink',
+          label: 'Unlink',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -48,7 +49,7 @@ export default function SecurityScreen() {
           },
         },
       ],
-    );
+    });
   };
 
   return (

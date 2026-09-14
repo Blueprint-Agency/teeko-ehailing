@@ -11,7 +11,7 @@ import {
 import { ClerkLoaded, ClerkProvider, useAuth } from '@clerk/clerk-expo';
 import { StripeProvider } from '@stripe/stripe-react-native';
 import type { Locale } from '@teeko/shared';
-import { useAuthStore, useLocationStore, useTripStore, setApiUnauthorizedHandler } from '@teeko/api';
+import { useAuthStore, useLocationStore, useNotificationStore, useTripStore, setApiUnauthorizedHandler } from '@teeko/api';
 import { initI18n, setLocale } from '@teeko/i18n';
 import { router, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -19,6 +19,7 @@ import * as Localization from 'expo-localization';
 import * as Location from 'expo-location';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { FeedbackHost } from '../components/FeedbackHost';
 import { setTokenGetter, tokenCache } from '../lib/clerk';
 import { connectSocket, disconnectSocket, getSocket } from '../lib/socket';
 
@@ -32,6 +33,7 @@ function detectLocale(): Locale {
 function SocketBridge() {
   const { getToken, isSignedIn } = useAuth();
   const connectTripSocket = useTripStore((s) => s.connectSocket);
+  const connectNotificationSocket = useNotificationStore((s) => s.connectSocket);
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -41,6 +43,7 @@ function SocketBridge() {
     // Fix 5: Pass the getter function so each reconnect fetches a fresh token.
     const s = connectSocket(getToken);
     connectTripSocket(s);
+    connectNotificationSocket(s);
 
     return () => {
       disconnectSocket();
@@ -79,6 +82,7 @@ function ClerkBridge({ children }: { children: React.ReactNode }) {
       fetchProfile().catch(() => {
         router.replace('/(auth)/login');
       });
+      useNotificationStore.getState().load().catch(() => null);
       // Re-hydrate trip store after a refresh so screens like driver-matched
       // don't render blank due to wiped Zustand state.
       restoreActiveTrip().then((clientStatus) => {
@@ -167,6 +171,7 @@ export default function RootLayout() {
                 <Stack.Screen name="(main)" />
                 <Stack.Screen name="(auth)" />
               </Stack>
+              <FeedbackHost />
             </SafeAreaProvider>
           </StripeProvider>
         </ClerkBridge>

@@ -1,6 +1,7 @@
 // @teeko/ui — rider+driver shared UI primitives (NativeWind-styled).
 // See docs/v0.1/plans/rider-mockup/02-design-system.md §4 for the full component inventory.
 
+export { AlertDialog, type AlertDialogAction, type AlertDialogProps } from './primitives/AlertDialog';
 export { BottomSheet, type BottomSheetHandle, type BottomSheetProps } from './primitives/BottomSheet';
 export { Button, type ButtonProps } from './primitives/Button';
 export { Card, type CardProps } from './primitives/Card';
@@ -8,6 +9,7 @@ export { Icon, type IconProps, type IconName } from './primitives/Icon';
 export { Input, type InputProps } from './primitives/Input';
 export { ListRow, type ListRowProps } from './primitives/ListRow';
 export { OTPInput, type OTPInputProps } from './primitives/OTPInput';
+export { PhoneInput, type PhoneInputProps } from './primitives/PhoneInput';
 export { Pill, type PillProps } from './primitives/Pill';
 export { Pressable, type PressableProps, type HapticStyle } from './primitives/Pressable';
 export { Rating, type RatingProps } from './primitives/Rating';
@@ -16,6 +18,7 @@ export { ScreenContainer, type ScreenContainerProps } from './primitives/ScreenC
 export { Skeleton, SkeletonRow, type SkeletonProps } from './primitives/Skeleton';
 export { Spinner, type SpinnerProps } from './primitives/Spinner';
 export { Text, type TextProps } from './primitives/Text';
+export { ToastHost, type ToastHostProps, type ToastItem, type ToastKind } from './primitives/Toast';
 
 export { cn } from './utils/cn';
 

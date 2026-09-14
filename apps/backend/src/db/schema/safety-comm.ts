@@ -27,11 +27,32 @@ export const supportTicketKind = pgEnum('support_ticket_kind', [
   'vehicle_change',
   'other',
 ]);
+// Rider/driver general help-desk categories (mirrors the admin Support page).
+export const supportTicketCategory = pgEnum('support_ticket_category', [
+  'technical',
+  'complaint',
+  'payment',
+  'billing',
+  'account',
+  'documents',
+  'safety',
+  'other',
+]);
+export const supportPriority = pgEnum('support_priority', [
+  'low',
+  'medium',
+  'high',
+  'urgent',
+]);
+// in_review/denied are the driver-appeal lifecycle; in_progress/escalated were
+// added for the general help-desk flow (matches the admin StatusChip vocab).
 export const supportTicketStatus = pgEnum('support_ticket_status', [
   'open',
   'in_review',
   'resolved',
   'denied',
+  'in_progress',
+  'escalated',
 ]);
 
 export const emergencyContacts = pgTable('emergency_contacts', {
@@ -100,7 +121,13 @@ export const voiceProxySessions = pgTable('voice_proxy_sessions', {
 export const supportTickets = pgTable('support_tickets', {
   id: uuid().primaryKey().defaultRandom(),
   userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
-  kind: supportTicketKind().notNull(),
+  // `kind` is only meaningful for driver account-action tickets (appeal, etc.);
+  // general help tickets are classified by `category` instead, so it's nullable.
+  kind: supportTicketKind(),
+  category: supportTicketCategory().notNull().default('other'),
+  subject: text().notNull(),
+  // Rider never sets priority — defaults to medium, an admin triages from there.
+  priority: supportPriority().notNull().default('medium'),
   refId: uuid(),
   body: text().notNull(),
   attachments: jsonb(),

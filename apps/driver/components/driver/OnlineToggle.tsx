@@ -103,7 +103,9 @@ export default function OnlineToggle({
 
         <View style={styles.onlineTextWrap}>
           <View style={styles.onlineTitleRow}>
-            <Text style={[styles.onlineTitle, { color: colors.text }]}>{t('driver.online')}</Text>
+            <Text style={[styles.onlineTitle, { color: colors.text }]} numberOfLines={1}>
+              {t('driver.online')}
+            </Text>
             {sessionLabel ? (
               <>
                 <Text style={[styles.onlineTitle, { color: colors.textMut }]}>·</Text>
@@ -217,13 +219,23 @@ const styles = StyleSheet.create({
   liveWrap: { width: 14, height: 14, alignItems: 'center', justifyContent: 'center' },
   liveHalo: { position: 'absolute', width: 14, height: 14, borderRadius: 7 },
   liveDot: { width: 10, height: 10, borderRadius: 5 },
-  onlineTextWrap: { flex: 1 },
-  onlineTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  onlineTitle: { fontSize: 14, fontWeight: '800', letterSpacing: 0.6 },
-  sessionText: { fontSize: 14, fontWeight: '800', letterSpacing: 0.3, fontVariant: ['tabular-nums'] },
+  // minWidth:0 lets this column actually shrink — without it a long session
+  // label ("10:04:23") overflows the row and runs under the Go Offline button.
+  onlineTextWrap: { flex: 1, minWidth: 0 },
+  onlineTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
+  // The "ONLINE" word yields space first; the running clock never truncates.
+  onlineTitle: { fontSize: 14, fontWeight: '800', letterSpacing: 0.6, flexShrink: 1 },
+  sessionText: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    fontVariant: ['tabular-nums'],
+    flexShrink: 0,
+  },
   onlineSub: { fontSize: 11, marginTop: 2 },
   offBtn: {
     minWidth: 96,
+    flexShrink: 0,
     height: 40,
     borderRadius: 12,
     borderWidth: 1,

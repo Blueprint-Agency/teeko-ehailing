@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSignIn } from '@clerk/clerk-expo';
@@ -10,6 +10,7 @@ import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
 import { resolveRouteAfterAuth } from '../../lib/routeAfterAuth';
+import { toast } from '../../store/useFeedbackStore';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -63,7 +64,7 @@ export default function LoginScreen() {
         } else if ((attempt.status as string) === 'needs_client_trust') {
           await prepareClientTrust(attempt as any);
         } else {
-          Alert.alert('Login incomplete', 'Please try again.');
+          toast.error(t('driverAlerts.loginIncomplete'));
         }
       } else if (identified.status === 'complete') {
         await setActive({ session: identified.createdSessionId });
@@ -71,7 +72,7 @@ export default function LoginScreen() {
       } else if ((identified.status as string) === 'needs_client_trust') {
         await prepareClientTrust(identified as any);
       } else {
-        Alert.alert('Login incomplete', `Status: ${identified.status}. Please try again.`);
+        toast.error(t('driverAlerts.loginIncompleteStatus', { status: identified.status }));
       }
     } catch (err: unknown) {
       const clerkErr = err as { errors?: Array<{ code?: string; message?: string }> };
@@ -81,7 +82,7 @@ export default function LoginScreen() {
       } else if (code === 'form_password_incorrect') {
         setPasswordError('Incorrect password.');
       } else {
-        Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
+        toast.error(err instanceof Error ? err.message : t('driverAlerts.somethingWentWrong'));
       }
     } finally {
       setLoading(false);
@@ -109,7 +110,7 @@ export default function LoginScreen() {
         await setActive({ session: attempt.createdSessionId });
         router.replace(await resolveRouteAfterAuth());
       } else {
-        Alert.alert('Verification incomplete', 'Please try again.');
+        toast.error(t('driverAlerts.verificationIncomplete'));
       }
     } catch (err: unknown) {
       const clerkErr = err as { errors?: Array<{ code?: string; message?: string }> };
@@ -119,7 +120,7 @@ export default function LoginScreen() {
       } else if (code === 'verification_expired') {
         setOtpError('Code expired. Go back and try again.');
       } else {
-        Alert.alert('Error', err instanceof Error ? err.message : 'Something went wrong.');
+        toast.error(err instanceof Error ? err.message : t('driverAlerts.somethingWentWrong'));
       }
     } finally {
       setLoading(false);
@@ -230,6 +231,13 @@ export default function LoginScreen() {
               </View>
 
               <TouchableOpacity
+                style={styles.forgotLink}
+                onPress={() => router.push({ pathname: '/(auth)/forgot-password', params: { email: email.trim() } })}
+              >
+                <Text style={styles.forgotLinkText}>{t('auth.forgotPasswordLink')}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.continueBtn, loading && { opacity: 0.6 }]}
                 onPress={handleLogin}
                 activeOpacity={0.85}
@@ -301,6 +309,9 @@ const createStyles = (colors: any) => StyleSheet.create({
     marginBottom: 16,
   },
   continueBtnText: { color: '#000', fontSize: 18, fontWeight: '800' },
+
+  forgotLink: { alignSelf: 'flex-end', marginBottom: 16, paddingVertical: 4 },
+  forgotLinkText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
 
   registerLink: { alignItems: 'center', marginBottom: 12 },
   registerLinkText: { color: colors.textSec, fontSize: 14 },

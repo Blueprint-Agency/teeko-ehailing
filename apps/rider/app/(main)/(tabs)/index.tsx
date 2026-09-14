@@ -5,13 +5,14 @@ import * as Location from 'expo-location';
 
 import {
   useLocationStore,
+  useNotificationStore,
   usePaymentsStore,
   usePlacesStore,
   useTripStore,
 } from '@teeko/api';
 import { useT } from '@teeko/i18n';
 import type { Place } from '@teeko/shared';
-import { Icon, Pressable, Text } from '@teeko/ui';
+import { Icon, ListRow, Pressable, Text } from '@teeko/ui';
 import { useRouter } from 'expo-router';
 
 import { DestinationMapCard } from '../../../components/DestinationMapCard';
@@ -21,6 +22,9 @@ import { RecentPlaceRow } from '../../../components/RecentPlaceRow';
 export default function HomeTab() {
   const router = useRouter();
   const t = useT();
+  const notifications = useNotificationStore((s) => s.items);
+  const localRead = useNotificationStore((s) => s.localRead);
+  const hasUnread = notifications.some((n) => !n.readAt && !localRead.has(n.id));
   const recent = usePlacesStore((s) => s.recent);
   const saved = usePlacesStore((s) => s.saved);
   const loadRecent = usePlacesStore((s) => s.loadRecent);
@@ -73,6 +77,7 @@ export default function HomeTab() {
 
   const homePlace = saved.find((p) => p.category === 'home');
   const workPlace = saved.find((p) => p.category === 'work');
+  const customPlaces = saved.filter((p) => p.category === 'saved');
   // Once a rider has set a payment method, surface the one in use (the default,
   // falling back to the first) instead of the "add payment" prompt.
   const currentPayment =
@@ -105,7 +110,27 @@ export default function HomeTab() {
         contentContainerStyle={{ paddingTop: 8, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text weight="bold" className="px-gutter pb-5 pt-4 text-3xl leading-tight">
+        <View className="flex-row justify-end px-gutter pb-1 pt-2">
+          <Pressable
+            onPress={() => router.push('/(main)/notifications')}
+            haptic="light"
+            accessibilityRole="button"
+            accessibilityLabel={t('driver.notificationsTitle')}
+            className="relative h-10 w-10 items-center justify-center rounded-full active:bg-muted"
+          >
+            <Icon name="notifications-none" size={24} color="#111827" />
+            {hasUnread ? (
+              <View className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary" />
+            ) : null}
+          </Pressable>
+        </View>
+
+        <Text
+          weight="bold"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          className="px-gutter pb-3 pt-2 text-2xl leading-tight"
+        >
           {t('home.tagline')}
         </Text>
 
@@ -170,6 +195,25 @@ export default function HomeTab() {
             </Pressable>
           </View>
         )}
+
+        {customPlaces.length > 0 ? (
+          <View className="mt-6">
+            <Text
+              weight="bold"
+              className="px-gutter pb-2 text-xs uppercase tracking-wide text-ink-secondary"
+            >
+              {t('home.saved')}
+            </Text>
+            {customPlaces.map((p) => (
+              <ListRow
+                key={p.id}
+                leadingIcon="place"
+                title={p.address}
+                onPress={() => onRecent(p)}
+              />
+            ))}
+          </View>
+        ) : null}
 
         {recent.length > 0 ? (
           <View className="mt-6">

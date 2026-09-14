@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
@@ -9,10 +9,13 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useAuth, useSignUp } from '@clerk/nextjs'
 import { UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { Input, FieldError, fieldStateClasses } from '@/components/ui/input'
+import { FormError } from '@/components/ui/form-error'
 import { registerSchema, type RegisterFormData } from '@teeko/shared/schemas/auth'
 import { useWebAuthStore } from '@/stores/authStore'
-import { api } from '@/lib/api'
+import { api, ApiError } from '@/lib/api'
+import { cn } from '@/lib/utils'
+import { useFieldError } from '@/lib/useFieldError'
 
 /**
  * Clerk returns validation problems as an errors array; surface the first one.
@@ -40,18 +43,26 @@ export default function RegisterPage() {
   const router = useRouter()
   const { isLoaded, signUp, setActive } = useSignUp()
   const { isSignedIn } = useAuth()
-  const { hydrate } = useWebAuthStore()
+  const { hydrate, setPhoneWriteError } = useWebAuthStore()
   const [loading, setLoading] = useState(false)
   // Non-null once Clerk has emailed a verification code and is waiting on it.
   const [pendingEmail, setPendingEmail] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | undefined>()
+  // Form-level failure (Clerk rejection, backend error during provisioning).
+  // Shown inline above the submit button rather than in a native alert().
+  const [formError, setFormError] = useState<string | undefined>()
+  // The typed national number, kept across the Clerk email-code detour so
+  // provisionAndEnter can still attach it when that path completes.
+  const phoneRef = useRef<string | null>(null)
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   })
 
   const pdpaConsent = watch('pdpaConsent')
+  const fieldError = useFieldError()
+  const phoneError = fieldError(errors.phone?.message)
 
   // Provisions our rows (users, user_roles, driver_profiles pending,
   // driver_applications), records PDPA consent, then enters the wizard.
@@ -60,6 +71,28 @@ export default function RegisterPage() {
   const provisionAndEnter = async () => {
     await api.getMe()
     await api.acceptConsent()
+    // Clerk owns sign-up, so there is no register endpoint to carry the number
+    // in — it is attached right after provisioning creates our users row.
+    // Held in a ref because the Clerk email-code path finishes in a different
+    // callback, where the form data is no longer in scope.
+    //
+    // A failure here is not worth blocking a completed sign-up over: the
+    // account simply has no phone, and the blocking add-phone gate catches it
+    // on the next load. Record why, so the gate can say so instead of asking
+    // for a number the driver just typed as if nothing happened.
+    if (phoneRef.current) {
+      try {
+        await api.setInitialPhone(phoneRef.current)
+      } catch (err) {
+        console.warn('[register] initial phone write failed; gate will catch it', err)
+        const code = err instanceof ApiError ? err.message : null
+        setPhoneWriteError(
+          code === 'phone_invalid' || code === 'phone_country_not_allowed'
+            ? t('auth.register.phoneWriteRejected')
+            : t('auth.register.phoneWriteFailed'),
+        )
+      }
+    }
     await hydrate()
     router.push('/onboarding/agreement')
   }
@@ -74,6 +107,8 @@ export default function RegisterPage() {
     if (!isLoaded || !signUp) return
     setLoading(true)
     setCodeError(undefined)
+    setFormError(undefined)
+    phoneRef.current = data.phone.trim()
     try {
       // Already signed in: the Clerk credential exists and only our own
       // provisioning is outstanding (e.g. a previous attempt died on a backend
@@ -125,11 +160,11 @@ export default function RegisterPage() {
           await provisionAndEnter()
           return
         } catch (resumeError: unknown) {
-          alert(clerkError(resumeError))
+          setFormError(clerkError(resumeError))
           return
         }
       }
-      alert(clerkError(error))
+      setFormError(clerkError(error))
     } finally {
       setLoading(false)
     }
@@ -139,6 +174,8 @@ export default function RegisterPage() {
     if (!isLoaded || !signUp || !code.trim()) return
     setLoading(true)
     setCodeError(undefined)
+    // phoneRef was set when the form was submitted; this callback has no form
+    // data of its own.
     try {
       const attempt = await signUp.attemptEmailAddressVerification({ code: code.trim() })
       if (attempt.status !== 'complete') {
@@ -261,6 +298,7 @@ export default function RegisterPage() {
                 You&apos;re already signed in. Continue where you left off to finish setting up your
                 driver account.
               </p>
+              <FormError message={formError} />
               <Button
                 type="button"
                 size="lg"
@@ -268,10 +306,11 @@ export default function RegisterPage() {
                 loading={loading}
                 onClick={async () => {
                   setLoading(true)
+                  setFormError(undefined)
                   try {
                     await provisionAndEnter()
                   } catch (error: unknown) {
-                    alert(clerkError(error))
+                    setFormError(clerkError(error))
                   } finally {
                     setLoading(false)
                   }
@@ -286,7 +325,7 @@ export default function RegisterPage() {
               label={t('auth.register.fullNameLabel')}
               placeholder="e.g. Ahmad Faizal"
               required
-              error={errors.fullName?.message}
+              error={fieldError(errors.fullName?.message)}
               {...register('fullName')}
             />
             <Input
@@ -295,16 +334,48 @@ export default function RegisterPage() {
               autoComplete="email"
               placeholder="e.g. ahmad@example.com"
               required
-              error={errors.email?.message}
+              error={fieldError(errors.email?.message)}
               {...register('email')}
             />
+            {/* Static '+60', not a country picker: a driver's number goes on
+                the APAD/JPJ operator record and riders dial it mid-trip, so it
+                must be a Malaysian mobile. Hand-rolled (the chip sits inside
+                the border), but styled with Input's own error classes. */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="phone" className="text-sm font-medium text-[var(--color-text)]">
+                {t('auth.register.phoneLabel')} <span className="ml-1 text-[var(--color-error)]">*</span>
+              </label>
+              <div
+                className={cn(
+                  'flex h-11 items-center gap-2 rounded-[var(--radius-md)] border bg-white px-3.5 transition-all duration-150',
+                  'focus-within:border-transparent focus-within:ring-2 focus-within:ring-[var(--color-teal)]',
+                  fieldStateClasses(phoneError),
+                )}
+              >
+                <span className="shrink-0 text-sm font-medium text-[var(--color-text)]">+60</span>
+                <span className="h-5 w-px shrink-0 bg-[var(--color-border)]" aria-hidden />
+                <input
+                  id="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  placeholder="12-345 6789"
+                  maxLength={24}
+                  className="w-full bg-transparent text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-placeholder)]"
+                  {...register('phone')}
+                />
+              </div>
+              <FieldError error={phoneError} />
+              {!phoneError && (
+                <p className="text-xs text-[var(--color-muted)]">{t('auth.register.phoneHint')}</p>
+              )}
+            </div>
             <Input
               label={t('auth.register.password')}
               type="password"
               autoComplete="new-password"
               placeholder={t('auth.register.passwordHint')}
               required
-              error={errors.password?.message}
+              error={fieldError(errors.password?.message)}
               {...register('password')}
             />
 
@@ -319,9 +390,7 @@ export default function RegisterPage() {
                 {t('auth.register.pdpaConsent')}
               </span>
             </label>
-            {errors.pdpaConsent && (
-              <p className="-mt-3 text-xs text-[var(--color-error)]">{errors.pdpaConsent.message}</p>
-            )}
+            <FieldError error={fieldError(errors.pdpaConsent?.message)} className="-mt-3" />
 
             {/* Mount point for Clerk's Smart CAPTCHA bot protection. Custom
                 sign-up flows must render this themselves — without it Clerk logs
@@ -329,6 +398,8 @@ export default function RegisterPage() {
                 can hard-fail sign-up if the instance is set to require a
                 challenge. Must be in the DOM before signUp.create() runs. */}
             <div id="clerk-captcha" className="empty:hidden" />
+
+            <FormError message={formError} />
 
             <Button
               type="submit"

@@ -1,5 +1,6 @@
 {
   "common": {
+    "dismiss": "Dismiss",
     "appName": "Teeko",
     "tagline": "Drive with Teeko",
     "next": "Next",
@@ -30,7 +31,8 @@
       "subtitle": "Earn more, pay less.",
       "description": "Malaysia's newest e-hailing platform offers the lowest commission rates and full APAD/JPJ compliance. Register online — drive within days.",
       "ctaRegister": "Register as a Driver",
-      "ctaLogin": "Log in"
+      "ctaLogin": "Log in",
+      "ctaContinue": "Continue your application"
     },
     "stats": {
       "commission": "Commission rate",
@@ -85,10 +87,23 @@
       "passwordHint": "Min. 8 characters",
       "pdpaConsent": "I consent to the collection and use of my personal data in accordance with Malaysia's PDPA 2010 for driver onboarding and regulatory compliance.",
       "hasAccount": "Already registered?",
-      "loginLink": "Log in"
+      "loginLink": "Log in",
+      "phoneHint": "Malaysian mobile numbers only",
+      "phoneCountryNotAllowed": "Drivers must register a Malaysian (+60) number",
+      "phoneInvalid": "Enter a Malaysian mobile number",
+      "phoneSaveFailed": "Could not save your number. Please try again.",
+      "addPhoneTitle": "Add your phone number",
+      "addPhoneBody": "We need a number so riders can reach you during a trip, and it forms part of your APAD operator record.",
+      "addPhoneCta": "Save and continue",
+      "phoneWriteRejected": "The phone number you entered was rejected by the server. Please enter a valid Malaysian mobile number.",
+      "phoneWriteFailed": "We couldn't save the phone number you entered. Please enter it again."
     }
   },
   "onboarding": {
+    "uploadsCleared": {
+      "title": "Your uploads were cleared when the page reloaded",
+      "body": "For your privacy, files stay on this device until you submit. Please select your documents again to continue."
+    },
     "stepOf": "Step {{current}} of {{total}}",
     "agreement": {
       "title": "Driver Agreement",
@@ -133,6 +148,17 @@
       "title": "Vehicle Documents",
       "subtitle": "Upload valid documents for your registered vehicle.",
       "incompleteError": "Some required documents are still missing. Please upload all documents before submitting.",
+      "missingList": "Missing: {{docs}}.",
+      "errors": {
+        "noVehicleDetails": "Your vehicle details are missing. Go back and fill them in before submitting.",
+        "vehicleExists": "A vehicle is already registered to your account. Contact support if you need to change it.",
+        "plateTaken": "Plate number {{plate}} is already registered to another driver. Check the plate and try again.",
+        "invalidVehicle": "Vehicle details are incomplete ({{field}}). Go back and check the form.",
+        "fileTooLarge": "{{doc}} is over the 10 MB limit. Please re-upload a smaller file.",
+        "fileInvalidType": "{{doc}} must be a JPG, PNG or PDF. Please re-upload.",
+        "applicationNotFound": "We couldn't find your application. Please sign out and sign in again.",
+        "network": "Couldn't reach the server. Check your connection and try again."
+      },
       "submitError": "Something went wrong submitting your application. Please try again."
     },
     "confirmation": {
@@ -192,7 +218,10 @@
       "ms": "Bahasa Malaysia",
       "zh": "Mandarin (Simplified)",
       "ta": "Tamil"
-    }
+    },
+    "phonePending": "“{{value}}” is waiting for Teeko to review.",
+    "phoneEarly": "Flagged as an early change — an admin will review it.",
+    "phoneNextChange": "You can change this again on {{date}}."
   },
   "documents": {
     "upload": "Upload document",
@@ -208,5 +237,29 @@
     "blurWarning": "Image appears blurry — please retake",
     "sizeError": "File exceeds 10 MB limit",
     "typeError": "Only JPG, PNG, or PDF files are accepted"
+  },
+  "validation": {
+    "emailRequired": "Email is required",
+    "emailInvalid": "Enter a valid email address",
+    "passwordRequired": "Enter your password",
+    "passwordMin": "Password must be at least 8 characters",
+    "passwordMax": "Password is too long",
+    "phoneRequired": "Enter your phone number",
+    "phoneInvalid": "Enter a Malaysian mobile number",
+    "phoneCountry": "Drivers must register a Malaysian (+60) number",
+    "fullNameMin": "Full name must be at least 2 characters",
+    "fullNameMax": "Full name is too long",
+    "pdpaRequired": "You must consent to data collection",
+    "makeRequired": "Vehicle make is required",
+    "makeOtherRequired": "Enter your vehicle make",
+    "modelRequired": "Vehicle model is required",
+    "yearInvalid": "Enter a valid year",
+    "yearMin": "Vehicle must be {{year}} or newer",
+    "yearFuture": "Year cannot be in the future",
+    "plateRequired": "Plate number is required",
+    "plateInvalid": "Enter a valid Malaysian plate number (e.g. WKK 1234)",
+    "colourRequired": "Vehicle colour is required",
+    "tooLong": "Too long",
+    "fileRequired": "Please upload a file"
   }
 }

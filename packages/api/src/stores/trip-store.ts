@@ -5,6 +5,7 @@ import type {
   Place,
   RideCategory,
   Trip,
+  TripHistoryQuery,
   TripStatus,
 } from '@teeko/shared';
 import { create } from 'zustand';
@@ -34,6 +35,12 @@ export type TripState = {
   driverEtaMin: number | null;
   history: Trip[];
   historyLoading: boolean;
+  /** True only while appending the next page — keeps the spinner off the list. */
+  historyLoadingMore: boolean;
+  /** Rows matching the current filters server-side, across all pages. */
+  historyTotal: number;
+  historyHasMore: boolean;
+  historyFilters: TripHistoryQuery;
   error: string | null;
   setPickup: (p: Place) => void;
   setDestination: (p: Place) => void;
@@ -44,8 +51,11 @@ export type TripState = {
   book: (riderId: string) => Promise<void>;
   cancel: (reason?: string) => Promise<void>;
   completeRide: () => void;
-  rateTrip: (rating: number, comment?: string) => void;
+  /** `rating` null = skipped: the trip is still filed to history, nothing is sent. */
+  rateTrip: (rating: number | null, comment?: string) => void;
   loadHistory: () => Promise<void>;
+  loadMoreHistory: () => Promise<void>;
+  setHistoryFilters: (next: Partial<TripHistoryQuery>) => void;
   reset: () => void;
   clearFailedBooking: () => void;
   applyTripUpdate: (status: TripStatus, driver?: Driver) => void;
@@ -55,6 +65,15 @@ export type TripState = {
 };
 
 let activeSocket: TripSocket | null = null;
+
+/** Rows per history request — matches the backend's default page size. */
+const HISTORY_PAGE_SIZE = 20;
+
+/**
+ * Bumped on every history reload so a slow response for stale filters can be
+ * discarded instead of overwriting a newer list.
+ */
+let historyRequestToken = 0;
 
 /** Held quotes priced a specific route; moving either endpoint invalidates them. */
 const CLEARED_QUOTES = { fareOptions: [] as Fare[], selectedFare: null, quotesExpireAt: null };
@@ -81,6 +100,10 @@ export const useTripStore = create<TripState>((set, get) => ({
   driverEtaMin: null,
   history: [],
   historyLoading: false,
+  historyLoadingMore: false,
+  historyTotal: 0,
+  historyHasMore: false,
+  historyFilters: {},
   error: null,
 
   setPickup(p) {
@@ -220,10 +243,10 @@ export const useTripStore = create<TripState>((set, get) => ({
     }
     // Persist the rating to the backend (best-effort — the local history update
     // below keeps the UI responsive even if the network call fails).
-    if (trip.id) {
+    if (trip.id && rating != null) {
       tripsApi.rate(trip.id, rating, comment).catch(() => null);
     }
-    const rated: Trip = { ...trip, status: 'completed', rating, comment };
+    const rated: Trip = { ...trip, status: 'completed', rating: rating ?? undefined, comment };
     set((s) => ({
       status: 'idle',
       trip: null,
@@ -239,13 +262,57 @@ export const useTripStore = create<TripState>((set, get) => ({
     }));
   },
 
+  setHistoryFilters(next) {
+    // Filters are server-side, so changing them restarts paging from offset 0.
+    set({ historyFilters: { ...get().historyFilters, ...next } });
+    void get().loadHistory();
+  },
+
   async loadHistory() {
+    const token = ++historyRequestToken;
     set({ historyLoading: true });
     try {
-      const history = await tripsApi.history();
-      set({ history, historyLoading: false });
+      const { status, days } = get().historyFilters;
+      const page = await tripsApi.history({ status, days, limit: HISTORY_PAGE_SIZE, offset: 0 });
+      // A newer request (e.g. the rider tapped another filter) already owns the
+      // list — dropping this response keeps the UI matching the chips.
+      if (token !== historyRequestToken) return;
+      set({
+        history: page.items,
+        historyTotal: page.total,
+        historyHasMore: page.hasMore,
+        historyLoading: false,
+      });
     } catch (e) {
+      if (token !== historyRequestToken) return;
       set({ historyLoading: false, error: (e as Error).message });
+    }
+  },
+
+  async loadMoreHistory() {
+    const { historyHasMore, historyLoading, historyLoadingMore, history, historyFilters } = get();
+    if (!historyHasMore || historyLoading || historyLoadingMore) return;
+    const token = historyRequestToken;
+    set({ historyLoadingMore: true });
+    try {
+      const page = await tripsApi.history({
+        status: historyFilters.status,
+        days: historyFilters.days,
+        limit: HISTORY_PAGE_SIZE,
+        offset: history.length,
+      });
+      if (token !== historyRequestToken) return;
+      // Guard against duplicates: a trip booked mid-scroll shifts every offset.
+      const seen = new Set(get().history.map((t) => t.id));
+      set((s) => ({
+        history: [...s.history, ...page.items.filter((t) => !seen.has(t.id))],
+        historyTotal: page.total,
+        historyHasMore: page.hasMore,
+        historyLoadingMore: false,
+      }));
+    } catch (e) {
+      if (token !== historyRequestToken) return;
+      set({ historyLoadingMore: false, error: (e as Error).message });
     }
   },
 
@@ -298,8 +365,18 @@ export const useTripStore = create<TripState>((set, get) => ({
       }
       // backend now returns clientStatus (already mapped to TripStatus names)
       const mapped = active.clientStatus as TripStatus;
-      if (mapped && mapped !== get().status) {
-        set({ status: mapped });
+      const { status: current, driver: currentDriver, trip: existing } = get();
+      // When the socket missed trip.status_update the poll is the only path that
+      // learns about the match, and driver-matched spins forever on a null
+      // driver. /active already carries the driver, so hydrate it here too.
+      const driver = !currentDriver && active.driver ? active.driver : null;
+      if ((mapped && mapped !== current) || driver) {
+        set({
+          ...(mapped && mapped !== current ? { status: mapped } : {}),
+          ...(driver
+            ? { driver, trip: existing ? { ...existing, driver, status: mapped } : existing }
+            : {}),
+        });
       }
     } catch {
       // ignore — socket is the primary channel, polling is best-effort

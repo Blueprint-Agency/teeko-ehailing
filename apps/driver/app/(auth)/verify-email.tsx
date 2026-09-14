@@ -1,18 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TouchableOpacity, TextInput, StyleSheet,
-  StatusBar, KeyboardAvoidingView, Platform, ScrollView, Alert, ActivityIndicator,
+  StatusBar, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useClerk } from '@clerk/clerk-expo';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
+import { useT } from '@teeko/i18n';
 import { api } from '../../lib/api';
+import { toast } from '../../store/useFeedbackStore';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
   const colors = useColors();
   const { activeTheme } = useTheme();
+  const t = useT();
   const clerk = useClerk();
 
   const [code, setCode] = useState('');
@@ -43,11 +46,11 @@ export default function VerifyEmailScreen() {
       if (body.error === 'incorrect' || body.error === 'no_active_code') {
         setCodeError('Invalid code. Please try again.');
       } else if (body.error === 'expired') {
-        Alert.alert('Code expired', 'Tap "Resend code" to get a new one.');
+        toast.error(t('driverAlerts.codeExpiredResend'));
       } else if (body.error === 'too_many_attempts') {
-        Alert.alert('Too many attempts', 'Tap "Resend code" to get a new one.');
+        toast.error(t('driverAlerts.tooManyAttemptsResend'));
       } else {
-        Alert.alert('Error', 'Verification failed. Try again.');
+        toast.error(t('driverAlerts.verificationFailed'));
       }
     } finally {
       setVerifying(false);
@@ -58,9 +61,9 @@ export default function VerifyEmailScreen() {
     setResending(true);
     try {
       await api.auth.sendOtp();
-      Alert.alert('Code sent', 'A new verification code has been sent to your email.');
+      toast.success(t('driverAlerts.codeResent'));
     } catch {
-      Alert.alert('Error', 'Could not resend code. Try again.');
+      toast.error(t('driverAlerts.resendFailed'));
     } finally {
       setResending(false);
     }

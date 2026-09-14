@@ -5,6 +5,7 @@ import { db } from '../../config/db';
 import { trips, disputes } from '../../db/schema/trips';
 import { users, userRoles } from '../../db/schema/identity';
 import { driverProfiles } from '../../db/schema/drivers';
+import { trackingService } from '../../modules/tracking/service';
 
 // Malaysia market — "today" is a KL calendar day. KL has no DST, so a fixed
 // literal timezone is safe and lets the same expression be reused in group-bys.
@@ -49,7 +50,8 @@ export async function routes(app: FastifyInstance) {
       driverRows,
       tripAggRows,
       disputeRows,
-      riderRows,
+      newRiderRows,
+      onlineRiders,
     ] = await Promise.all([
       // Trips currently on the road.
       db
@@ -84,15 +86,18 @@ export async function routes(app: FastifyInstance) {
         .from(disputes)
         .where(eq(disputes.status, 'open')),
 
-      // Rider base + how many joined in the last 7 days.
+      // New riders this week — kept as a DB query since it's a durable stat.
       db
         .select({
-          total: sql<number>`count(*)`,
           newThisWeek: sql<number>`count(*) filter (where ${users.createdAt} >= ${weekAgo})`,
         })
         .from(users)
         .innerJoin(userRoles, and(eq(userRoles.userId, users.id), eq(userRoles.role, 'rider')))
         .where(isNull(users.deletedAt)),
+
+      // Online riders — live Redis presence count (rider:online:* keys written
+      // on WS auth and deleted on disconnect, with a 5-min TTL safety net).
+      trackingService.countOnlineRiders(),
     ]);
 
     // Fold the per-(day, category) rows into today/yesterday totals and today's
@@ -127,9 +132,10 @@ export async function routes(app: FastifyInstance) {
       todayRevenue,
       todayRevenueDeltaPct: deltaPct(todayRevenue, yesterdayRevenue),
       openDisputes: Number(disputeRows[0]?.count ?? 0),
-      totalRiders: Number(riderRows[0]?.total ?? 0),
-      newRidersThisWeek: Number(riderRows[0]?.newThisWeek ?? 0),
+      totalRiders: onlineRiders,
+      newRidersThisWeek: Number(newRiderRows[0]?.newThisWeek ?? 0),
       todayByCategory,
     };
   });
 }
+

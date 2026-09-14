@@ -166,6 +166,25 @@ export const trackingService = {
     await redis.del(`driver:online:${driverId}`).catch(() => null);
   },
 
+  /** Clear the rider:online Redis key on disconnect. */
+  async clearRiderOnlineStatus(riderId: string): Promise<void> {
+    await redis.del(`rider:online:${riderId}`).catch(() => null);
+  },
+
+  /**
+   * Count riders who have an active rider:online:* presence key in Redis.
+   * Each key is written on WS auth and expires after 5 min (TTL acts as a
+   * safety net for apps killed without a clean disconnect).
+   *
+   * For low-cardinality dashboards KEYS is fine. If the rider base grows to
+   * tens of thousands of concurrent sessions, replace the key-per-rider
+   * pattern with a Redis Set: SADD/SREM rider:online + SCARD for O(1) count.
+   */
+  async countOnlineRiders(): Promise<number> {
+    const keys = await redis.keys('rider:online:*').catch(() => [] as string[]);
+    return keys.length;
+  },
+
   async getDriverLocation(
     driverId: string,
   ): Promise<{ lat: number; lng: number; heading: number } | null> {

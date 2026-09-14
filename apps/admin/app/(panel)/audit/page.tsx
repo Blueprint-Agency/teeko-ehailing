@@ -28,10 +28,10 @@ export default function AuditPage() {
   }
 
   const columns: GridColDef[] = [
-    { field: 'date', headerName: 'Date/Time', width: 170, valueFormatter: ({ value }) => new Date(value as string).toLocaleString() },
+    { field: 'date', headerName: 'Date/Time', width: 170, valueFormatter: (value) => new Date(value as string).toLocaleString() },
     { field: 'adminName', headerName: 'Admin', width: 140 },
     { field: 'role', headerName: 'Role', width: 120, renderCell: ({ value }) => <Chip label={value} size="small" /> },
-    { field: 'action', headerName: 'Action', width: 170, valueFormatter: ({ value }) => String(value).replace(/_/g, ' ') },
+    { field: 'action', headerName: 'Action', width: 170, valueFormatter: (value) => String(value).replace(/_/g, ' ') },
     { field: 'targetName', headerName: 'Target', flex: 1, minWidth: 160 },
     { field: 'details', headerName: 'Details', flex: 2, minWidth: 220 },
     { field: 'ip', headerName: 'IP', width: 120 },

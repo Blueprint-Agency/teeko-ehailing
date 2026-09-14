@@ -118,3 +118,7 @@ APP_URL=https://app.teeko.my   CURRENCY=myr
 5. Move secrets to GCP Secret Manager; register the new env vars in the deploy workflow.
 6. Re-baseline the Drizzle meta snapshot (`pnpm db:generate` once interactively) so future `generate` diffs are accurate.
 7. Tax (`tax_sen`) + LHDN MyInvois (§17) when registration thresholds are crossed.
+8. ~~Migrate Connect onboarding to Accounts v2.~~ **Done**  `stripe-node` upgraded to
+22.5.0 and driver onboarding rebuilt on `v2.core.accounts` + `v2.core.accountLinks` with the
+`recipient` configuration. Not yet exercised against a live test platform; verification checklist
+in `docs/v0.1/tech/teeko-stripe-accounts-v2-migration.md` §3.

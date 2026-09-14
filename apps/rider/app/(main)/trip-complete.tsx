@@ -21,7 +21,8 @@ export default function TripCompleteScreen() {
   const fare = trip?.fare?.amountMyr ?? 0;
 
   const handleDone = () => {
-    rateTrip(stars > 0 ? stars : 5, comment.trim() || undefined);
+    // Skipping must not submit a rating — a silent 5★ would inflate averages.
+    rateTrip(stars > 0 ? stars : null, comment.trim() || undefined);
     router.replace('/(main)/(tabs)');
   };
 

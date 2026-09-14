@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { User, Mail, Phone, Globe, Shield, LogOut, ChevronRight, Save } from 'lucide-react'
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWebAuthStore } from '@/stores/authStore'
 import { useLanguageStore } from '@/stores/languageStore'
+import { api, type PhoneChangeState } from '@/lib/api'
+import { formatPhoneDisplay, formatUnlockDate } from '@teeko/shared'
 import type { Locale } from '@teeko/shared/types'
 
 export default function ProfilePage() {
@@ -21,6 +23,13 @@ export default function ProfilePage() {
   const [saved, setSaved] = useState(false)
   const [fullName, setFullName] = useState(profile?.fullName ?? '')
   const [email, setEmail] = useState(profile?.email ?? '')
+  const [phoneChange, setPhoneChange] = useState<PhoneChangeState | null>(null)
+
+  useEffect(() => {
+    // A failed read just drops the hint line. The state is informational here —
+    // the portal cannot act on it either way — so it is not worth an error.
+    api.getPhoneChangeState().then(setPhoneChange).catch(() => {})
+  }, [])
 
   const LANGUAGES: { value: Locale; label: string; native: string }[] = [
     { value: 'en', label: t('profile.languages.en'), native: 'English' },
@@ -83,14 +92,37 @@ export default function ProfilePage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            {/* Read-only here by design — a driver changes their number in the
+                app, where the OTP step lives. The portal still surfaces the
+                pending / early state so the two surfaces never disagree about
+                what is in review. */}
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-[var(--color-text)]">{t('profile.phone')}</label>
               <div className="flex h-11 items-center rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 text-sm text-[var(--color-muted)]">
-                {profile?.phone ?? '—'}
+                {/* 'MY' is a fact about drivers, not a guess: R1 pins every
+                    driver number to a Malaysian mobile. */}
+                {formatPhoneDisplay(profile?.phone, 'MY') || '—'}
               </div>
               <p className="text-xs text-[var(--color-muted)]">
                 {t('profile.phoneReadOnly')}
               </p>
+              {phoneChange?.pending ? (
+                <p className="text-xs text-[var(--color-text)]">
+                  {t('profile.phonePending', {
+                    value: formatPhoneDisplay(
+                      phoneChange.pending.requestedValue,
+                      phoneChange.pending.requestedCountry,
+                    ),
+                  })}
+                  {phoneChange.pending.isEarly ? ` ${t('profile.phoneEarly')}` : ''}
+                </p>
+              ) : phoneChange?.nextAllowedAt ? (
+                <p className="text-xs text-[var(--color-muted)]">
+                  {t('profile.phoneNextChange', {
+                    date: formatUnlockDate(phoneChange.nextAllowedAt),
+                  })}
+                </p>
+              ) : null}
             </div>
 
             <Button

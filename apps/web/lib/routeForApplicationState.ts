@@ -6,6 +6,22 @@
  * wizard; one awaiting or refused admin review goes to the dashboard, which
  * renders the pending / rejection tracker.
  */
+
+/**
+ * States past the final wizard submit. Drivers here belong on the dashboard
+ * (and must not re-run onboarding); everyone else belongs in the wizard.
+ */
+export const SUBMITTED_STATES: ReadonlySet<string> = new Set([
+  'vehicle_docs_submitted',
+  'in_review',
+  'rejected',
+  'activated',
+])
+
+export function hasSubmittedApplication(state: string | null | undefined): boolean {
+  return !!state && SUBMITTED_STATES.has(state)
+}
+
 export function routeForApplicationState(state: string | null | undefined): string {
   switch (state) {
     case 'agreement_signed':

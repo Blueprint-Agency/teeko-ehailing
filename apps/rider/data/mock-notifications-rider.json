@@ -1,0 +1,42 @@
+[
+  {
+    "id": "rnotif_001",
+    "category": "account",
+    "title": "Email Verified",
+    "body": "Your email address has been verified successfully. Welcome to Teeko!",
+    "createdAt": "2026-04-20T10:30:00.000Z",
+    "readAt": "2026-04-20T11:00:00.000Z"
+  },
+  {
+    "id": "rnotif_002",
+    "category": "trip",
+    "title": "Receipt Ready",
+    "body": "Your receipt for today's trip from KLCC to Bangsar is ready to view.",
+    "createdAt": "2026-04-22T14:15:00.000Z",
+    "readAt": null
+  },
+  {
+    "id": "rnotif_003",
+    "category": "promo",
+    "title": "Weekend Promo 🎉",
+    "body": "Enjoy 20% off your next 3 rides this weekend. Use code WEEKEND20 at checkout.",
+    "createdAt": "2026-04-21T08:00:00.000Z",
+    "readAt": null
+  },
+  {
+    "id": "rnotif_004",
+    "category": "payment",
+    "title": "Payment Confirmed",
+    "body": "Your card ending in 4242 was charged RM 18.50 for your trip on 21 Apr.",
+    "createdAt": "2026-04-21T09:30:00.000Z",
+    "readAt": "2026-04-21T10:00:00.000Z"
+  },
+  {
+    "id": "rnotif_005",
+    "category": "system",
+    "title": "App Updated",
+    "body": "Teeko has been updated with new features including improved map accuracy and faster bookings.",
+    "createdAt": "2026-04-19T07:00:00.000Z",
+    "readAt": "2026-04-19T09:00:00.000Z"
+  }
+]

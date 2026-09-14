@@ -5,10 +5,12 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { OnboardingProgress } from '@/components/driver/OnboardingProgress'
+import { UploadsClearedNotice } from '@/components/driver/UploadsClearedNotice'
 import { RequireAuth } from '@/components/RequireAuth'
 import { useWebAuthStore } from '@/stores/authStore'
 import { useOnboardingStore } from '@/stores/onboardingStore'
 import { api } from '@/lib/api'
+import { hasSubmittedApplication } from '@/lib/routeForApplicationState'
 
 const STEP_MAP: Record<string, number> = {
   '/onboarding/agreement': 0,
@@ -26,9 +28,6 @@ const STEP_ROUTES = [
   '/onboarding/confirmation',
 ]
 
-// Drivers in these server-side states have already submitted — they shouldn't
-// re-run onboarding and are sent to the dashboard to track their review.
-const SUBMITTED_STATES = new Set(['in_review', 'rejected', 'activated'])
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   // Clerk gate first (no server middleware — the secret key stays backend-only),
@@ -85,7 +84,9 @@ function OnboardingShell({ children }: { children: React.ReactNode }) {
       .getApplication(profile.id)
       .then((appState) => {
         if (!isMounted) return
-        if (SUBMITTED_STATES.has(appState.state)) router.replace('/dashboard')
+        // Already submitted: the wizard must not be re-run; the dashboard
+        // tracks their review instead.
+        if (hasSubmittedApplication(appState.state)) router.replace('/dashboard')
       })
       .catch((err) => console.error('Failed to check onboarding status:', err))
 
@@ -118,7 +119,12 @@ function OnboardingShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-10">{children}</main>
+      <main className="mx-auto max-w-3xl px-6 py-10">
+        {/* Reload wiped the in-memory Files; the gating above already sent
+            the driver back to the docs step — this says why. */}
+        <UploadsClearedNotice />
+        {children}
+      </main>
     </div>
   )
 }

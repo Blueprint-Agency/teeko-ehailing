@@ -1,6 +1,6 @@
-import { and, eq, inArray, not } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, isNotNull, not, sql } from 'drizzle-orm';
 import { db } from '../../db';
-import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, vehicles, users } from '../../db/schema';
+import { trips, tripEvents, tripOffers, tripLocationPoints, fareQuotes, fareLines, cancellations, noShowFees, paymentMethods, driverProfiles, riderProfiles, vehicles, users } from '../../db/schema';
 import { DomainError } from '../../shared/errors';
 import type { RedeemedQuote } from '../pricing/service';
 import { trackingService } from '../tracking/service';
@@ -10,6 +10,28 @@ import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 
 type Coords = { lat: number; lng: number };
+
+/**
+ * Rider-facing history filters. The client thinks in three buckets; the DB has
+ * seven statuses, so the mapping lives here (mirrors CLIENT_STATUS below —
+ * `no_show` reads as cancelled to the rider).
+ */
+export const RIDER_STATUS_FILTERS = {
+  upcoming: ['requested', 'matched', 'driver_arrived', 'in_trip'],
+  completed: ['completed'],
+  cancelled: ['cancelled', 'no_show'],
+} as const satisfies Record<string, ReadonlyArray<(typeof trips.status.enumValues)[number]>>;
+
+export type RiderTripStatusFilter = keyof typeof RIDER_STATUS_FILTERS;
+
+/**
+ * The photo the rider sees on the driver card. Falls back to the deterministic
+ * pravatar placeholder for drivers who never uploaded one, so the card is never
+ * left with a blank circle.
+ */
+function driverPhotoUrl(avatarUrl: string | null | undefined, driverId: string): string {
+  return avatarUrl ?? `https://i.pravatar.cc/150?u=${driverId}`;
+}
 
 // PostGIS geography may be returned as { x: lng, y: lat } (pg object) or WKT string.
 function parsePoint(raw: unknown): Coords {
@@ -204,8 +226,8 @@ export const tripsService = {
       driver: {
         id: driverId,
         name: driverUser?.fullName ?? 'Driver',
-        photoUrl: `https://i.pravatar.cc/150?u=${driverId}`,
-        rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+        photoUrl: driverPhotoUrl(driverUser?.avatarUrl, driverId),
+        rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : null,
         vehicle: vehicle
           ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
           : { model: 'Unknown', colour: '', seats: 4, category: 'go' },
@@ -387,6 +409,9 @@ export const tripsService = {
       destination: { ...dropoff, address: trip.dropoffAddress ?? '' },
       fareCents: quote?.totalCents ?? 0,
       riderName: rider?.fullName ?? 'Rider',
+      // Raw stored path (or null) — the driver app resolves it against the API
+      // origin and falls back to the rider's initial when there is no photo.
+      riderPhotoUrl: rider?.avatarUrl ?? null,
       countdownSeconds: 0,
     };
   },
@@ -439,8 +464,8 @@ export const tripsService = {
         ? {
             id: trip.driverId,
             name: driverUser.fullName ?? 'Driver',
-            photoUrl: `https://i.pravatar.cc/150?u=${trip.driverId}`,
-            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+            photoUrl: driverPhotoUrl(driverUser.avatarUrl, trip.driverId),
+            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : null,
             vehicle: vehicle
               ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
               : { model: 'Vehicle', colour: '', seats: 4, category: trip.category },
@@ -454,16 +479,68 @@ export const tripsService = {
     };
   },
 
-  // ---- rider: trip history ----
-  // Returns the rider's 50 most recent trips mapped to the shared `Trip` shape
-  // consumed by @teeko/api (client/trips.ts `history()` → trip-store `history`).
-  async getRiderTrips(riderId: string) {
+  // ---- driver: finished trips ----
+  // The driver's most recent completed / cancelled / no-show trips — exactly
+  // the set they may raise a dispute against (see the trip picker on Support →
+  // Report Issue). Deliberately lean: enough to identify a trip in a list.
+  async getDriverFinishedTrips(driverId: string, limit = 30) {
     const rows = await db.query.trips.findMany({
-      where: eq(trips.riderId, riderId),
+      where: and(
+        eq(trips.driverId, driverId),
+        inArray(trips.status, ['completed', 'cancelled', 'no_show']),
+      ),
       orderBy: (t, { desc }) => [desc(t.createdAt)],
-      limit: 50,
+      limit,
     });
-    if (rows.length === 0) return [];
+
+    return rows.map((trip) => ({
+      id: trip.id,
+      status: trip.status,
+      pickupAddress: trip.pickupAddress ?? null,
+      dropoffAddress: trip.dropoffAddress ?? null,
+      fareMyr: (trip.finalFareCents ?? 0) / 100,
+      finishedAt: (trip.completedAt ?? trip.cancelledAt ?? trip.createdAt).toISOString(),
+    }));
+  },
+
+  // ---- rider: trip history ----
+  // Returns a page of the rider's trips (newest first) mapped to the shared
+  // `Trip` shape consumed by @teeko/api (client/trips.ts `history()` →
+  // trip-store `history`). Filtering happens in SQL so paging stays correct:
+  // filtering a already-paged slice client-side would leave holes in the list.
+  async getRiderTrips(
+    riderId: string,
+    opts: { status?: RiderTripStatusFilter; since?: Date; limit?: number; offset?: number } = {},
+  ) {
+    const limit = Math.min(Math.max(opts.limit ?? 20, 1), 50);
+    const offset = Math.max(opts.offset ?? 0, 0);
+
+    const statusIn = opts.status ? RIDER_STATUS_FILTERS[opts.status] : null;
+    const where = and(
+      eq(trips.riderId, riderId),
+      ...(statusIn ? [inArray(trips.status, [...statusIn])] : []),
+      ...(opts.since ? [gte(trips.createdAt, opts.since)] : []),
+    );
+
+    // Total drives `hasMore` and the "N rides" count the filter UI shows; it is
+    // the count for the *filtered* set, not the rider's lifetime trip count.
+    const countRows = await db.select({ value: count() }).from(trips).where(where);
+    const total = countRows[0]?.value ?? 0;
+
+    const rows = await db.query.trips.findMany({
+      where,
+      orderBy: (t, { desc }) => [desc(t.createdAt)],
+      limit,
+      offset,
+    });
+    const page = <T>(items: T[]) => ({
+      items,
+      total,
+      limit,
+      offset,
+      hasMore: offset + items.length < total,
+    });
+    if (rows.length === 0) return page([]);
 
     // Batch-load fare quotes so we can show the quoted total when a trip has no
     // final fare yet (e.g. cancelled before completion).
@@ -483,7 +560,7 @@ export const tripsService = {
       no_show: 'cancelled',
     };
 
-    return rows.map((trip) => {
+    return page(rows.map((trip) => {
       const pickup = parsePoint(trip.pickup);
       const dropoff = parsePoint(trip.dropoff);
       const quote = trip.fareQuoteId ? quoteById.get(trip.fareQuoteId) : null;
@@ -505,7 +582,7 @@ export const tripsService = {
         rating: trip.riderRating ?? undefined,
         comment: trip.riderComment ?? undefined,
       };
-    });
+    }));
   },
 
   // ---- rider: trip detail / receipt ----
@@ -588,8 +665,8 @@ export const tripsService = {
         ? {
             id: trip.driverId,
             name: driverUser.fullName ?? 'Driver',
-            photoUrl: `https://i.pravatar.cc/150?u=${trip.driverId}`,
-            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : 4.8,
+            photoUrl: driverPhotoUrl(driverUser.avatarUrl, trip.driverId),
+            rating: driverProfile?.ratingAvg ? Number(driverProfile.ratingAvg) : null,
             vehicle: vehicle
               ? { model: `${vehicle.make} ${vehicle.model}`, colour: vehicle.colour ?? '', seats: 4, category: vehicle.category }
               : { model: 'Vehicle', colour: '', seats: 4, category: trip.category },
@@ -608,6 +685,9 @@ export const tripsService = {
   },
 
   // ---- rider: rate a completed trip ----
+  // Writes the per-trip score, then recomputes the driver's profile aggregate
+  // from all rated trips in the same transaction. A trip can only be rated
+  // once per direction — re-rating is rejected rather than silently overwritten.
   async rateTrip(riderId: string, tripId: string, rating: number, comment?: string) {
     const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
     if (!trip) throw new DomainError('TRIP_NOT_FOUND', 'Trip not found.', 404);
@@ -617,14 +697,68 @@ export const tripsService = {
     if (trip.status !== 'completed') {
       throw new DomainError('TRIP_NOT_COMPLETED', 'You can only rate a completed trip.', 422);
     }
+    if (trip.riderRating != null) {
+      throw new DomainError('TRIP_ALREADY_RATED', 'This trip has already been rated.', 409);
+    }
+    if (!trip.driverId) {
+      throw new DomainError('TRIP_NO_DRIVER', 'This trip has no driver to rate.', 422);
+    }
+    const driverId = trip.driverId;
 
-    const [updated] = await db
-      .update(trips)
-      .set({ riderRating: rating, riderComment: comment ?? null, ratedAt: new Date(), updatedAt: new Date() })
-      .where(eq(trips.id, tripId))
-      .returning();
+    return db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(trips)
+        .set({ riderRating: rating, riderComment: comment ?? null, ratedAt: new Date(), updatedAt: new Date() })
+        .where(eq(trips.id, tripId))
+        .returning();
 
-    return { rating: updated!.riderRating, comment: updated!.riderComment };
+      const [agg] = await tx
+        .select({ avg: sql<string | null>`avg(${trips.riderRating})`, n: count(trips.riderRating) })
+        .from(trips)
+        .where(and(eq(trips.driverId, driverId), isNotNull(trips.riderRating)));
+      await tx
+        .update(driverProfiles)
+        .set({ ratingAvg: agg?.avg ? Number(agg.avg).toFixed(2) : null, ratingCount: agg?.n ?? 0 })
+        .where(eq(driverProfiles.userId, driverId));
+
+      return { rating: updated!.riderRating, comment: updated!.riderComment };
+    });
+  },
+
+  // ---- driver: rate the rider on a completed trip ----
+  // Mirror of `rateTrip`; recomputes the rider's profile aggregate.
+  async driverRateTrip(driverId: string, tripId: string, rating: number, comment?: string) {
+    const trip = await db.query.trips.findFirst({ where: eq(trips.id, tripId) });
+    if (!trip) throw new DomainError('TRIP_NOT_FOUND', 'Trip not found.', 404);
+    if (trip.driverId !== driverId) {
+      throw new DomainError('FORBIDDEN', 'You do not have access to this trip.', 403);
+    }
+    if (trip.status !== 'completed') {
+      throw new DomainError('TRIP_NOT_COMPLETED', 'You can only rate a completed trip.', 422);
+    }
+    if (trip.driverRating != null) {
+      throw new DomainError('TRIP_ALREADY_RATED', 'This trip has already been rated.', 409);
+    }
+    const riderId = trip.riderId;
+
+    return db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(trips)
+        .set({ driverRating: rating, driverComment: comment ?? null, driverRatedAt: new Date(), updatedAt: new Date() })
+        .where(eq(trips.id, tripId))
+        .returning();
+
+      const [agg] = await tx
+        .select({ avg: sql<string | null>`avg(${trips.driverRating})`, n: count(trips.driverRating) })
+        .from(trips)
+        .where(and(eq(trips.riderId, riderId), isNotNull(trips.driverRating)));
+      await tx
+        .update(riderProfiles)
+        .set({ ratingAvg: agg?.avg ? Number(agg.avg).toFixed(2) : null, ratingCount: agg?.n ?? 0 })
+        .where(eq(riderProfiles.userId, riderId));
+
+      return { rating: updated!.driverRating, comment: updated!.driverComment };
+    });
   },
 
   // ---- trip route (recorded breadcrumbs) ----

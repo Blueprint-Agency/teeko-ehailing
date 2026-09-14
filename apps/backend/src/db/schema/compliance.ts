@@ -36,6 +36,10 @@ export const consentLog = pgTable('consent_log', {
   userId: uuid().notNull().references(() => users.id, { onDelete: 'cascade' }),
   contentVersionId: uuid().notNull(),
   consentType: consentType().notNull(),
+  // Append-only consent *event*: true = consent granted, false = withdrawn.
+  // Current state for a (user, type) is the latest row's `granted` (PDPA s.38
+  // right to withdraw; s.43 direct-marketing opt-out).
+  granted: boolean().notNull().default(true),
   scrolledToBottom: boolean().notNull().default(false),
   clientIp: text(),
   userAgent: text(),

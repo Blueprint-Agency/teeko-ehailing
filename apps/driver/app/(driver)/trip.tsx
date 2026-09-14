@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, Linking,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, Linking, Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Phone, Check } from 'lucide-react-native';
@@ -11,8 +11,9 @@ import MapBackground from '../../components/driver/MapBackground';
 import { useColors } from '../../constants/colors';
 import { useTheme } from '../../components/ThemeProvider';
 import { useT } from '@teeko/i18n';
-import { api } from '../../lib/api';
+import { api, resolveMediaUrl } from '../../lib/api';
 import { useDriverStore } from '../../store/useDriverStore';
+import { toast, showDialog } from '../../store/useFeedbackStore';
 
 const PHASE_KEYS = ['navigating', 'arrived', 'inprogress', 'completed'] as const;
 
@@ -34,6 +35,21 @@ export default function TripScreen() {
   const { activeTripId, setActiveTripId, activeTrip, setActiveTrip } = useDriverStore();
 
   const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Driver → rider rating, captured on the completed phase.
+  const [riderStars, setRiderStars] = useState(0);
+  const [riderComment, setRiderComment] = useState('');
+
+  // The server sends a stored path (or null); it needs the API origin glued on.
+  const [riderPhotoFailed, setRiderPhotoFailed] = useState(false);
+  const riderPhotoSrc = resolveMediaUrl(activeTrip?.riderPhotoUrl);
+  const riderPhoto = riderPhotoFailed ? undefined : riderPhotoSrc;
+
+  // Reset the failure flag when the photo changes, so a later trip's avatar is
+  // not suppressed by a broken URL from the previous one.
+  useEffect(() => {
+    setRiderPhotoFailed(false);
+  }, [riderPhotoSrc]);
 
   useEffect(() => {
     let sub: Location.LocationSubscription | null = null;
@@ -114,6 +130,11 @@ export default function TripScreen() {
 
   const advancePhase = async () => {
     if (isCompleted) {
+      // Rating is best-effort — the driver is never blocked from leaving the
+      // screen by a failed submit; skipping sends nothing.
+      if (activeTripId && riderStars > 0) {
+        await api.driver.rateRider(activeTripId, riderStars, riderComment.trim() || undefined).catch(() => null);
+      }
       setActiveTripId(null);
       setActiveTrip(null);
       router.replace('/(driver)/(tabs)/home');
@@ -126,17 +147,20 @@ export default function TripScreen() {
         else if (phaseIndex === 2) await api.driver.completeTrip(activeTripId);
       }
     } catch (err: unknown) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Action failed');
+      toast.error(err instanceof Error ? err.message : t('driverAlerts.actionFailed'));
       return;
     }
     setPhaseIndex((i) => Math.min(i + 1, 3));
   };
 
   const handleSOS = async () => {
-    Alert.alert('SOS', 'Emergency services will be contacted.', [
-      { text: 'Cancel', style: 'cancel' },
+    showDialog({
+      title: t('driverAlerts.sosTitle'),
+      message: t('driverAlerts.sosBody'),
+      actions: [
+      { label: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Confirm SOS',
+        label: t('driverAlerts.confirmSos'),
         style: 'destructive',
         onPress: async () => {
           // Raise the alert before anything else — the record and the contact
@@ -164,24 +188,26 @@ export default function TripScreen() {
           router.replace('/(driver)/(tabs)/home');
 
           if (!alert) {
-            Alert.alert(
-              'SOS not sent',
-              'We could not reach Teeko. Call 999 directly if you are in danger.',
-            );
+            showDialog({
+              title: t('driverAlerts.sosNotSentTitle'),
+              message: t('driverAlerts.sosNotSentBody'),
+            });
           } else if (alert.notifiedContacts.length === 0) {
-            Alert.alert(
-              'SOS raised',
-              'Teeko support has been alerted. You have no emergency contacts saved — add one in the driver portal.',
-            );
+            showDialog({
+              title: t('driverAlerts.sosRaisedTitle'),
+              message:
+                t('driverAlerts.sosRaisedNoContacts'),
+            });
           } else {
-            Alert.alert(
-              'SOS raised',
-              `Teeko support has been alerted and your ${alert.notifiedContacts.length} emergency contact(s) notified.`,
-            );
+            showDialog({
+              title: t('driverAlerts.sosRaisedTitle'),
+              message: t('driverAlerts.sosRaisedContacts', { count: alert.notifiedContacts.length }),
+            });
           }
         },
       },
-    ]);
+      ],
+    });
   };
 
   // Use the live directions polyline when available; fall back to a client-side
@@ -214,7 +240,7 @@ export default function TripScreen() {
     if (phaseIndex === 0) return t('driver.iveArrived');
     if (phaseIndex === 1) return t('driver.startTrip');
     if (phaseIndex === 2) return t('driver.endTrip');
-    return t('driver.backToHome');
+    return riderStars > 0 ? t('driver.submitAndFinish') : t('driver.skipRating');
   };
 
   return (
@@ -254,13 +280,23 @@ export default function TripScreen() {
       <View style={styles.card}>
         <View style={styles.riderInfo}>
           <View style={styles.riderAvatar}>
-            <Text style={styles.riderAvatarText}>{activeTrip?.riderName?.[0] ?? '?'}</Text>
+            {riderPhoto ? (
+              <Image
+                source={{ uri: riderPhoto }}
+                style={styles.riderAvatarImage}
+                // A dead/expired URL would otherwise leave an empty circle —
+                // fall back to the initial the same way a photo-less rider does.
+                onError={() => setRiderPhotoFailed(true)}
+              />
+            ) : (
+              <Text style={styles.riderAvatarText}>{activeTrip?.riderName?.[0] ?? '?'}</Text>
+            )}
           </View>
           <View style={styles.riderDetails}>
             <Text style={styles.riderName}>{activeTrip?.riderName ?? '—'}</Text>
             <Text style={styles.riderMeta}>{activeTrip?.category?.toUpperCase() ?? '—'}</Text>
           </View>
-          <TouchableOpacity style={styles.callBtn} onPress={() => Alert.alert('Call', 'Calling rider...')}>
+          <TouchableOpacity style={styles.callBtn} onPress={() => toast.info(t('driverAlerts.callingRider'))}>
             <Phone size={18} color={colors.text} strokeWidth={1.75} />
           </TouchableOpacity>
         </View>
@@ -289,6 +325,37 @@ export default function TripScreen() {
           </View>
           <Text style={styles.fareValue}>RM {activeTrip ? (activeTrip.fareCents / 100).toFixed(2) : '—'}</Text>
         </View>
+
+        {/* Rate the rider — only once the trip is completed */}
+        {isCompleted && (
+          <View style={styles.rateBlock}>
+            <Text style={styles.rateTitle}>{t('driver.rateRider')}</Text>
+            <View style={styles.rateStars}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  onPress={() => setRiderStars(n)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${n} star`}
+                  hitSlop={6}
+                >
+                  <Text style={[styles.rateStar, n <= riderStars && styles.rateStarOn]}>★</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {riderStars > 0 && riderStars <= 3 && (
+              <TextInput
+                style={styles.rateInput}
+                placeholder={t('driver.rateRiderHint')}
+                placeholderTextColor={colors.textSec}
+                value={riderComment}
+                onChangeText={setRiderComment}
+                multiline
+                maxLength={1000}
+              />
+            )}
+          </View>
+        )}
 
         {/* Navigation buttons */}
         {!isCompleted && (
@@ -369,6 +436,8 @@ const createStyles = (colors: any) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   riderAvatarText: { color: colors.accent, fontWeight: '800', fontSize: 18 },
+  // Inset by the 2px accent ring so the photo sits inside it rather than under it.
+  riderAvatarImage: { width: 40, height: 40, borderRadius: 20 },
   riderDetails: { flex: 1, marginLeft: 12 },
   riderName: { color: colors.text, fontSize: 16, fontWeight: '700' },
   riderMeta: { color: colors.textSec, fontSize: 13, marginTop: 2 },
@@ -407,6 +476,16 @@ const createStyles = (colors: any) => StyleSheet.create({
   },
   navBtnText: { color: colors.text, fontSize: 13, fontWeight: '600' },
 
+  rateBlock: { alignItems: 'center', gap: 10, marginBottom: 16 },
+  rateTitle: { color: colors.text, fontSize: 15, fontWeight: '700' },
+  rateStars: { flexDirection: 'row', gap: 10 },
+  rateStar: { color: colors.border, fontSize: 34 },
+  rateStarOn: { color: colors.warning },
+  rateInput: {
+    alignSelf: 'stretch', minHeight: 64, textAlignVertical: 'top',
+    borderWidth: 1, borderColor: colors.border, borderRadius: 12,
+    paddingHorizontal: 14, paddingVertical: 10, color: colors.text, fontSize: 14,
+  },
   actionRow: { flexDirection: 'row', gap: 12 },
   sosBtn: {
     width: 56, height: 56, borderRadius: 14,
